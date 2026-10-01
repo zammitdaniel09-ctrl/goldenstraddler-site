@@ -268,7 +268,7 @@ async function handle(req: Request): Promise<Response> {
     const showRec = getS("record_public") === "1" && rec && rec.trades >= minTrades;
     return json(200, { ok: true, serverNow: now(), prices: { lifetime: listPrice("lifetime"), monthly: listPrice("monthly") }, methods: methodsOn(),
       refundDays: getN("refund_days"), news: news.events.filter((e) => e.utc > now() / 1000 - 75).slice(0, 8), week: news.events, record: showRec ? rec : null,
-      announcement: getS("announcement"), promo: promo() });
+      announcement: getS("announcement"), promo: promo(), verifyUrl: /^https:\/\/[\w.-]+\//.test(getS("record_verify_url")) ? getS("record_verify_url") : "" });
   }
   if (p === "/api/live") {
     if (limited("live:" + ipOf(req), 90, 60_000)) return bad("Slow down", 429);
@@ -667,7 +667,7 @@ async function adminRoute(req: Request, url: URL, p: string, a: Admin): Promise<
   if (p === "/settings") {
     const editable = ["price_lifetime", "price_monthly", "mail_from", "support_email", "notify_emails", "bank_name", "bank_holder", "bank_iban", "bank_bic",
       "seller_name", "seller_address", "seller_vat", "seller_reg", "record_public", "record_min_trades", "stripe_tax", "methods_card", "methods_crypto", "methods_bank",
-      "refund_days", "move_days", "announcement", "site_url", "ea_version", "promo_code",
+      "refund_days", "move_days", "announcement", "site_url", "ea_version", "promo_code", "record_verify_url",
       "chat_enabled", "chat_ai", "chat_model", "chat_daily_cap", "chat_greeting"];
     if (post) {
       if (!owner) return bad("Only the owner can change settings.", 403);

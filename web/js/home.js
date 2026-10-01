@@ -484,6 +484,10 @@ function applyPublic(j) {
   WEEK = j.week || [];
   if (j.record) REC = j.record;
   if (j.record && j.record.trades && $("record").hidden) record(j.record);
+  if (j.verifyUrl) {
+    const v = $("recVerify"); v.replaceChildren("Independently tracked: ");
+    const a = document.createElement("a"); a.href = j.verifyUrl; a.rel = "noopener"; a.target = "_blank"; a.textContent = "see the verified record"; v.appendChild(a); v.append(".");
+  }
 }
 function record(r) {
   $("record").hidden = false;
