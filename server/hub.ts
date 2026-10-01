@@ -7,7 +7,7 @@ import { esc, getS, siteUrl } from "./util";
 import { calendar, kvGet, kvSet, refreshAll, series, sources, startHubData } from "./hubdata";
 import { ASSETS, CLASSES, FACTOR_INFO, THRESH, backtest, brief, buildCtx, fmtPx, postText, short, sides, type Asset, type Back, type Brief, type Ctx } from "./hubmodel";
 
-const state = { briefs: [] as Brief[], at: 0, asOf: "", busy: false, err: "" };
+const state = { briefs: [] as Brief[], at: 0, asOf: "", busy: false, err: "", sig: "" };
 const backCache = new Map<string, Back | null>();
 const cachedBack = (a: Asset, c: Ctx, i: number) => {
   // keyed on the data too, so a backtest is redone when history arrives or changes, but not on every refresh
@@ -25,6 +25,12 @@ export async function computeHub() {
     if (backCache.size > 200) for (const k of [...backCache.keys()].slice(0, backCache.size - 64)) backCache.delete(k);
     freeze(out, c);
     state.briefs = out; state.at = now(); state.asOf = c.weeks[c.weeks.length - 1]; state.err = "";
+    // one line per market in the logs whenever the calls change, so they can be checked against the data
+    const sig = out.map((b) => b.id + b.asOf + b.call.score).join();
+    if (sig !== state.sig && out.some((b) => b.px !== null)) {
+      state.sig = sig;
+      for (const b of out) { const p = c.px[b.id], n = c.weeks.length; console.log(`hub ${b.id} ${b.asOf} ${b.call.label} ${b.call.score} | last weeks ${p.slice(n - 4).map((v) => (v == null ? "-" : +v.toPrecision(6))).join(" ")} | ${b.priceLine}`); }
+    }
     kvSet("briefs_at", String(state.at));
   } catch (e: any) { state.err = e.message; console.error("hub compute", e.stack || e.message); }
   finally { state.busy = false; }
