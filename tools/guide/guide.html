@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>GoldenStraddler user guide</title>
+<style>
+@font-face{font-family:'Unbounded';font-weight:800;src:url(../../web/fonts/unbounded-latin-800-normal.woff2)}
+@font-face{font-family:'Space Grotesk';font-weight:400;src:url(../../web/fonts/space-grotesk-latin-400-normal.woff2)}
+@font-face{font-family:'Space Grotesk';font-weight:500;src:url(../../web/fonts/space-grotesk-latin-500-normal.woff2)}
+@font-face{font-family:'Space Grotesk';font-weight:600;src:url(../../web/fonts/space-grotesk-latin-600-normal.woff2)}
+@font-face{font-family:'Space Grotesk';font-weight:700;src:url(../../web/fonts/space-grotesk-latin-700-normal.woff2)}
+@font-face{font-family:'JetBrains Mono';font-weight:400;src:url(../../web/fonts/jetbrains-mono-latin-400-normal.woff2)}
+@font-face{font-family:'JetBrains Mono';font-weight:600;src:url(../../web/fonts/jetbrains-mono-latin-600-normal.woff2)}
+@font-face{font-family:'Sedgwick Ave';font-weight:400;src:url(../../web/fonts/sedgwick-ave-latin-400-normal.woff2)}
+@page{size:A4;margin:22mm 20mm 22mm 20mm}
+:root{--ink:#0b0f15;--ink2:#3b4452;--mute:#6b7482;--line:#dfe4ea;--soft:#f3f6f9;--ice:#1E9FE3;--ice2:#3FC4FC;--gold:#C9952F;--loss:#d6455a}
+*{box-sizing:border-box}
+html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{margin:0;font:10.4pt/1.55 'Space Grotesk',sans-serif;color:var(--ink)}
+h1,h2,h3{margin:0;break-after:avoid}
+h1{font:800 25pt/1.08 Unbounded;letter-spacing:-.035em;margin-bottom:5mm}
+h2{font:700 13.5pt/1.3 'Space Grotesk';margin:6mm 0 2.5mm}
+h3{font:600 11pt/1.3 'Space Grotesk';margin:5mm 0 1.5mm}
+p{margin:0 0 2.6mm}
+.lede{font-size:11.5pt;color:var(--ink2);margin-bottom:5mm;max-width:150mm}
+section{break-before:page}
+section.first{break-before:auto}
+code,.mono{font:400 9.2pt 'JetBrains Mono',monospace}
+code{background:var(--soft);border:1px solid var(--line);border-radius:4px;padding:.5mm 1.4mm;white-space:nowrap}
+b,strong{font-weight:600}
+ul,ol{margin:0 0 3mm;padding-left:6mm}
+li{margin:0 0 1.4mm}
+.note{border-left:3px solid var(--ice);background:#eef8fe;padding:3mm 4mm;border-radius:0 6px 6px 0;margin:3mm 0 4mm;break-inside:avoid}
+.note.warn{border-color:var(--gold);background:#fbf5e8}
+.note.stop{border-color:var(--loss);background:#fdf0f2}
+.note p:last-child{margin:0}
+table{width:100%;border-collapse:collapse;margin:2mm 0 4mm;font-size:9.4pt;break-inside:auto}
+th,td{text-align:left;vertical-align:top;padding:2mm 2.5mm 2mm 0;border-bottom:1px solid var(--line)}
+th{font-weight:600;color:var(--mute);font-size:8.6pt;border-bottom:1.5px solid var(--ink)}
+tr{break-inside:avoid}
+td:first-child{white-space:nowrap}
+table.wrap td:first-child{white-space:normal;width:34%}
+table.wrap td:nth-child(2){width:28%}
+.steps{list-style:none;padding:0;margin:0;counter-reset:s}
+.steps>li{counter-increment:s;position:relative;padding:0 0 3mm 13mm;margin:0;break-inside:avoid}
+.steps>li::before{content:counter(s);position:absolute;left:0;top:-.4mm;width:8.5mm;height:8.5mm;border-radius:50%;background:var(--ink);color:#fff;font:600 10pt 'JetBrains Mono';display:grid;place-items:center}
+.steps>li>b:first-child{display:block;font-size:11pt;margin-bottom:1mm}
+.fig{border:1px solid var(--line);border-radius:10px;padding:4mm;margin:3mm 0 5mm;break-inside:avoid;background:#fff}
+.fig .cap{font-size:8.6pt;color:var(--mute);margin-top:2.5mm}
+.toc{list-style:none;padding:0;margin:6mm 0 0;font-size:11.5pt}
+.toc li{display:flex;gap:4mm;padding:2.6mm 0;border-bottom:1px solid var(--line);margin:0}
+.toc li span{font:400 9.5pt 'JetBrains Mono';color:var(--mute);width:9mm}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:6mm}
+.kbd{font:600 8.6pt 'JetBrains Mono';border:1px solid #b9c2cc;border-bottom-width:2px;border-radius:4px;padding:.3mm 1.4mm;white-space:nowrap}
+.state{display:inline-block;font:600 8.4pt 'JetBrains Mono';padding:.6mm 2mm;border-radius:999px;color:#fff;white-space:nowrap}
+.check{list-style:none;padding:0}
+.check li{position:relative;padding-left:7mm}
+.check li::before{content:"";position:absolute;left:0;top:1.3mm;width:3.4mm;height:3.4mm;border:1.4px solid var(--ink);border-radius:2px}
+</style></head>
+<body>
+
+<section class="first">
+  <h1>Contents</h1>
+  <ol class="toc">
+    <li><span>1</span>How GoldenStraddler trades</li>
+    <li><span>2</span>Before you start</li>
+    <li><span>3</span>Install it in five steps</li>
+    <li><span>4</span>Reading the panel on your chart</li>
+    <li><span>5</span>Every setting explained</li>
+    <li><span>6</span>Your online account and dashboard</li>
+    <li><span>7</span>Your licence, accounts and renewals</li>
+    <li><span>8</span>Running it on a VPS</li>
+    <li><span>9</span>Fixing common problems</li>
+    <li><span>10</span>Trading it sensibly</li>
+  </ol>
+  <div class="note" style="margin-top:10mm"><p><b>In a hurry?</b> Go straight to section 3. It takes about five minutes, and it's all you need to get the EA armed for the next release.</p></div>
+</section>
+
+<section>
+  <h1>1. How GoldenStraddler trades</h1>
+  <p class="lede">GoldenStraddler trades gold (XAUUSD) in the seconds around high-impact US economic releases, the "red-folder" events such as Non-Farm Payrolls, CPI and FOMC decisions. Those releases often move gold sharply, but nobody knows in advance which way. So the EA doesn't guess. It places an order on both sides and lets the release choose.</p>
+  <div class="fig">
+    <svg viewBox="0 0 640 170" width="88%" style="display:block;margin:0 auto" xmlns="http://www.w3.org/2000/svg" font-family="Space Grotesk" font-size="12">
+      <line x1="30" x2="610" y1="40" y2="40" stroke="#1E9FE3" stroke-width="2"/>
+      <g font-family="JetBrains Mono" font-size="12" font-weight="600" fill="#1E9FE3">
+        <circle cx="40" cy="40" r="7" fill="#fff" stroke="#1E9FE3" stroke-width="2.5"/><text x="40" y="20" text-anchor="middle">−15 s</text>
+        <circle cx="175" cy="40" r="7" fill="#1E9FE3"/><text x="175" y="20" text-anchor="middle">0 s</text>
+        <circle cx="315" cy="40" r="7" fill="#fff" stroke="#1E9FE3" stroke-width="2.5"/><text x="315" y="20" text-anchor="middle">+50 pts</text>
+        <circle cx="455" cy="40" r="7" fill="#fff" stroke="#1E9FE3" stroke-width="2.5"/><text x="455" y="20" text-anchor="middle">exit</text>
+        <circle cx="595" cy="40" r="7" fill="#fff" stroke="#1E9FE3" stroke-width="2.5"/><text x="595" y="20" text-anchor="middle">+60 s</text>
+      </g>
+      <g fill="#0b0f15" font-weight="600" font-size="13"><text x="40" y="74" text-anchor="middle">Arms</text><text x="175" y="74" text-anchor="middle">Release</text><text x="315" y="74" text-anchor="middle">Trailing starts</text><text x="455" y="74" text-anchor="middle">Stop closes it</text><text x="595" y="74" text-anchor="middle">Disarms</text></g>
+      <g fill="#3b4452" font-size="11">
+        <text x="40" y="94" text-anchor="middle">buy stop +60</text><text x="40" y="110" text-anchor="middle">sell stop −60</text>
+        <text x="175" y="94" text-anchor="middle">one side fills,</text><text x="175" y="110" text-anchor="middle">the other is deleted</text>
+        <text x="315" y="94" text-anchor="middle">stop follows 50 pts</text><text x="315" y="110" text-anchor="middle">behind price</text>
+        <text x="455" y="94" text-anchor="middle">new pair placed if</text><text x="455" y="110" text-anchor="middle">the window is open</text>
+        <text x="595" y="94" text-anchor="middle">pending orders</text><text x="595" y="110" text-anchor="middle">removed</text>
+      </g>
+      <text x="30" y="150" fill="#6b7482" font-size="11">Defaults shown. Points are for a 2-digit gold quote (1 point = 0.01), scaled automatically on 3-digit quotes.</text>
+    </svg>
+  </div>
+  <h2>Step by step, with the default settings</h2>
+  <ol>
+    <li><b>15 seconds before the release</b> it places a <b>buy stop 60 points above the ask</b> and a <b>sell stop 60 points below the bid</b>, 0.10 lots each. Each order carries a <b>100-point stop loss</b> and no take profit.</li>
+    <li><b>The release hits.</b> Price breaks one way and fills one of the orders. The moment that happens, the other order is deleted, so you're only ever in one trade.</li>
+    <li><b>Nothing moves until the trade is 50 points in profit.</b> From then on the stop loss follows <b>50 points behind price</b> and only ever tightens. It never moves back.</li>
+    <li><b>The trailing stop closes the trade</b> when price turns. If the news window is still open, a fresh buy stop and sell stop go on around the new price straight away.</li>
+    <li><b>60 seconds after the release</b> the window closes. Any pending orders are removed. A trade that's still open keeps trailing until its stop closes it.</li>
+  </ol>
+  <h2>Where the news comes from</h2>
+  <p>The EA downloads the week's red-folder USD events from ForexFactory's public calendar feed. If that's unavailable, it falls back to MetaTrader&nbsp;5's own economic calendar, and it keeps a saved copy on disk, so a restart doesn't lose the week. Timing uses your broker's tick clock rather than your computer's clock, so "15 seconds before" means 15 seconds on the trade server.</p>
+  <div class="note warn"><p><b>Between releases it does nothing.</b> That's by design. Most weeks have a handful of red-folder USD events, and the EA only trades around them. If you want it trading all the time, there's an "Always on" mode (section 5), but that's a very different, much busier way of trading.</p></div>
+</section>
+
+<section>
+  <h1>2. Before you start</h1>
+  <p class="lede">Tick these off first. They're the difference between a smooth first release and a frustrating one.</p>
+  <ul class="check">
+    <li><b>MetaTrader 5 for Windows</b>, installed and logged in to your trading account. GoldenStraddler doesn't run on MetaTrader 4. On a Mac, use a Windows VPS (section 8).</li>
+    <li><b>A broker that offers gold</b> on MT5. Any symbol name works: XAUUSD, GOLD, XAUUSD.r and so on. A raw-spread or ECN account with fast execution gives the best fills around news.</li>
+    <li><b>Your licence key.</b> It's on your account page at goldenstraddler.com/account and in your licence email. It looks like <code>GS-XXXX-XXXX-XXXX-XXXX</code>.</li>
+    <li><b>A plan for keeping MT5 online.</b> The EA only works while MetaTrader 5 is open and connected at release time. A Windows VPS is the reliable way to do that.</li>
+    <li><b>A demo account, if you want to try it first.</b> The licence locks to the first account it runs on, and you can move it to your live account straight away from your account page.</li>
+    <li><b>Your prop firm's rules</b>, if you trade a funded account. Many don't allow trading around news.</li>
+  </ul>
+  <div class="note"><p><b>About lot size.</b> The default is 0.10 lots per order. With most brokers' gold contract (100 ounces per lot), each point (0.01) is worth about $0.10 at 0.10 lots, so the 100-point stop loss risks about $10 plus slippage and costs. Set the size that fits your account before you go live.</p></div>
+</section>
+
+<section>
+  <h1>3. Install it in five steps</h1>
+  <p class="lede">About five minutes, start to finish.</p>
+  <ol class="steps">
+    <li><b>Download the EA.</b>Sign in at <code>goldenstraddler.com/account</code> and click <b>Download GoldenStraddler.ex5</b>. You can download it again any time, for example on a new PC or VPS.</li>
+    <li><b>Put the file into MetaTrader 5.</b>In MT5, click <b>File → Open Data Folder</b>. In the folder that opens, go into <b>MQL5</b>, then <b>Experts</b>, and copy <code>GoldenStraddler.ex5</code> there. Back in MT5, right-click <b>Expert Advisors</b> in the Navigator (<span class="kbd">Ctrl</span> + <span class="kbd">N</span> if it's hidden) and choose <b>Refresh</b>. GoldenStraddler appears in the list.</li>
+    <li><b>Allow its two web addresses.</b>Click <b>Tools → Options</b> and open the <b>Expert Advisors</b> tab. Tick <b>Allow algorithmic trading</b> and <b>Allow WebRequest for listed URL</b>, then add these two addresses, each on its own line, and click <b>OK</b>:
+      <div class="fig" style="margin-top:3mm">
+        <svg viewBox="0 0 600 200" width="62%" style="display:block" xmlns="http://www.w3.org/2000/svg" font-family="Space Grotesk" font-size="13">
+          <rect x="1" y="1" width="598" height="198" rx="8" fill="#f7f9fb" stroke="#c9d1da"/>
+          <text x="18" y="28" font-weight="600">Options → Expert Advisors</text>
+          <rect x="18" y="44" width="14" height="14" rx="2" fill="#1E9FE3"/><path d="M21 51l3 3 6-7" stroke="#fff" stroke-width="2" fill="none"/><text x="42" y="56">Allow algorithmic trading</text>
+          <rect x="18" y="70" width="14" height="14" rx="2" fill="#1E9FE3"/><path d="M21 77l3 3 6-7" stroke="#fff" stroke-width="2" fill="none"/><text x="42" y="82">Allow WebRequest for listed URL:</text>
+          <rect x="42" y="94" width="400" height="74" rx="4" fill="#fff" stroke="#c9d1da"/>
+          <text x="54" y="118" font-family="JetBrains Mono" font-size="13">https://goldenstraddler.com</text>
+          <text x="54" y="144" font-family="JetBrains Mono" font-size="13">https://nfs.faireconomy.media</text>
+          <text x="458" y="118" fill="#6b7482" font-size="12">your licence</text>
+          <text x="458" y="144" fill="#6b7482" font-size="12">the news calendar</text>
+        </svg>
+        <p class="cap">Type them exactly as shown, starting with https://. Without them the EA can't check its licence or load the news.</p>
+      </div></li>
+    <li><b>Attach it to a gold chart.</b>Open an <b>XAUUSD</b> chart (any timeframe works) and drag <b>GoldenStraddler</b> from the Navigator onto it. In the window that opens:
+      <ul style="margin-top:2mm"><li>On the <b>Common</b> tab, make sure <b>Allow Algo Trading</b> is ticked.</li>
+      <li>On the <b>Inputs</b> tab, double-click the value next to <b>Licence key</b> and paste your key.</li>
+      <li>Check <b>Lot size per order</b> and change it if you need to. Then click <b>OK</b>.</li></ul></li>
+    <li><b>Turn on Algo Trading.</b>Click <b>Algo Trading</b> in the MT5 toolbar so its icon turns green. Within a few seconds the panel on your chart shows your licence (for example <b>LIFETIME LICENCE</b> at the bottom) and the state <b>WAITING</b> with the time of the next red-folder release. <b>That's it.</b> Leave MT5 running: the EA arms itself 15 seconds before the next release.</li>
+  </ol>
+</section>
+
+<section>
+  <h1>4. Reading the panel on your chart</h1>
+  <p class="lede">The panel in the corner of your chart shows what the EA is doing right now, your open position and your statistics. The coloured state badge is the part to watch.</p>
+  <table>
+    <tr><th>State</th><th>What it means</th><th>What to do</th></tr>
+    <tr><td><span class="state" style="background:#1E9FE3">WAITING</span></td><td>Outside a news window. The panel shows the next red-folder release and a countdown.</td><td>Nothing. This is normal most of the time.</td></tr>
+    <tr><td><span class="state" style="background:#C9952F">ARMED</span></td><td>Inside a window. The buy stop and sell stop are placed, or about to be.</td><td>Nothing. Let it work.</td></tr>
+    <tr><td><span class="state" style="background:#3FC4FC;color:#001018">IN TRADE</span></td><td>One side filled. The trade is open with its stop loss, then trails once it's 50 points in profit.</td><td>Nothing. The stop closes it.</td></tr>
+    <tr><td><span class="state" style="background:#6b7482">PAUSED</span></td><td>You pressed PAUSE. No new orders. Open trades keep trailing.</td><td>Press RESUME to start again.</td></tr>
+    <tr><td><span class="state" style="background:#d6455a">ALGO OFF</span></td><td>Algo Trading is switched off in MT5, so the EA can't place orders.</td><td>Click Algo Trading in the toolbar.</td></tr>
+    <tr><td><span class="state" style="background:#d6455a">REJECTED</span></td><td>The broker rejected an order. The panel shows the broker's reason.</td><td>See section 9.</td></tr>
+    <tr><td><span class="state" style="background:#d6455a">LICENCE</span></td><td>The licence isn't active on this account. The panel says why.</td><td>See section 7 and section 9.</td></tr>
+  </table>
+  <h2>The three buttons</h2>
+  <table>
+    <tr><th>Button</th><th>What it does</th></tr>
+    <tr><td><b>PAUSE / RESUME</b></td><td>Stops the EA placing new orders, or starts it again. An open trade keeps its stop and keeps trailing while paused.</td></tr>
+    <tr><td><b>ARM NOW</b></td><td>Opens a manual window straight away, as if a release were due: 75 seconds with the default settings. Handy for a release that isn't on the calendar. Use it with care.</td></tr>
+    <tr><td><b>CLOSE ALL</b></td><td>Asks you to confirm, then closes GoldenStraddler's positions and deletes its pending orders on this chart's symbol, and pauses the EA. Press RESUME when you want it trading again.</td></tr>
+  </table>
+  <p>The footer of the panel shows your licence: <b>LIFETIME LICENCE</b>, <b>LICENCE TO</b> a date for monthly plans, or a warning if something's wrong.</p>
+</section>
+
+<section>
+  <h1>5. Every setting explained</h1>
+  <p class="lede">Press <span class="kbd">F7</span> on the chart to open the inputs at any time. Distances are in points for a 2-digit gold quote, where 1 point = 0.01. On a 3-digit quote they're multiplied by 10 for you.</p>
+  <h2>Licence</h2>
+  <table>
+    <tr><th>Input</th><th>Default</th><th>What it does</th></tr>
+    <tr><td>Licence key</td><td class="mono">empty</td><td>Paste the key from your account page.</td></tr>
+    <tr><td>Show this account on your online dashboard</td><td class="mono">true</td><td>Sends status and closed trades to your private dashboard. Switch off if you don't want that. The licence check still runs.</td></tr>
+  </table>
+  <h2>Strategy</h2>
+  <table>
+    <tr><th>Input</th><th>Default</th><th>What it does</th></tr>
+    <tr><td>Pending distance from price</td><td class="mono">60</td><td>How far above the ask and below the bid the stop orders go.</td></tr>
+    <tr><td>Stop loss from entry</td><td class="mono">100</td><td>Initial stop loss on each order. 0 means none, which isn't recommended.</td></tr>
+    <tr><td>Trailing starts at a profit of</td><td class="mono">50</td><td>The trade must be this far in profit before the stop starts to move.</td></tr>
+    <tr><td>Trailing distance behind price</td><td class="mono">50</td><td>How far behind price the stop follows.</td></tr>
+    <tr><td>Stop moves in steps of</td><td class="mono">1</td><td>Minimum change before the stop is moved, to avoid flooding the broker.</td></tr>
+    <tr><td>Lot size per order</td><td class="mono">0.10</td><td>Volume of each pending order.</td></tr>
+  </table>
+  <h2>News automation</h2>
+  <table>
+    <tr><th>Input</th><th>Default</th><th>What it does</th></tr>
+    <tr><td>When to trade</td><td class="mono">News only</td><td><b>Red-folder USD news windows only</b>, or <b>Always on</b> to trade continuously.</td></tr>
+    <tr><td>Turn on N seconds before</td><td class="mono">15</td><td>When the window opens before each release.</td></tr>
+    <tr><td>Keep running N seconds after</td><td class="mono">60</td><td>When the window closes after each release.</td></tr>
+    <tr><td>Where events come from</td><td class="mono">FF + MT5</td><td>ForexFactory with MT5's calendar as backup, either one alone, or both combined.</td></tr>
+    <tr><td>Currency</td><td class="mono">USD</td><td>Which currency's high-impact events to trade.</td></tr>
+    <tr><td>ForexFactory weekly feed</td><td class="mono">nfs.faireconomy.media</td><td>Leave as it is.</td></tr>
+  </table>
+  <h2>Execution and display</h2>
+  <table>
+    <tr><th>Input</th><th>Default</th><th>What it does</th></tr>
+    <tr><td>Magic number</td><td class="mono">20260930</td><td>Tags the EA's orders. Use a different number on each chart if you run more than one.</td></tr>
+    <tr><td>Order comment</td><td class="mono">GoldenStraddler</td><td>Text shown on orders in MT5.</td></tr>
+    <tr><td>x10 point inputs on 3-digit gold</td><td class="mono">true</td><td>Scales the point inputs on 3-digit quotes. Leave on.</td></tr>
+    <tr><td>Show dashboard, corner, offsets, size</td><td class="mono"></td><td>Where and how big the chart panel is drawn.</td></tr>
+    <tr><td>Apply the chart colours</td><td class="mono">true</td><td>Gives the chart the GoldenStraddler look.</td></tr>
+    <tr><td>Statistics look-back in days</td><td class="mono">0</td><td>0 counts all history. Otherwise only the last N days.</td></tr>
+    <tr><td>Export closed trades to CSV</td><td class="mono">true</td><td>Writes your closed trades to a CSV in MT5's Common\Files folder.</td></tr>
+  </table>
+</section>
+
+<section>
+  <h1>6. Your online account and dashboard</h1>
+  <p class="lede">Everything about your licence lives at <code>goldenstraddler.com/account</code>. Sign in with the email you bought with: we send you a 6-digit code. You can also sign in with that email and your licence key.</p>
+  <h2>What's on the page</h2>
+  <ul>
+    <li><b>Your licence.</b> Copy your key, see your plan, which MT5 account it's locked to, and whether the EA is online right now.</li>
+    <li><b>Downloads.</b> The latest EA and this guide.</li>
+    <li><b>Live from MT5.</b> The EA's state, your open position, balance and equity, and the next high-impact releases, updated every few seconds while MT5 is running.</li>
+    <li><b>Performance.</b> Net profit, an equity curve, profit per trade, results by hour and by side, with day, 7-day and 30-day filters.</li>
+    <li><b>Trades.</b> Every closed trade the EA placed, with entry, exit, points, costs and running total.</li>
+    <li><b>Orders.</b> Your payments, and the refund button during the money-back period.</li>
+    <li><b>Help.</b> A form that reaches us directly. We answer by email.</li>
+  </ul>
+  <div class="note"><p>The dashboard only shows trades placed by GoldenStraddler on the licensed account. It updates while MT5 is running with <b>Show this account on your online dashboard</b> switched on.</p></div>
+</section>
+
+<section>
+  <h1>7. Your licence, accounts and renewals</h1>
+  <h2>One licence, one account</h2>
+  <p>Your licence locks to the first MT5 account it runs on. To use it on a different account, for example moving from demo to live or to a new broker, open your account page and click <b>Move to another MT5 account</b>. Then attach the EA with your key on the new account, and it locks there. The old account stops placing new orders. You can move a licence once every 30 days.</p>
+  <h2>If the internet drops</h2>
+  <p>The EA checks the licence with our server when it starts and then from time to time. A good answer is trusted for 48 hours, so a short outage on our side or yours doesn't stop trading. To keep things fast, the EA never contacts our server during a news window, in the minute before one, or while its orders are working.</p>
+  <h2>Monthly plans</h2>
+  <ul>
+    <li><b>Card or wallet:</b> renews by itself every month. Cancel any time with <b>Manage subscription</b> on your account page. It stays active to the end of the month you've paid for.</li>
+    <li><b>Bank transfer or crypto:</b> doesn't renew by itself. Use <b>Pay next month</b> on your account page. We email you a reminder before it runs out.</li>
+    <li><b>When a month isn't renewed</b> you get three extra days. After that the EA shows <b>SUBSCRIPTION ENDED</b>, stops placing new orders and removes its pending orders. A trade that's already open keeps its stop and trailing until it closes. Renew and it starts working again on its own.</li>
+  </ul>
+  <h2>Lifetime</h2>
+  <p>A lifetime licence has no expiry date and includes all future updates.</p>
+  <div class="note stop"><p><b>Keep your key to yourself.</b> A licence runs on one account. Sharing a key gets it switched off.</p></div>
+</section>
+
+<section>
+  <h1>8. Running it on a VPS</h1>
+  <p class="lede">A Virtual Private Server is a Windows computer in a data centre that stays on around the clock. It's the dependable way to make sure MT5 is running at every release, even when your own computer is off.</p>
+  <h2>What to look for</h2>
+  <ul>
+    <li><b>Windows</b> with at least 2 GB of RAM. One MT5 terminal with a couple of charts runs comfortably on that.</li>
+    <li><b>Close to your broker's servers.</b> Many brokers' MT5 servers are in London, New York or Equinix data centres. Lower latency means better fills around news. Some brokers offer a free or discounted VPS.</li>
+  </ul>
+  <h2>Setting it up</h2>
+  <ol>
+    <li>Connect to the VPS with Remote Desktop.</li>
+    <li>Install MetaTrader 5 from your broker and log in.</li>
+    <li>Follow section 3 on the VPS. Download the EA from your account page in the VPS's browser.</li>
+    <li>Make sure Windows doesn't sleep or restart for updates at awkward times, and that MT5 starts again if the VPS restarts.</li>
+    <li>Disconnect from Remote Desktop by closing the window. Don't sign out of Windows, or MT5 closes too.</li>
+  </ol>
+  <div class="note warn"><p><b>Run it in one place only.</b> If the same licence runs on your PC and your VPS on the same account, both copies place orders. Remove it from the chart on the machine you're not using.</p></div>
+</section>
+
+<section>
+  <h1>9. Fixing common problems</h1>
+  <table class="wrap">
+    <tr><th>The panel says</th><th>Why</th><th>Fix</th></tr>
+    <tr><td>Allow https://goldenstraddler.com under Tools &gt; Options</td><td>The licence address isn't in the WebRequest list.</td><td>Add it exactly as in section 3, step 3, then re-attach the EA.</td></tr>
+    <tr><td>Paste your licence key in the EA inputs</td><td>The key is empty.</td><td>Press F7 and paste the key from your account page.</td></tr>
+    <tr><td>This licence key doesn't exist</td><td>A typo or a missing character.</td><td>Copy it again with the Copy button on your account page.</td></tr>
+    <tr><td>This licence is locked to account …</td><td>It's already locked to another MT5 account.</td><td>Move it from your account page (section 7).</td></tr>
+    <tr><td>Your subscription has ended</td><td>A monthly plan wasn't renewed.</td><td>Renew from your account page. It starts again by itself.</td></tr>
+    <tr><td>Can't reach the licence server</td><td>No internet, or a firewall is blocking MT5.</td><td>Check the connection. Trading carries on for up to 48 hours after the last good check.</td></tr>
+    <tr><td>Turn on Algo Trading</td><td>The toolbar button is off, or <b>Allow Algo Trading</b> isn't ticked on the EA's Common tab.</td><td>Switch both on.</td></tr>
+    <tr><td>Order rejected: invalid stops</td><td>Your broker's minimum stop distance is bigger than the settings.</td><td>Increase the pending distance or stop loss, or ask your broker about its stop level.</td></tr>
+    <tr><td>Order rejected: not enough money</td><td>The lot size is too big for your free margin.</td><td>Lower the lot size.</td></tr>
+    <tr><td>No upcoming releases shown</td><td>The calendar couldn't load.</td><td>Check that https://nfs.faireconomy.media is in the WebRequest list. MT5's calendar is used as a backup.</td></tr>
+  </table>
+  <h2>Still stuck?</h2>
+  <p>Use the help form on your account page. A screenshot of the chart panel and the <b>Experts</b> tab at the bottom of MT5 (<span class="kbd">Ctrl</span> + <span class="kbd">T</span> opens it) helps us answer quickly.</p>
+</section>
+
+<section>
+  <h1>10. Trading it sensibly</h1>
+  <p class="lede">GoldenStraddler is a tool, not a promise. It trades the most volatile seconds of the week, and that cuts both ways.</p>
+  <ul>
+    <li><b>Start on demo.</b> Watch a few releases before you put real money behind it. You can move the licence to your live account straight away.</li>
+    <li><b>Size small.</b> Pick a lot size where a full stop loss plus slippage is an amount you're comfortable losing, many times over.</li>
+    <li><b>Expect slippage.</b> Around news, spreads widen and stop orders can fill away from their price. Your broker and your VPS matter a lot.</li>
+    <li><b>Expect losing releases.</b> Some releases spike and snap back into the stop loss. Some do nothing at all. Judge it over many releases, not one.</li>
+    <li><b>Know your firm's rules.</b> Many prop firms ban news trading.</li>
+    <li><b>Keep an eye on it.</b> Check the panel or your dashboard before big releases, especially after a restart or a broker change.</li>
+  </ul>
+  <div class="note stop"><p><b>Risk warning.</b> Trading gold CFDs and other leveraged products carries a high risk of losing money quickly. Past results don't predict future results. GoldenStraddler doesn't give investment advice. Only trade with money you can afford to lose. The full risk disclosure is at goldenstraddler.com/risk.</p></div>
+</section>
+</body></html>

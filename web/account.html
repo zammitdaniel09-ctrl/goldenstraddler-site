@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#000000">
+<title>Your account | GoldenStraddler</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/unbounded-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/fonts/space-grotesk-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/fonts.css">
+<link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/dash.css"><link rel="stylesheet" href="/css/app.css"><link rel="stylesheet" href="/css/account.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="gs" viewBox="0 0 64 64"><rect x="1" y="1" width="62" height="62" rx="16" fill="#0E1116" stroke="#2e3644" stroke-width="2"/><text x="25" y="44" font-family="Unbounded,Arial Black,sans-serif" font-weight="800" font-size="30" fill="#fff" text-anchor="middle">G</text><text x="42" y="49" font-family="Sedgwick Ave,Segoe Script,cursive" font-size="36" fill="#3FC4FC" text-anchor="middle">S</text></symbol></svg>
+
+<div class="gate" id="gate" hidden><form id="gateForm" autocomplete="on" novalidate>
+  <a class="mark" href="/"><svg aria-hidden="true"><use href="#gs"/></svg>GoldenStraddler</a>
+  <h1 id="gTitle">Sign in to your account</h1>
+  <p id="gHelp">Enter the email you bought with. We'll send you a 6-digit code.</p>
+  <input class="field" id="gEmail" type="email" autocomplete="email" placeholder="you@example.com" aria-label="Email">
+  <div class="otp" id="gOtp" role="group" aria-label="Sign-in code" hidden></div>
+  <input class="field" id="gKey" placeholder="Licence key (GS-XXXX-...)" aria-label="Licence key" autocomplete="off" hidden>
+  <button class="btn pri" type="submit" id="gBtn" style="width:100%">Send me a code</button>
+  <p class="err" id="gErr" aria-live="polite"></p>
+  <button class="alt" type="button" id="gAlt">Sign in with your licence key instead</button>
+  <a class="back" href="/">Back to the website</a>
+</form></div>
+
+<div id="app" hidden>
+<header class="acc-bar"><div class="wrap">
+  <a class="mark" href="/"><svg aria-hidden="true"><use href="#gs"/></svg><span>GoldenStraddler</span></a>
+  <nav aria-label="Account"><a href="#licence">Licence</a><a href="#setup">Set up</a><a href="#d-live">Live</a><a href="#d-perf">Performance</a><a href="#orders">Orders</a><a href="#help">Help</a></nav>
+  <div class="r"><span class="chip dim" id="liveChip"><i></i><span id="liveTxt">Connecting</span></span><button class="btn sm" id="logout" type="button">Sign out</button></div>
+</div></header>
+
+<main>
+<section class="blk" id="welcome" hidden><div class="wrap"><div class="okmsg" id="welcomeTxt"></div></div></section>
+
+<section class="blk" id="licence"><div class="wrap">
+  <h2><span class="sig">Your</span> licence</h2>
+  <div class="lics" id="lics"></div>
+</div></section>
+
+<section class="blk" id="setup"><div class="wrap">
+  <h2>Set it up in five minutes</h2>
+  <div class="setup-grid">
+    <div class="card dl">
+      <span class="lab">Downloads</span>
+      <a class="btn pri" id="dlEa" href="/dl/GoldenStraddler.ex5">Download GoldenStraddler.ex5</a>
+      <a class="btn" href="/dl/GoldenStraddler-Guide.pdf">Download the user guide (PDF)</a>
+      <p class="fine" id="eaVer"></p>
+    </div>
+    <ol class="how">
+      <li><b>Put the file in MT5.</b> In MetaTrader 5 click <i>File &rarr; Open Data Folder</i>, open <i>MQL5 &rarr; Experts</i> and copy <i>GoldenStraddler.ex5</i> in. Right-click <i>Expert Advisors</i> in the Navigator and choose <i>Refresh</i>.</li>
+      <li><b>Allow its two web addresses.</b> <i>Tools &rarr; Options &rarr; Expert Advisors</i>: tick <i>Allow WebRequest for listed URL</i> and add both:
+        <span class="cpy"><code>https://goldenstraddler.com</code><button class="btn xs" type="button" data-copy="https://goldenstraddler.com">Copy</button></span>
+        <span class="cpy"><code>https://nfs.faireconomy.media</code><button class="btn xs" type="button" data-copy="https://nfs.faireconomy.media">Copy</button></span></li>
+      <li><b>Attach it to gold.</b> Drag GoldenStraddler onto an <i>XAUUSD</i> chart, paste your licence key into the first input, and turn on <i>Algo Trading</i> in the toolbar.</li>
+      <li><b>Leave MT5 running.</b> It arms itself 15 seconds before every high-impact USD release. A Windows VPS keeps it online around the clock.</li>
+    </ol>
+  </div>
+</div></section>
+
+<section class="blk" id="d-live"><div class="wrap">
+  <div class="hdr"><h2><span class="sig">Live</span> from MT5</h2><select class="field" id="licPick" aria-label="Which licence" hidden></select></div>
+  <div class="g3">
+    <div class="card"><div class="chd"><span class="lab">Status</span><span class="fine" id="lvMode"></span></div><span class="chip" id="lvChip"><i></i><span id="lvChipTxt"></span></span><div class="kv" id="lvKv"></div></div>
+    <div class="card"><div class="chd"><span class="lab" id="lvPosLab">Position</span><span class="fine" id="lvPosNote"></span></div><div id="lvPos"></div></div>
+    <div class="card"><div class="chd"><span class="lab">Account</span><span class="fine" id="lvAccNote"></span></div><div class="kv" id="lvAcc"></div></div>
+  </div>
+  <div class="gn"><div class="card nx" id="nextCard"></div><div class="card"><div class="chd"><span class="lab">High-impact USD releases</span><span class="fine" id="newsSrc"></span></div><ul class="ev" id="evList"></ul></div></div>
+</div></section>
+
+<section class="blk" id="d-perf"><div class="wrap">
+  <div class="hdr"><h2>Performance</h2><div class="filters"><div class="seg" id="rangeSeg" role="group" aria-label="Range"><button type="button" data-v="all" aria-pressed="true">All</button><button type="button" data-v="1">Day</button><button type="button" data-v="7">7 days</button><button type="button" data-v="30">30 days</button></div><div class="seg" id="sideSeg" role="group" aria-label="Side"><button type="button" data-v="all" aria-pressed="true">Both</button><button type="button" data-v="BUY">Buy</button><button type="button" data-v="SELL">Sell</button></div></div></div>
+  <p class="fine" id="srcTxt"></p>
+  <div class="gp"><div class="card"><span class="lab">Net profit</span><div class="netv" id="netBig"></div><div class="fine" id="netSub"></div><dl class="minis" id="minis"></dl></div>
+  <div class="card"><div class="chd"><span class="lab">Equity curve</span><span class="fine" id="eqNote"></span></div><div class="chart" id="eqChart"></div></div></div>
+  <div class="kpis" id="kpis"></div>
+  <div class="g2">
+    <div class="card"><div class="chd"><span class="lab">Profit per trade</span><span class="fine" id="barsNote"></span></div><div class="chart" id="barChart"></div></div>
+    <div class="card"><div class="chd"><span class="lab">Points captured</span><span class="fine">trades per bucket</span></div><div class="chart" id="histChart"></div></div>
+    <div class="card"><div class="chd"><span class="lab">Net by hour of entry</span><span class="fine">server time</span></div><div class="chart" id="hourChart"></div></div>
+    <div class="card"><div class="chd"><span class="lab">Buy vs sell</span></div><div class="sides" id="sides"></div></div>
+  </div>
+</div></section>
+
+<section class="blk" id="d-trades"><div class="wrap"><div class="hdr"><h2>Trades</h2><span class="fine" id="ledgerNote"></span></div>
+  <div class="card tw"><table class="trades"><thead><tr><th>#</th><th>Entry time</th><th>Side</th><th>Lots</th><th>Entry</th><th>Exit</th><th>Points</th><th>Gross</th><th>Costs</th><th>Net</th><th>Running</th></tr></thead><tbody id="ledger"></tbody></table><p class="fine" id="ledgerMore"></p></div>
+</div></section>
+
+<section class="blk" id="orders"><div class="wrap"><h2>Orders</h2><div class="card" id="orderList"></div></div></section>
+
+<section class="blk" id="help"><div class="wrap">
+  <h2>Help</h2>
+  <div class="card">
+    <form class="formgrid" id="helpForm">
+      <label>Topic<select class="field" name="topic"><option value="setup">Setting up</option><option value="licence">My licence</option><option value="billing">Billing</option><option value="other">Something else</option></select></label>
+      <label>Reply to<input class="field" name="email" id="helpEmail" type="email" required></label>
+      <label class="full">Message<textarea class="field" name="message" rows="4" required placeholder="What's happening? A screenshot of the MT5 panel helps."></textarea></label>
+      <div class="full key-row"><button class="btn pri sm" type="submit">Send message</button><span class="fine">We reply by email, usually within a working day.</span></div>
+    </form>
+  </div>
+</div></section>
+</main>
+<footer class="dash-foot"><div class="wrap">Trading carries risk. GoldenStraddler is trading software and doesn't give investment advice. <a href="/terms">Terms</a> &middot; <a href="/refunds">Refunds</a> &middot; <a href="/privacy">Privacy</a></div></footer>
+</div>
+<div class="drawer" id="drawer" role="dialog" aria-modal="true"></div>
+<script src="/js/common.js"></script>
+<script src="/js/dash.js"></script>
+<script src="/js/account.js"></script>
+</body>
+</html>

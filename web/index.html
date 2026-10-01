@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>GoldenStraddler | The news straddle EA for gold on MT5</title>
+<meta name="description" content="An Expert Advisor for MetaTrader 5. Fifteen seconds before every high-impact US release it places a buy stop and a sell stop around gold, lets the number pick the side and trails the winner.">
+<link rel="canonical" href="{{SITE_URL}}/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="GoldenStraddler">
+<meta property="og:title" content="GoldenStraddler: ready before the number drops">
+<meta property="og:description" content="The news straddle EA for gold on MetaTrader 5. Armed 15 seconds before every high-impact US release.">
+<meta property="og:url" content="{{SITE_URL}}/">
+<meta property="og:image" content="{{SITE_URL}}/og.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="GoldenStraddler: a buy stop and a sell stop placed around gold before a US news release">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="GoldenStraddler: ready before the number drops">
+<meta name="twitter:description" content="The news straddle EA for gold on MetaTrader 5.">
+<meta name="twitter:image" content="{{SITE_URL}}/og.png">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preload" href="/fonts/unbounded-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/fonts/space-grotesk-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/fonts.css">
+<link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="gs" viewBox="0 0 64 64"><rect x="1" y="1" width="62" height="62" rx="16" fill="#0E1116" stroke="#2e3644" stroke-width="2"/><text x="25" y="44" font-family="Unbounded,Arial Black,sans-serif" font-weight="800" font-size="30" fill="#fff" text-anchor="middle">G</text><text x="42" y="49" font-family="Sedgwick Ave,Segoe Script,cursive" font-size="36" fill="#3FC4FC" text-anchor="middle">S</text></symbol></svg>
+
+<header class="top" id="top"><div class="wrap">
+  <a class="mark" href="/"><svg aria-hidden="true"><use href="#gs"/></svg><span>GoldenStraddler</span></a>
+  <nav aria-label="Main"><a href="#how">How it works</a><a href="#get">What you get</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a></nav>
+  <div class="r"><a class="signin" href="/account">Sign in</a><a class="btn pri sm" href="#pricing">Get it</a></div>
+</div></header>
+
+<main id="main">
+<section class="hero"><div class="wrap">
+  <div>
+    <h1>Ready before the number drops.</h1>
+    <p class="sub">GoldenStraddler is an Expert Advisor for MetaTrader&nbsp;5. Fifteen seconds before every high-impact US release it places a buy stop and a sell stop around gold. The number picks the side, the other order is deleted, and a trailing stop follows the move.</p>
+    <div class="cta"><a class="btn pri" href="#pricing">See pricing</a><a class="btn" href="#how">Watch one release</a></div>
+    <p class="meta">For XAUUSD on any MT5 broker. Locked to your account, with your own live dashboard.</p>
+  </div>
+  <figure class="scope" style="margin:0" aria-label="Illustration of one news release">
+    <div class="bar"><b>XAUUSD</b><span id="scEv">US news release</span><span class="clock" id="scClock">T&minus;00:30</span></div>
+    <svg id="scope" viewBox="0 0 640 380" role="img" aria-labelledby="scSay"></svg>
+    <figcaption class="say" id="scSayBox"><i></i><span id="scSay">Waiting for the release</span><span class="disc">Illustration, not a real trade</span></figcaption>
+  </figure>
+</div>
+
+<div class="next" id="next" hidden><div class="wrap">
+  <div class="now">
+    <span class="lab"><span class="chip pulse" id="nxChip"><i></i>Next high-impact USD release</span></span>
+    <span class="ev" id="nxTitle"></span>
+    <span class="when" id="nxWhen"></span>
+  </div>
+  <div class="count" id="nxCount" aria-live="off"></div>
+  <ul class="later" id="nxLater" aria-label="Later this week"></ul>
+</div></div>
+</section>
+
+<section class="sec rule" id="how"><div class="wrap">
+  <h2>One release, second by second</h2>
+  <p class="lede">The EA reads the week's red-folder USD events from ForexFactory, with MT5's own economic calendar as a backup. Timing comes from your broker's tick clock, so "fifteen seconds before" means fifteen seconds on the trade server.</p>
+  <ol class="line">
+    <li><span class="t">&minus;15 s</span><h3>Arms</h3><p>A buy stop goes 60 points above the ask and a sell stop 60 points below the bid. Each carries a 100-point stop loss.</p></li>
+    <li class="hot"><span class="t">0 s</span><h3>The number drops</h3><p>Price breaks one way and fills one order. The other order is deleted the same instant.</p></li>
+    <li><span class="t">+50 pts</span><h3>Trailing starts</h3><p>Once the trade is 50 points in profit, the stop follows 50 points behind price and only ever tightens.</p></li>
+    <li><span class="t">Exit</span><h3>The stop takes it out</h3><p>When price turns, the trailing stop closes the trade. If the window is still open, a fresh pair goes on around the new price.</p></li>
+    <li><span class="t">+60 s</span><h3>Disarms</h3><p>Leftover pending orders are removed. A trade that's still open keeps trailing until its stop closes it.</p></li>
+  </ol>
+  <p class="defaults">These are the defaults. Lot size, distances, stop loss, trailing, the window around each release and the currency can all be changed in the EA's inputs, and there's an always-on mode if you want it trading between releases too.</p>
+</div></section>
+
+<section class="sec rule" id="get"><div class="wrap">
+  <h2>Everything you need, nothing you have to babysit</h2>
+  <div class="get">
+    <div class="lic" aria-label="Example licence">
+      <div class="head"><span class="mark"><svg aria-hidden="true"><use href="#gs"/></svg>GoldenStraddler</span><span class="chip"><i></i>Active</span></div>
+      <div class="key">GS-7KQ2-M4XD-91PF-ZT3A</div>
+      <dl class="kv"><dt>Plan</dt><dd>Lifetime, never expires</dd><dt>MT5 account</dt><dd>5•••••21 (locked)</dd><dt>EA</dt><dd>online now</dd></dl>
+      <div class="nextwin"><span class="lab">Next window</span><b id="licNext">Loads from the calendar</b><span class="fine" id="licArm"></span></div>
+      <p class="cap">How a licence looks on your account page. The key and account here are made up.</p>
+    </div>
+    <dl>
+      <div><dt>The EA, locked to you</dt><dd>One licence key, one MT5 account. It locks to the account it first runs on, and you can move it to another account once every {{MOVE_DAYS}} days from your account page.</dd></div>
+      <div><dt>The news calendar, built in</dt><dd>No calendar to keep up to date. Red-folder USD releases load on their own, with MT5's calendar and a saved copy as backups.</dd></div>
+      <div><dt>Your own live dashboard</dt><dd>Status, open position, equity curve and every closed trade, streamed from your MT5 to a private page you can open on your phone.</dd></div>
+      <div><dt>A setup guide that's actually short</dt><dd>A PDF that takes you from download to armed in about five minutes, with every MT5 setting shown.</dd></div>
+      <div><dt>Keeps going if the internet blinks</dt><dd>A licence check is trusted for 48 hours, and the EA never talks to our server during a release window or while orders are working.</dd></div>
+      <div><dt>Updates and help</dt><dd>New versions appear in your account to download. Questions go through the help form there and get an answer by email.</dd></div>
+    </dl>
+  </div>
+</div></section>
+
+<section class="sec rule" id="record" hidden><div class="wrap">
+  <h2>The live account, as it trades</h2>
+  <p class="lede" id="recLede"></p>
+  <div class="rec">
+    <div class="stats" id="recStats"></div>
+    <div class="curve"><span class="lab">Cumulative points per closed trade</span><svg id="recCurve" viewBox="0 0 600 220" preserveAspectRatio="none" aria-hidden="true"></svg></div>
+  </div>
+</div></section>
+
+<section class="sec rule" id="pricing"><div class="wrap">
+  <h2>Pick how you pay for it</h2>
+  <p class="lede">Same EA, same dashboard, same updates on both plans.</p>
+  <div class="plans">
+    <article class="plan main">
+      <span class="tag" id="pTag">Costs less than six months of monthly</span>
+      <h3>Lifetime</h3>
+      <div class="price"><b id="pLife">{{PRICE_LIFETIME}}</b><span>once</span></div>
+      <p class="for">One payment. The licence never expires.</p>
+      <ul><li>Licence for one MT5 account</li><li>All future updates</li><li>Your live online dashboard</li><li>Move to a new account every {{MOVE_DAYS}} days</li><li>{{REFUND_DAYS}}-day money-back guarantee</li></ul>
+      <a class="btn pri" href="/checkout?plan=lifetime">Buy lifetime</a>
+    </article>
+    <article class="plan">
+      <h3>Monthly</h3>
+      <div class="price"><b id="pMon">{{PRICE_MONTHLY}}</b><span>a month</span></div>
+      <p class="for">Cancel any time from your account page.</p>
+      <ul><li>Licence for one MT5 account</li><li>All updates while subscribed</li><li>Your live online dashboard</li><li>Renews on its own by card, or pay each month by bank or crypto</li><li>{{REFUND_DAYS}}-day money-back on the first payment</li></ul>
+      <a class="btn" href="/checkout?plan=monthly">Start monthly</a>
+    </article>
+  </div>
+  <p class="payline" id="payLine">Pay by <b>card, Apple Pay, Google Pay or PayPal</b>, by <b>bank transfer</b>, or in <b>crypto</b>. Got a discount code? Enter it at checkout.</p>
+</div></section>
+
+<section class="sec rule" id="risk"><div class="wrap straight">
+  <div>
+    <h2>Read this before you buy</h2>
+    <p class="lede">News trading is fast and unforgiving. Here's what that means in practice.</p>
+  </div>
+  <ul>
+    <li><b>Your broker matters most.</b>Spreads widen and stop orders can fill with slippage at the release. A low-latency ECN account and a VPS near your broker make the biggest difference.</li>
+    <li><b>Some releases go nowhere.</b>If price doesn't reach either order, nothing happens. If it spikes one way and snaps back before the trailing stop starts, the trade closes at its stop loss.</li>
+    <li><b>Check your prop firm's rules.</b>Many funded-account programmes don't allow trading around news. Read their terms before you attach it.</li>
+    <li><b>No result is promised.</b>Past results don't predict future ones and you can lose money. Start on a demo account if you like: you can move the licence to your live account straight away.</li>
+    <li><b>MT5 has to be running.</b>The EA only works while MetaTrader 5 is open and connected at release time. A Windows VPS keeps it online around the clock.</li>
+  </ul>
+</div></section>
+
+<section class="sec rule" id="faq"><div class="wrap">
+  <h2>Questions people ask</h2>
+  <div class="faq">
+    <details><summary>Which brokers does it work with?</summary><div class="a"><p>Any MetaTrader 5 broker that offers gold. Attach it to your broker's gold symbol, whether that's called XAUUSD, GOLD or something like XAUUSD.r. It works on 2-digit and 3-digit gold quotes and scales its point distances automatically.</p></div></details>
+    <details><summary>Can I use it on more than one account?</summary><div class="a"><p>One licence runs on one MT5 account at a time. For a second account at the same time, buy a second licence. You can move a licence to a different account from your account page once every {{MOVE_DAYS}} days.</p></div></details>
+    <details><summary>Does it work on a Mac or on MetaTrader 4?</summary><div class="a"><p>It's built for MetaTrader 5 on Windows. It doesn't run on MT4. On a Mac, use a Windows VPS. They cost a few euros a month and keep MT5 online even when your computer is off.</p></div></details>
+    <details><summary>What happens when a monthly plan ends?</summary><div class="a"><p>You get three extra days. After that the EA stops placing new orders and removes its pending orders. A trade that's already open keeps trailing until its stop closes it. Pay again and it starts working on its own.</p></div></details>
+    <details><summary>Can I change the settings?</summary><div class="a"><p>Yes. Lot size, entry distance, stop loss, trailing start and distance, how long before and after each release it runs, and the currency it watches are all inputs. There's also an always-on mode that trades continuously instead of only around news.</p></div></details>
+    <details><summary>Does the EA see my password or move my money?</summary><div class="a"><p>No. It runs inside your own MT5 and never sees your password. It sends your account number, status and closed trades to your private dashboard, and you can switch that off in the inputs. We never hold or manage client funds.</p></div></details>
+    <details><summary>How do refunds work?</summary><div class="a"><p>If it isn't for you, ask for a refund from your account page within {{REFUND_DAYS}} days of your first payment and you get the full amount back. The licence is switched off when the refund goes through. <a href="/refunds" style="color:var(--frost)">Refund policy</a>.</p></div></details>
+    <details><summary>How fast do I get it?</summary><div class="a"><p>Card, Apple Pay, Google Pay and PayPal payments are instant: your licence key appears on screen and by email. Crypto takes as long as the network confirmations. Bank transfers are activated when the money arrives, usually within one or two working days.</p></div></details>
+  </div>
+</div></section>
+
+<section class="sec rule" id="contact"><div class="wrap ask">
+  <div>
+    <h2>Still deciding?</h2>
+    <p class="lede">Send a question and we'll reply by email, usually within a working day.</p>
+  </div>
+  <div>
+    <form class="form" id="askForm" novalidate>
+      <label>Name<input class="field" name="name" autocomplete="name" maxlength="80"></label>
+      <label>Email<input class="field" name="email" type="email" autocomplete="email" required maxlength="200"></label>
+      <label class="full">Your question<textarea class="field" name="message" rows="5" required maxlength="3000"></textarea></label>
+      <input class="hp" name="company" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <div class="full send"><button class="btn pri" type="submit">Send question</button><span class="err" id="askErr" aria-live="polite"></span></div>
+    </form>
+    <div class="sent" id="askSent" hidden><h3>Question sent</h3><p>We'll answer by email, usually within a working day.</p></div>
+  </div>
+</div></section>
+</main>
+
+<footer class="foot"><div class="wrap">
+  <div>
+    <a class="mark" href="/"><svg aria-hidden="true"><use href="#gs"/></svg>GoldenStraddler</a>
+    <p>GoldenStraddler is trading software. It doesn't give investment advice, doesn't manage money and never holds client funds. Trading gold CFDs and other leveraged products carries a high risk of losing money quickly. Only trade with money you can afford to lose. Read the <a href="/risk" style="color:var(--txt2)">risk disclosure</a>.</p>
+  </div>
+  <nav aria-label="Legal"><a href="/account">Sign in</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a><a href="/privacy">Privacy</a><a href="/risk">Risk</a><a href="/imprint">Imprint</a></nav>
+</div></footer>
+<script src="/js/home.js"></script>
+</body>
+</html>

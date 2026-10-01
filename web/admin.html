@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#000000">
+<title>Admin | GoldenStraddler</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/unbounded-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/fonts/space-grotesk-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/fonts.css">
+<link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/dash.css"><link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="gs" viewBox="0 0 64 64"><rect x="1" y="1" width="62" height="62" rx="16" fill="#0E1116" stroke="#2e3644" stroke-width="2"/><text x="25" y="44" font-family="Unbounded,Arial Black,sans-serif" font-weight="800" font-size="30" fill="#fff" text-anchor="middle">G</text><text x="42" y="49" font-family="Sedgwick Ave,Segoe Script,cursive" font-size="36" fill="#3FC4FC" text-anchor="middle">S</text></symbol></svg>
+
+<div class="gate" id="gate" hidden><form id="gateForm" autocomplete="off">
+  <span class="mark"><svg aria-hidden="true"><use href="#gs"/></svg>GoldenStraddler</span>
+  <h1>Admin sign-in</h1>
+  <p>Your email and the 6-digit code from your authenticator app.</p>
+  <input class="field" id="gEmail" type="email" autocomplete="username" placeholder="Email" aria-label="Email" required>
+  <div class="otp" id="gOtp" role="group" aria-label="Authenticator code"></div>
+  <button class="btn pri" type="submit" id="gBtn" style="width:100%">Sign in</button>
+  <p class="err" id="gErr" aria-live="polite"></p>
+</form></div>
+
+<div class="shell" id="app" hidden>
+  <aside class="side" id="side">
+    <a class="mark" href="/" ><svg aria-hidden="true"><use href="#gs"/></svg>GoldenStraddler</a>
+    <nav aria-label="Admin">
+      <a href="#overview">Overview</a>
+      <a href="#live">Live accounts</a>
+      <a href="#customers">Customers</a>
+      <a href="#licences">Licences</a>
+      <a href="#orders">Orders<em id="nPending" hidden></em></a>
+      <a href="#codes">Discount codes</a>
+      <a href="#messages">Messages<em id="nMsg" hidden></em></a>
+      <a href="#admins">Admins</a>
+      <a href="#settings">Settings</a>
+      <a href="#activity">Activity</a>
+    </nav>
+    <div class="who"><b id="meName"></b><span id="meRole"></span><br><button class="btn xs ghost" id="logout" type="button" style="padding-left:0">Sign out</button></div>
+  </aside>
+  <div>
+    <div class="mbar"><button class="btn sm" id="menuBtn" type="button" aria-controls="side">Menu</button><span class="mark"><svg aria-hidden="true"><use href="#gs"/></svg></span><span class="chip dim" id="liveChipM"><i></i>Admin</span></div>
+    <main class="main" id="view"></main>
+  </div>
+</div>
+<div class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drTitle"></div>
+<script src="/js/common.js"></script>
+<script src="/js/admin.js"></script>
+</body>
+</html>

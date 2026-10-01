@@ -1,0 +1,13 @@
+{
+  "name": "goldenstraddler-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun run server/index.ts",
+    "dev": "DEV=1 PORT=4100 DATA_DIR=./data bun --watch run server/index.ts"
+  },
+  "dependencies": {
+    "qrcode": "1.5.4"
+  },
+  "engines": { "bun": ">=1.1" }
+}
