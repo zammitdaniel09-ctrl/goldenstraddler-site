@@ -36,7 +36,18 @@ export const ASSETS: Asset[] = [
   { id: "eth", name: "Ether", short: "ether", sym: "ETHUSD", cls: "crypto", dp: 0, pre: "$", ccy: ["USD"], hist: "px:ETH", live: "ETH", cot: { code: "146021", cat: "am", what: "ether" }, factors: ["trend", "stretch", "cot", "crowd", "dollar", "realYield", "fed", "vixRisk"], level: 250 },
 ];
 export const CLASSES: { id: Cls; name: string }[] = [{ id: "metals", name: "Metals" }, { id: "energy", name: "Energy" }, { id: "fx", name: "Forex" }, { id: "crypto", name: "Crypto" }];
-const W: Record<string, number> = { trend: 1.2, stretch: 0.8, cot: 0.8, crowd: 0.5, dollar: 1, realYield: 1, ryLevel: 0.5, fed: 0.8, vixHaven: 0.5, vixRisk: 0.6, vixRisk0: 0.4, vixHavenFx: 0.6, stocks: 0.7, oilCad: 0.7 };
+export type Weights = Record<string, number>;          // "factor" or "factor@class" -> weight
+const W0: Weights = { trend: 1.2, stretch: 0.8, cot: 0.8, crowd: 0.5, dollar: 1, realYield: 1, ryLevel: 0.5, fed: 0.8, vixHaven: 0.5, vixRisk: 0.6, vixRisk0: 0.4, vixHavenFx: 0.6, stocks: 0.7, oilCad: 0.7 };
+// candidates compared in the research log; weights are picked on 2018-2022 only, 2023 on stays untouched for checking
+export const VARIANTS: Record<string, Weights> = {
+  v0: W0,
+  v1: { fed: 1.2, crowd: 0.8, vixRisk: 0.6, vixRisk0: 0.6, realYield: 0.6, stocks: 0.6, oilCad: 0.5, "stretch@fx": 0.6, "stretch@energy": 0.2, "stretch@crypto": 0.1, "stretch@metals": 0.4,
+    "trend@energy": 0.6, "trend@crypto": 0.4, "trend@fx": 0.2, "trend@metals": 0.5, cot: 0.2, dollar: 0.2, "dollar@metals": 0.3, vixHaven: 0.3, vixHavenFx: 0.2, ryLevel: 0.3 },
+  v2: { fed: 1, crowd: 0.8, vixRisk: 0.6, vixRisk0: 0.6, "stretch@fx": 0.6, trend: 0.05, stretch: 0.05, cot: 0.05, dollar: 0.05, realYield: 0.05, ryLevel: 0.05, vixHaven: 0.05, vixHavenFx: 0.05, stocks: 0.05, oilCad: 0.05 },
+  v3: { fed: 1.2, crowd: 0.8, vixRisk: 0.6, vixRisk0: 0.6, realYield: 0.6, stocks: 0.6, oilCad: 0.5, "stretch@fx": 0.6, stretch: 0.2, trend: 0.05, cot: 0.2, dollar: 0.2, vixHaven: 0.3, vixHavenFx: 0.2, ryLevel: 0.3 },
+};
+let W: Weights = W0;
+const wOf = (k: string, cls: Cls, ws: Weights = W) => ws[k + "@" + cls] ?? ws[k] ?? 1;
 export const FACTOR_INFO: [string, string][] = [
   ["Trend", "Price against its 20 week and 50 week averages."],
   ["Stretch", "Weekly RSI. Above 70 counts against more upside, below 30 against more downside."],
@@ -164,7 +175,7 @@ const usdBased = (a: Asset) => a.cls !== "fx";                 // priced in doll
 const DOLLAR_WHY: Record<Cls, string> = { metals: "making {x} cheaper for buyers outside the US", energy: "which makes {x} cheaper for buyers outside the US", crypto: "and a softer dollar has tended to go with firmer crypto", fx: "" };
 
 function factor(key: string, a: Asset, c: Ctx, i: number): F | null {
-  const p = c.px[a.id], w = W[key] ?? 1, x = a.short;
+  const p = c.px[a.id], w = wOf(key, a.cls), x = a.short;
   const mk = (s: number, text: string, short: string): F => ({ key, s: clamp(s, -1, 1), w, text, short });
   switch (key) {
     case "trend": {
@@ -288,9 +299,10 @@ function factor(key: string, a: Asset, c: Ctx, i: number): F | null {
 
 // ================================================================ the call
 export type Call = { score: number; dir: -1 | 0 | 1; label: string; conf: "low" | "moderate" | "high"; coverage: number };
-export function score(a: Asset, c: Ctx, i: number): { call: Call; fs: F[] } {
-  const fs = a.factors.map((k) => factor(k, a, c, i)).filter(Boolean) as F[];
-  const tw = a.factors.reduce((t, k) => t + (W[k] ?? 1), 0), aw = fs.reduce((t, f) => t + f.w, 0);
+export function score(a: Asset, c: Ctx, i: number, ws?: Weights): { call: Call; fs: F[] } {
+  let fs = a.factors.map((k) => factor(k, a, c, i)).filter(Boolean) as F[];
+  if (ws) fs = fs.map((f) => ({ ...f, w: wOf(f.key, a.cls, ws) }));
+  const tw = a.factors.reduce((t, k) => t + wOf(k, a.cls, ws), 0), aw = fs.reduce((t, f) => t + f.w, 0);
   const sc = aw ? fs.reduce((t, f) => t + f.s * f.w, 0) / aw : 0;
   const dir = sc >= THRESH.lean ? 1 : sc <= -THRESH.lean ? -1 : 0;
   const voting = fs.filter((f) => Math.abs(f.s) >= 0.1), vw = voting.reduce((t, f) => t + f.w, 0);
@@ -337,8 +349,11 @@ export function factorStats(c: Ctx) {
         add(k, late, Math.sign(f.s) === Math.sign(r), Math.sign(f.s) * r);
         add(k + "@" + a.cls, late, Math.sign(f.s) === Math.sign(r), Math.sign(f.s) * r);
       }
-      const { call } = score(a, c, i);
-      if (call.dir && call.coverage >= 0.6) { add("MODEL", late, call.dir === Math.sign(r), call.dir * r); add("MODEL@" + a.cls, late, call.dir === Math.sign(r), call.dir * r); }
+      for (const [v, ws] of Object.entries(VARIANTS)) {
+        const { call } = score(a, c, i, ws);
+        if (call.dir && call.coverage >= 0.6) { add("MODEL-" + v, late, call.dir === Math.sign(r), call.dir * r); add("MODEL-" + v + "@" + a.cls, late, call.dir === Math.sign(r), call.dir * r); }
+        if (call.dir && Math.abs(call.score) >= THRESH.firm) add("FIRM-" + v, late, call.dir === Math.sign(r), call.dir * r);
+      }
       add("UP", late, r > 0, r);
     }
   }
