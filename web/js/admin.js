@@ -366,7 +366,7 @@ VIEWS.chats = async () => {
   const w = el("div", "chatw"), list = el("div", "chat-list"), pane = el("section", "chat-pane");
   list.id = "chatList"; pane.id = "chatPane";
   w.append(list, pane); out.push(w);
-  const foot = el("p", "fine"); foot.textContent = `Last 30 days: ${st.month.chats} chats, ${st.month.replies} AI answers, about $${st.month.costUsd.toFixed(2)} in AI costs. Today: ${st.today} of ${st.cap} AI answers.`;
+  const foot = el("p", "fine"); foot.textContent = `Last 30 days: ${st.month.chats} chats, ${st.month.replies} AI answers, about $${st.month.costUsd.toFixed(2)} in AI costs, ${st.ratings.n ? `average rating ${st.ratings.avg} from ${st.ratings.n}` : "no ratings yet"}. Today: ${st.today} of ${st.cap} AI answers.`;
   out.push(foot);
   view.replaceChildren(...out);
   await loadChatList();
@@ -382,7 +382,7 @@ async function loadChatList() {
     const b = el("button", "chat-i" + (c.id === CHAT_ID ? " on" : "") + (c.wants_human && c.unread ? " hot" : "")); b.type = "button"; b.dataset.id = c.id;
     const t = el("div", "r1"); const who = el("b", "", chatWho(c)); if (c.online) who.prepend(el("i", "dot on"));
     t.append(who, el("span", "fine", agoFmt(c.updated_at)));
-    const r2 = el("div", "r2"); r2.append(chatPill(c)); if (c.unread) r2.append(el("em", "cnt", String(c.unread)));
+    const r2 = el("div", "r2"); r2.append(chatPill(c)); if (c.unread) r2.append(el("em", "cnt", String(c.unread))); if (c.rating) r2.append(el("span", "stars", "★".repeat(c.rating) + "☆".repeat(5 - c.rating)));
     const pv = el("p", "pv", (c.last_role === "agent" ? "You: " : c.last_role === "ai" ? "AI: " : c.last_role === "sys" ? "" : "") + (c.last_text || ""));
     b.append(t, r2, pv);
     b.onclick = () => { history.replaceState(null, "", "#chats/" + c.id); openChat(c.id); };
@@ -402,7 +402,7 @@ async function openChat(id, quiet) {
   const box = el("div", "chat-box");
   const hd = el("div", "chat-hd"), back = btn("Back", "btn xs chat-back"); back.onclick = () => { CHAT_ID = null; history.replaceState(null, "", "#chats"); showChat(null); };
   const info = el("div", "chat-info"), title = el("b", "", chatWho(c));
-  const meta = el("span", "fine", [c.email && c.email !== chatWho(c) ? c.email : "", c.page ? "on " + c.page : "", "started " + dateFmt(c.created_at), c.online ? "here now" : "not on the site now"].filter(Boolean).join(", "));
+  const meta = el("span", "fine", [c.email && c.email !== chatWho(c) ? c.email : "", c.page ? "on " + c.page : "", "started " + dateFmt(c.created_at), c.online ? "here now" : "not on the site now", c.rating ? `rated ${c.rating} of 5` : ""].filter(Boolean).join(", "));
   info.append(title, meta);
   if (c.customer) { const a = el("a", "btn xs", "Customer"); a.href = "#customers"; a.onclick = (e) => { e.preventDefault(); openCustomer(c.customer.id); }; info.append(a); }
   const acts = el("div", "row-acts");

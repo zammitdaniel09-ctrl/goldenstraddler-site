@@ -96,6 +96,21 @@
 .gsc-hand-err{font-size:13px;color:var(--loss)}
 .gsc-hand-err:empty{display:none}
 
+/* "all sorted?" and the star rating */
+.gsc-check,.gsc-rate{align-self:stretch;display:flex;flex-direction:column;align-items:center;gap:10px;padding:14px;border-radius:16px;border:1px solid rgba(63,196,252,.35);background:rgba(63,196,252,.05);animation:gscIn .25s ease-out;text-align:center}
+.gsc-check p,.gsc-rate p{margin:0;font-weight:600;font-size:14px}
+.gsc-check div{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.gsc-check button{border-radius:999px;padding:8px 14px;font:600 13px var(--body);cursor:pointer;border:1px solid var(--edge2);background:none;color:var(--txt2)}
+.gsc-check .yes{background:var(--ice);border-color:var(--ice);color:#001018}
+.gsc-stars{display:flex;gap:4px}
+.gsc-stars button{width:40px;height:40px;border:0;background:none;padding:4px;color:var(--edge2);cursor:pointer;transition:color .12s,transform .12s}
+.gsc-stars button.on{color:var(--gold)}
+.gsc-stars button:hover{transform:scale(1.12)}
+.gsc-stars button:disabled{cursor:default}
+.gsc-rate.done{border-color:rgba(230,180,80,.5);background:rgba(230,180,80,.06)}
+.gsc-rate-err{font-size:12.5px;color:var(--loss)}
+.gsc-rate-err:empty{display:none}
+
 /* phones: a circle above the buy bar, full-screen chat */
 @media (max-width:760px){
   .gsc{right:14px;--gsc-b:calc(14px + env(safe-area-inset-bottom))}

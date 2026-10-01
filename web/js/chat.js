@@ -13,6 +13,7 @@ const I = {
   x: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11m0-11l-11 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
   send: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M12.5 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   logo: '<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="1" y="1" width="62" height="62" rx="16" fill="#0E1116" stroke="#2e3644" stroke-width="2"/><text x="25" y="44" font-family="Unbounded,Arial Black,sans-serif" font-weight="800" font-size="30" fill="#fff" text-anchor="middle">G</text><text x="42" y="49" font-family="Sedgwick Ave,Segoe Script,cursive" font-size="36" fill="#3FC4FC" text-anchor="middle">S</text></svg>',
+  star: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2l2.6 5.5 6 .8-4.4 4.2 1.1 6-5.3-2.9-5.3 2.9 1.1-6L3.4 9.5l6-.8z" fill="currentColor"/></svg>',
   fresh: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
   person: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4.8 20c.9-3.6 3.8-5.6 7.2-5.6s6.3 2 7.2 5.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
 };
@@ -23,8 +24,9 @@ function inline(s) {
   s = escH(s);
   s = s.replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
   s = s.replace(/\[([^\]]{1,120})\]\(([^)\s]{1,300})\)/g, (m, t, u) => {
-    const ok = !/[\\\s]/.test(u) && (/^\/(?!\/)/.test(u) || /^https:\/\/(www\.)?goldenstraddler\.com(\/|$)/.test(u) || /^mailto:[^@\s]+@goldenstraddler\.com$/.test(u));
-    return ok ? `<a href="${u.replace(/&amp;/g, "&").replace(/"/g, "%22")}">${t}</a>` : t;
+    const ok = !/[\\\s]/.test(u) && (/^\/(?!\/)/.test(u) || /^https:\/\/(www\.)?goldenstraddler\.com(\/|$)/.test(u) || /^mailto:[^@\s]+@goldenstraddler\.com$/.test(u) || /^https:\/\/(portal\.fortuneprime\.com|www\.ultimamarkets\.com|www\.puprime\.partners)\//.test(u));
+    const ext = /^https:\/\/(?!(www\.)?goldenstraddler\.com)/.test(u);
+    return ok ? `<a href="${u.replace(/&amp;/g, "&").replace(/"/g, "%22")}"${ext ? ' target="_blank" rel="sponsored noopener"' : ""}>${t}</a>` : t;
   });
   s = s.replace(/(^|[\s(])(https:\/\/goldenstraddler\.com[^\s<)]*)/g, '$1<a href="$2">$2</a>');
   return s;
@@ -62,7 +64,7 @@ root.innerHTML = `
 <section class="gsc-panel" id="gscPanel" role="dialog" aria-label="Chat with GoldenStraddler" hidden>
   <header class="gsc-hd">
     <span class="gsc-av">${I.logo}</span>
-    <div class="gsc-who"><b>GoldenStraddler</b><span class="gsc-sub"><i class="gsc-dot"></i><span class="gsc-subt">AI assistant. A person can take over.</span></span></div>
+    <div class="gsc-who"><b>GoldenStraddler</b><span class="gsc-sub"><i class="gsc-dot"></i><span class="gsc-subt">AI assistant. A person can join</span></span></div>
     <button class="gsc-new" type="button" title="Start a new chat" aria-label="Start a new chat">${I.fresh}</button>
     <button class="gsc-x" type="button" aria-label="Close chat">${I.x}</button>
   </header>
@@ -78,6 +80,7 @@ root.innerHTML = `
 const $ = (s) => root.querySelector(s);
 const launch = $(".gsc-launch"), panel = $(".gsc-panel"), log = $(".gsc-log"), form = $(".gsc-form"), ta = $("textarea"), sugg = $(".gsc-sugg"), badge = $(".gsc-badge"), tease = $(".gsc-tease");
 
+let rated = false, checkShown = false, idleT = 0, userMsgs = 0;
 let BOOT = null, CFG = null, started = false, isOpen = false, busy = false, es = null, unread = 0, mode = "ai", email = "", signedIn = false, lastId = 0, handoffShown = false;
 
 function scrollEnd(smooth) { log.scrollTo({ top: log.scrollHeight, behavior: smooth && !reduce ? "smooth" : "auto" }); }
@@ -99,7 +102,7 @@ function render(m) {
 function setSub() {
   const t = $(".gsc-subt"), dot = $(".gsc-dot");
   if (mode === "human") { t.textContent = CFG.teamOnline ? "A person from our team is here" : "Our team will reply here"; dot.className = "gsc-dot person"; }
-  else if (CFG.ai) { t.textContent = CFG.teamOnline ? "AI assistant. Our team is online too." : "AI assistant. A person can take over."; dot.className = "gsc-dot"; }
+  else if (CFG.ai) { t.textContent = CFG.teamOnline ? "AI assistant. Team online too" : "AI assistant. A person can join"; dot.className = "gsc-dot"; }
   else { t.textContent = "Leave a message and our team replies here"; dot.className = "gsc-dot person"; }
 }
 function suggestions(show) {
@@ -118,6 +121,7 @@ async function start() {
     if (!j.ok) throw new Error(j.error || "Chat isn't available");
     CFG = j.config; signedIn = j.signedIn; email = (j.chat && j.chat.email) || j.customerEmail || "";
     mode = (j.chat && j.chat.mode) || (CFG.ai ? "ai" : "human");
+    rated = !!(j.chat && j.chat.rated); userMsgs = (j.messages || []).filter((m) => m.role === "user").length;
     started = true;
     log.replaceChildren();
     bubble("ai", CFG.ai ? CFG.greeting : "Hi. Leave your question here and someone from our team will reply in this chat. Add your email and you'll get the answer even if you close the page.");
@@ -137,7 +141,9 @@ function stream() {
     $(".gsc-typing").hidden = true;
     if (started) render(m); else lastId = Math.max(lastId, m.id);
     if (m.role === "agent" && (!isOpen || document.hidden)) { unread++; badge.textContent = unread; badge.hidden = false; }
+    if (m.role === "agent") armIdle();
   });
+  es.addEventListener("rate", () => { if (started) showStars(); });
   es.addEventListener("mode", (e) => { mode = JSON.parse(e.data).mode; if (CFG) setSub(); });
   let tt;
   es.addEventListener("typing", (e) => {
@@ -154,6 +160,7 @@ async function send(text) {
   if (!text || busy) return;
   busy = true; form.classList.add("busy"); suggestions(false);
   const mine = bubble("user", text);
+  userMsgs++; clearTimeout(idleT); root.querySelectorAll(".gsc-check").forEach((x) => x.remove());
   ta.value = ""; grow();
   try {
     const r = await fetch("/api/chat/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, page: location.pathname + location.hash, tz }) });
@@ -187,6 +194,8 @@ async function send(text) {
             else { lastId = Math.max(lastId, d.msg.id); if (!b) b = bubble("ai", ""); full = d.msg.text; paint(); }
             if (d.email) email = d.email;
             if (d.handoff) { mode = "human"; setSub(); if (!handoffShown) handoff(!email); }
+            else if (d.check) showCheck();
+            else armIdle();
           }
         }
       }
@@ -198,6 +207,44 @@ async function send(text) {
     s.parentNode.classList.add("err");
     if (!mine.parentNode.isConnected) bubble("user", text);
   } finally { busy = false; form.classList.remove("busy"); if (!phone()) ta.focus(); }
+}
+
+// ---------------------------------------------------------------- "all sorted?" and a one-click rating
+function armIdle() {
+  clearTimeout(idleT);
+  if (rated || checkShown || userMsgs < 1) return;
+  idleT = setTimeout(() => { if (isOpen && !busy && !ta.value.trim()) showCheck(); }, 50000);
+}
+function showCheck() {
+  if (rated || checkShown) return;
+  checkShown = true; clearTimeout(idleT);
+  const card = document.createElement("div"); card.className = "gsc-check";
+  card.innerHTML = `<p>Did that answer everything?</p><div><button type="button" class="yes">Yes, all sorted</button><button type="button" class="no">I have another question</button></div>`;
+  log.appendChild(card); scrollEnd(true);
+  card.querySelector(".yes").onclick = () => { card.remove(); showStars(); };
+  card.querySelector(".no").onclick = () => { card.remove(); checkShown = false; ta.focus(); };
+}
+function showStars() {
+  if (rated || root.querySelector(".gsc-rate")) return;
+  checkShown = true;
+  const card = document.createElement("div"); card.className = "gsc-rate";
+  card.innerHTML = `<p>How did we do?</p><div class="gsc-stars" role="group" aria-label="Rate this chat">${[1, 2, 3, 4, 5].map((n) => `<button type="button" data-n="${n}" aria-label="${n} out of 5">${I.star}</button>`).join("")}</div><span class="gsc-rate-err" aria-live="polite"></span>`;
+  log.appendChild(card); scrollEnd(true);
+  const btns = [...card.querySelectorAll("button")];
+  const paint = (n) => btns.forEach((b, i) => b.classList.toggle("on", i < n));
+  btns.forEach((b) => {
+    b.onmouseenter = () => paint(+b.dataset.n); b.onfocus = () => paint(+b.dataset.n);
+    b.onclick = async () => {
+      const n = +b.dataset.n; paint(n); btns.forEach((x) => (x.disabled = true));
+      try {
+        const r = await fetch("/api/chat/rate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stars: n }) }), j = await r.json();
+        if (!r.ok || !j.ok) throw new Error(j.error || "That didn't save. Try again.");
+        rated = true; card.classList.add("done"); card.querySelector("p").textContent = "Thanks for rating us";
+        setTimeout(() => { card.remove(); render(j.msg); }, 900);
+      } catch (x) { card.querySelector(".gsc-rate-err").textContent = x.message; btns.forEach((y) => (y.disabled = false)); }
+    };
+  });
+  card.querySelector(".gsc-stars").onmouseleave = () => paint(0);
 }
 
 // ---------------------------------------------------------------- hand over to a person
@@ -264,7 +311,7 @@ $(".gsc-human").onclick = async () => { if (!started) await start(); if (!handof
 $(".gsc-new").onclick = async () => {
   await fetch("/api/chat/new", { method: "POST" }).catch(() => {});
   if (es) { es.close(); es = null; }
-  started = false; lastId = 0; handoffShown = false; mode = "ai"; email = "";
+  started = false; lastId = 0; handoffShown = false; mode = "ai"; email = ""; rated = false; checkShown = false; userMsgs = 0; clearTimeout(idleT);
   await start(); ta.focus();
 };
 addEventListener("keydown", (e) => { if (e.key === "Escape" && isOpen) close(); });

@@ -37,6 +37,13 @@ Buttons: PAUSE/RESUME; ARM NOW (opens a manual window straight away, 75 seconds 
 - Prop firms: many funded-account programmes don't allow trading around news. Check the rules first.
 - Demo first is recommended. The licence locks to the first account it runs on, and the customer can move it to their live account straight away from the account page.
 
+## Brokers we use and partner with
+Any MT5 broker with gold works. On the home page (/#brokers) we list the three brokers we use and partner with. We are an introducing broker (IB) for all three and may earn a commission when someone opens an account through our links; always say so when you recommend one. Facts are from the brokers' own sites (September 2026) and can change.
+- Fortune Prime Global (our pick for this EA): ECN account with raw spreads from 0.0 pips and $3.50 per lot commission, min deposit $50, leverage up to 1:500, min lot 0.01, MT4 and MT5, EAs and hedging allowed. PRO30 account: spreads from 1.2 pips, no commission. Since 2011; regulated by the VFSC (Vanuatu) and the FSA (St Vincent and the Grenadines), and ASIC for Australian clients only. The international entity doesn't serve the USA, Japan, Ukraine, New Zealand, Australia, North Korea, Myanmar or Iran. ECN link: https://portal.fortuneprime.com/getview?view=register&token=0jRb0f , PRO30 link: https://portal.fortuneprime.com/getview?view=register&token=0jRb0D
+- Ultima Markets: MT5 and MT4, Standard, ECN, Cent and demo accounts; client accounts insured up to US$1M each through Willis Towers Watson; licensed by the FSC (Mauritius) and FSCA (South Africa), UK entity with the FCA; member of The Financial Commission. Doesn't serve the USA, UK, Singapore, Hong Kong or sanctioned countries. Link: https://www.ultimamarkets.com/accounts/open-trading-account/?affid=MjQ5MDE0MzI=
+- PU Prime: MT5 and MT4 plus its own app, live, demo and copy-trading accounts; segregated client funds and insurance up to $1M through Lloyd's; licensed by the FSA (Seychelles), FSC (Mauritius), FSCA (South Africa) and CMA (UAE). Doesn't serve the USA, Singapore, China, the Philippines or FATF-blacklisted countries. Link: https://www.puprime.partners/forex-trading-account/?affid=MjMyMTMwODY=
+People in the EU or UK should check that the broker can take them as a client.
+
 ## Installing (about five minutes)
 1. Sign in at goldenstraddler.com/account and download GoldenStraddler.ex5. The licence key is on the same page with a Copy button.
 2. In MT5: File > Open Data Folder > MQL5 > Experts, copy the file in. In the Navigator (Ctrl+N) right-click Expert Advisors > Refresh.

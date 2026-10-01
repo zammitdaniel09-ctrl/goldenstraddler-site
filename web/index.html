@@ -53,7 +53,7 @@
 
 <div class="sheet" id="sheet" hidden>
   <nav aria-label="Menu">
-    <a href="#how">How it works</a><a href="#desk">Next release and live gold</a><a href="#record">Results</a><a href="#need">What you need</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a><a href="/account">Sign in</a>
+    <a href="#how">How it works</a><a href="#desk">Next release and live gold</a><a href="#record">Results</a><a href="#need">What you need</a><a href="#brokers">Brokers</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a><a href="/account">Sign in</a>
   </nav>
   <div class="sheet-cta"><a class="btn pri" id="sheetBuy" href="#pricing">Get GoldenStraddler</a><button class="btn" type="button" data-chat-open>Ask a question</button></div>
 </div>
@@ -71,10 +71,22 @@
     <div class="cta"><a class="btn pri" id="heroBuy" href="#pricing">See pricing</a><a class="btn" href="#how">Watch one release</a></div>
     <p class="meta" id="heroPay">Card, Apple Pay, Google Pay or crypto. Card checkout is handled by Stripe.</p>
   </div>
-  <figure class="scope" style="margin:0" aria-label="Illustration of one news release">
-    <div class="bar"><b>XAUUSD</b><span id="scEv">US news release</span><span class="clock" id="scClock">T&minus;00:30</span></div>
-    <svg id="scope" viewBox="0 0 640 380" role="img" aria-labelledby="scSay"></svg>
-    <figcaption class="say" id="scSayBox"><i></i><span id="scSay">Waiting for the release</span><span class="disc">Illustration, not a real trade</span></figcaption>
+  <figure class="term" id="term">
+    <div class="tm-bar">
+      <b class="tm-sym">XAUUSD</b><span class="tm-ev">US news release</span>
+      <span class="tm-speed" hidden></span><span class="tm-state" data-s="wait">Waiting</span>
+      <span class="tm-clock num">T&minus;00:07</span>
+    </div>
+    <div class="tm-stage">
+      <canvas role="img" aria-label="Simulated replay of gold around a US news release, traded with GoldenStraddler's default settings"></canvas>
+      <div class="tm-news" hidden><i></i><span>US news released</span></div>
+      <div class="tm-sum" hidden></div>
+    </div>
+    <div class="tm-foot">
+      <dl class="tm-stats"><div><dt>Trades</dt><dd data-s="n">0</dd></div><div><dt>Won</dt><dd data-s="won">0</dd></div><div><dt>Net pts</dt><dd data-s="net">0</dd></div><div><dt>Best</dt><dd data-s="best">—</dd></div></dl>
+      <ol class="tm-tape" aria-label="Trades in this replay"></ol>
+    </div>
+    <figcaption class="tm-cap"><span class="tm-live sr" aria-live="off"></span><span class="lg">Simulated release with the EA's default settings: one pair of stop orders, a fresh pair after every exit until 60 seconds after the number. Fills, slippage and results are illustrative, and real releases can lose.</span><span class="sh">Simulated release with the EA's default settings. Results are illustrative, and real releases can lose.</span></figcaption>
   </figure>
 </div>
 
@@ -162,7 +174,7 @@
     <h2>What you need, and what's at stake</h2>
     <ul class="needs">
       <li><b>MetaTrader 5 on Windows</b><span class="lg">Not MT4. On a Mac, run MT5 on a Windows VPS.</span><span class="sh">Not MT4. On a Mac, use a Windows VPS.</span></li>
-      <li><b>A broker with gold on MT5</b><span class="lg">Any symbol name works. Raw-spread or ECN accounts with fast execution fill best around news.</span><span class="sh">Any symbol name. Raw-spread or ECN fills best.</span></li>
+      <li><b>A broker with gold on MT5</b><span class="lg">Any symbol name works. Raw-spread or ECN accounts with fast execution fill best around news. <a href="#brokers">See the brokers we use</a>.</span><span class="sh">Raw-spread or ECN fills best. <a href="#brokers">Our brokers</a>.</span></li>
       <li><b>MT5 running at release time</b><span class="lg">The EA only works while MT5 is open and connected. A Windows VPS close to your broker keeps it online; some brokers offer one free.</span><span class="sh">A Windows VPS keeps it online around the clock.</span></li>
       <li><b>About five minutes</b><span class="lg">Download, allow one web address, paste your key, attach it to a gold chart. The guide shows every screen.</span><span class="sh">Download, paste your key, attach. The guide shows every screen.</span></li>
     </ul>
@@ -179,6 +191,34 @@
     </dl>
     <p class="fine">Uses the usual 100-ounce gold contract and the default 100-point stop. Around news, fills can be worse than the stop, so a real loss can be bigger. Check your broker's contract size.</p>
   </div>
+</div></section>
+
+<section class="sec rule" id="brokers"><div class="wrap">
+  <h2>Brokers we trade it with</h2>
+  <p class="lede">Any MT5 broker with gold works. These are the ones we use and partner with: fast execution, MetaTrader&nbsp;5, and Expert Advisors allowed.</p>
+  <div class="brk">
+    <article class="bk pick">
+      <span class="bk-tag">Our pick for this EA</span>
+      <h3>Fortune Prime Global</h3>
+      <p class="bk-sub">ECN account: raw spreads from 0.0 pips and a small commission, which matters most around news.</p>
+      <dl class="bk-f"><div><dt>Spread from</dt><dd>0.0 pips</dd></div><div><dt>Commission</dt><dd>$3.50 / lot</dd></div><div><dt>Min deposit</dt><dd>$50</dd></div><div><dt>Leverage</dt><dd>up to 1:500</dd></div></dl>
+      <ul class="bk-l"><li>MT4 and MT5, EAs and hedging allowed</li><li>Since 2011. Regulated by the VFSC (Vanuatu), the FSA (St Vincent and the Grenadines) and ASIC for Australian clients</li></ul>
+      <div class="bk-a"><a class="btn pri" href="https://portal.fortuneprime.com/getview?view=register&amp;token=0jRb0f" target="_blank" rel="sponsored noopener">Open an ECN account</a><a class="btn" href="https://portal.fortuneprime.com/getview?view=register&amp;token=0jRb0D" target="_blank" rel="sponsored noopener">PRO30, no commission</a></div>
+    </article>
+    <article class="bk">
+      <h3>Ultima Markets</h3>
+      <p class="bk-sub">Standard, ECN and cent accounts, with insurance on every client account.</p>
+      <ul class="bk-l"><li>MT5 and MT4, plus a demo account to try first</li><li>Accounts insured up to US$1M per account (through WTW)</li><li>Licensed by the FSC (Mauritius) and FSCA (South Africa); UK entity with the FCA</li></ul>
+      <div class="bk-a"><a class="btn" href="https://www.ultimamarkets.com/accounts/open-trading-account/?affid=MjQ5MDE0MzI=" target="_blank" rel="sponsored noopener">Open an account</a></div>
+    </article>
+    <article class="bk">
+      <h3>PU Prime</h3>
+      <p class="bk-sub">Large, multi-regulated broker with live, demo and copy-trading accounts.</p>
+      <ul class="bk-l"><li>MT5 and MT4, plus its own app</li><li>Segregated client funds, insurance up to $1M through Lloyd's</li><li>Licensed by the FSA (Seychelles), FSC (Mauritius), FSCA (South Africa) and CMA (UAE)</li></ul>
+      <div class="bk-a"><a class="btn" href="https://www.puprime.partners/forex-trading-account/?affid=MjMyMTMwODY=" target="_blank" rel="sponsored noopener">Open an account</a></div>
+    </article>
+  </div>
+  <p class="bk-note">We're an introducing broker (IB) for these three brokers and may earn a commission if you open an account through these links. Facts are from the brokers' own sites in September 2026 and can change. Not every broker accepts clients from every country: Fortune Prime's international entity doesn't serve the USA, Japan, Ukraine, New Zealand or Australia; Ultima Markets doesn't serve the USA, UK, Singapore or Hong Kong; PU Prime doesn't serve the USA, Singapore, China or the Philippines. If you live in the EU or UK, check that the broker can take you as a client. Trading CFDs carries a high risk of losing money.</p>
 </div></section>
 
 <section class="sec rule" id="get"><div class="wrap">
@@ -244,7 +284,7 @@
     <button class="btn" type="button" data-chat-open><svg aria-hidden="true" class="ic"><use href="#i-chat"/></svg>Ask a question</button>
   </div>
   <div class="faq">
-    <details><summary>Which brokers does it work with?</summary><div class="a"><p>Any MetaTrader 5 broker that offers gold. Attach it to your broker's gold symbol, whether that's called XAUUSD, GOLD or something like XAUUSD.r. It works on 2-digit and 3-digit gold quotes and scales its point distances automatically. Raw-spread or ECN accounts with fast execution give the best fills around news.</p></div></details>
+    <details><summary>Which brokers does it work with?</summary><div class="a"><p>Any MetaTrader 5 broker that offers gold. The ones we use and partner with are <a href="#brokers">listed above</a>. Attach it to your broker's gold symbol, whether that's called XAUUSD, GOLD or something like XAUUSD.r. It works on 2-digit and 3-digit gold quotes and scales its point distances automatically. Raw-spread or ECN accounts with fast execution give the best fills around news.</p></div></details>
     <details><summary>How much do I need in my account?</summary><div class="a"><p>There's no fixed minimum. What matters is lot size: at the default 0.10 lots, a full 100-point stop loss is about $10 plus slippage and costs. Use the calculator above and pick a size where a full stop is an amount you're comfortable losing many times over.</p></div></details>
     <details><summary>Can I try it on a demo account first?</summary><div class="a"><p>Yes, and we recommend it. The licence locks to the first account it runs on, and you can move it to your live account straight away from your account page.</p></div></details>
     <details><summary>Can I use it on a prop firm account?</summary><div class="a"><p>Check your firm's rules first. Many funded-account programmes don't allow trading around news, and breaking that rule can cost you the account or your payouts.</p></div></details>
@@ -306,6 +346,7 @@
   <a class="btn pri" id="mbGo" href="#pricing" tabindex="-1">Get it</a>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="/js/terminal.js"></script>
 <script src="/js/home.js"></script>
 <script src="/js/chat.js" defer></script>
 </body>
