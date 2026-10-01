@@ -53,7 +53,7 @@ export const SECRET_KEYS = new Set(["stripe_secret", "stripe_webhook_secret", "n
 export const DEFAULTS: Record<string, string> = {
   price_lifetime: "149900", price_monthly: "27900", currency: "eur",
   site_url: E.SITE_URL || "https://goldenstraddler.com",
-  mail_from: "GoldenStraddler <hello@goldenstraddler.com>", support_email: "support@goldenstraddler.com",
+  mail_from: "GoldenStraddler <support@goldenstraddler.com>", support_email: "support@goldenstraddler.com",
   notify_emails: "",
   bank_name: "", bank_holder: "", bank_iban: "", bank_bic: "",
   seller_name: "", seller_address: "", seller_vat: "", seller_reg: "",
