@@ -116,6 +116,8 @@ function err(e: any) { console.error(e?.stack || e); return bad(e?.message || "S
 // ================================================================ routes
 async function handle(req: Request): Promise<Response> {
   const url = new URL(req.url), p = url.pathname.replace(/\/+$/, "") || "/", post = req.method === "POST";
+  const host = (req.headers.get("host") || "").toLowerCase();
+  if (host.startsWith("www.") && req.method === "GET") return Response.redirect(siteUrl() + url.pathname + url.search, 301);
 
   // ---------------------------------------------------------------- EA
   if (p.startsWith("/api/ea/")) {
