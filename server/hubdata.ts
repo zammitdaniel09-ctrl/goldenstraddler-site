@@ -25,12 +25,13 @@ const URLS = {
   ga: E.HUB_GA || "https://api.gold-api.com",
   cftc: E.HUB_CFTC || "https://publicreporting.cftc.gov/resource",
   ff: E.HUB_FF || "https://nfs.faireconomy.media",
+  eia: E.HUB_EIA || "https://www.eia.gov/dnav/pet/hist/LeafHandler.ashx",
 };
 export const HISTORY_FROM = "2017-01-01";
 const HOUR = 3_600_000;
 
 // ---------------------------------------------------------------- what we collect
-export const FRED_IDS = ["DTWEXBGS", "DFII10", "DGS10", "DGS2", "DFF", "T10YIE", "VIXCLS", "DCOILWTICO", "DCOILBRENTEU", "DHHNGSP", "WCESTUS1"];
+export const FRED_IDS = ["DTWEXBGS", "DFII10", "DGS10", "DGS2", "DFF", "T10YIE", "VIXCLS", "DCOILWTICO", "DCOILBRENTEU", "DHHNGSP"];
 export const ECB_CCY = ["EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "NZD", "SEK"];   // SEK only for the dollar index
 export const SPOT = ["XAU", "XAG", "XPT", "XPD", "HG", "BTC", "ETH"];              // gold-api.com symbols
 export const COINS: Record<string, { cb: string; kr: string }> = { BTC: { cb: "BTC-USD", kr: "XBTUSD" }, ETH: { cb: "ETH-USD", kr: "ETHUSD" }, PAXG: { cb: "PAXG-USD", kr: "PAXGUSD" } };
@@ -89,6 +90,26 @@ async function fred(id: string) {
     putSeries(s, rows);
     mark(s, true, rows.length, rows.length ? rows[rows.length - 1][0] + " " + rows[rows.length - 1][1] : have!.d);
   } catch (e: any) { mark(s, false, 0, "", e.message); console.error("hub fred", id, e.message); }
+}
+
+// ---------------------------------------------------------------- US crude stocks excluding the SPR, weekly, from the EIA's public history table
+async function eiaStocks() {
+  const s = "eia:WCESTUS1";
+  if (!due(s, 12 * HOUR, 3 * HOUR)) return;
+  try {
+    const html = await (await get(`${URLS.eia}?n=PET&s=WCESTUS1&f=W`, 25000)).text();
+    const rows: [string, number][] = [];
+    // each table row is a month ("2026-Sep") followed by pairs of week-end date (MM/DD) and value (thousand barrels)
+    for (const tr of html.split(/<tr\b/i)) {
+      const y = tr.match(/(\d{4})-[A-Z][a-z]{2}/); if (!y) continue;
+      const re = /(\d\d)\/(\d\d)(?:&nbsp;|\s)*<\/td>\s*<td[^>]*>\s*([\d,]+)/g; let m: RegExpExecArray | null;
+      while ((m = re.exec(tr))) rows.push([`${y[1]}-${m[1]}-${m[2]}`, Number(m[3].replace(/,/g, ""))]);
+    }
+    const recent = rows.filter((r) => r[0] >= HISTORY_FROM && r[1] > 100_000);
+    if (recent.length < 20) throw new Error(`only ${recent.length} weeks parsed`);
+    putSeries("fred:WCESTUS1", recent);
+    mark(s, true, recent.length, recent[recent.length - 1][0] + " " + recent[recent.length - 1][1]);
+  } catch (e: any) { mark(s, false, 0, "", e.message); console.error("hub eia", e.message); }
 }
 
 // ---------------------------------------------------------------- ECB reference rates (via Frankfurter), quoted as USD per 1 unit -> we store USD->CCY
@@ -228,6 +249,7 @@ export async function refreshAll(onDone?: () => void, forceAll = false) {
   try {
     await spots(); await cal(); await ecb();
     for (const id of FRED_IDS) { await fred(id); await Bun.sleep(700); }
+    await eiaStocks();
     for (const sym of Object.keys(COINS)) { await coin(sym); await Bun.sleep(500); }
     for (const code of Object.keys(COT)) { await cot(code); await Bun.sleep(600); }
   } catch (e: any) { console.error("hub refresh", e.message); }
