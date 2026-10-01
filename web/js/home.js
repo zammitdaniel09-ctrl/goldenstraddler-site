@@ -249,7 +249,7 @@ function applyPublic(j) {
   }
   if (j.methods) {
     const m = j.methods, parts = [];
-    if (m.card) parts.push("by <b>card, Apple Pay, Google Pay or PayPal</b>");
+    if (m.card) parts.push("by <b>card, Apple Pay or Google Pay</b>");
     if (m.bank) parts.push("by <b>bank transfer</b>");
     if (m.crypto) parts.push("in <b>crypto</b>");
     const joined = parts.length > 1 ? parts.slice(0, -1).join(", ") + " or " + parts[parts.length - 1] : parts[0] || "";

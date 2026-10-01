@@ -82,7 +82,7 @@ VIEWS.overview = async () => {
     stat("Active licences", String(d.licences.active), `${d.licences.lifetime} lifetime · ${d.licences.monthly} monthly`),
     stat("Online now", String(d.online), `MRR ${eur(d.mrr)} · ${d.customers} customers`));
   const out = [head("Overview"), g];
-  const setup = d.setup, steps = [["stripe", "Connect Stripe (card, Apple Pay, Google Pay, PayPal, SEPA)"], ["crypto", "Connect NOWPayments (crypto)"], ["bank", "Add bank details for transfers"], ["email", "Connect email sending (Resend)"], ["seller", "Add seller details for the legal pages"]];
+  const setup = d.setup, steps = [["stripe", "Connect Stripe (card, Apple Pay, Google Pay)"], ["crypto", "Connect NOWPayments (crypto)"], ["bank", "Add bank details for transfers"], ["email", "Connect email sending (Resend)"], ["seller", "Add seller details for the legal pages"]];
   if (steps.some(([k]) => !setup[k])) {
     const s = el("div", "setup");
     steps.forEach(([k, t]) => { const a = el("a", setup[k] ? "done" : ""); a.href = "#settings"; a.append(el("b", "", setup[k] ? "✓" : ""), document.createTextNode(t)); s.appendChild(a); });
@@ -383,7 +383,7 @@ VIEWS.settings = async () => {
   const stripeRow = el("div", "stack"), sk = el("input", "field"); sk.type = "password"; sk.placeholder = "Secret key from Stripe → Developers → API keys (sk_live_...)"; sk.autocomplete = "off";
   const sBtn = act(btn("Connect Stripe", "btn sm pri"), async () => { const r = await api("/api/admin/integrations", { stripe_secret: sk.value.trim() }); sk.value = ""; render("settings"); return r; }, (r) => `Stripe connected (${r.stripe.account}, ${r.stripe.live ? "live" : "test"} mode). Payments are on.`);
   stripeRow.append(el("div", "key-row", ""), sk, el("div", "key-row"));
-  stripeRow.firstChild.append(el("b", "", "Stripe"), conn(d.connected.stripe && d.connected.stripe_webhook), el("span", "fine", "Card, Apple Pay, Google Pay, PayPal"));
+  stripeRow.firstChild.append(el("b", "", "Stripe"), conn(d.connected.stripe && d.connected.stripe_webhook), el("span", "fine", "Card, Apple Pay, Google Pay"));
   stripeRow.lastChild.append(sBtn);
   const npRow = el("div", "stack"), nk = el("input", "field"), ns = el("input", "field");
   nk.type = ns.type = "password"; nk.autocomplete = ns.autocomplete = "off"; nk.placeholder = "NOWPayments API key"; ns.placeholder = "NOWPayments IPN secret key";
@@ -415,7 +415,7 @@ VIEWS.settings = async () => {
   }
   out.push(form("Prices", "Prices in euros, including VAT if you charge it.",
     inp("price_lifetime", "Lifetime (EUR)", { type: "number", step: "0.01", money: 1 }), inp("price_monthly", "Monthly (EUR)", { type: "number", step: "0.01", money: 1 }),
-    inp("methods_card", "Card / Apple Pay / Google Pay / PayPal", { select: yn }), inp("methods_crypto", "Crypto", { select: yn }), inp("methods_bank", "Bank transfer", { select: yn }),
+    inp("methods_card", "Card / Apple Pay / Google Pay", { select: yn }), inp("methods_crypto", "Crypto", { select: yn }), inp("methods_bank", "Bank transfer", { select: yn }),
     inp("stripe_tax", "Let Stripe calculate VAT (Stripe Tax)", { select: yn })));
   out.push(form("Bank transfer details", "Shown to customers who pick bank transfer. You confirm each payment under Orders.",
     inp("bank_holder", "Account holder"), inp("bank_iban", "IBAN"), inp("bank_bic", "BIC / SWIFT"), inp("bank_name", "Bank name")));

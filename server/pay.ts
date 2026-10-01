@@ -1,4 +1,4 @@
-// Prices, discount codes, orders and the three ways to pay: Stripe (card, Apple/Google Pay, PayPal, SEPA),
+// Prices, discount codes, orders and the three ways to pay: Stripe (card, Apple Pay, Google Pay),
 // NOWPayments (crypto) and manual bank transfer confirmed by an admin.
 import { all, audit, now, one, run, seenEvent } from "./db";
 import { DAY, getN, getS, hmacHex, newOrderId, safeEq, setS, sha256, siteUrl, str, token } from "./util";
