@@ -76,7 +76,11 @@ const clsName = (c: string) => CLASSES.find((x) => x.id === c)?.name || c;
 const monthYear = (d: string) => new Date(d + "T12:00:00Z").toLocaleString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
 function backLine(b: Back | null) {
   if (!b) return "Not enough history for a backtest yet.";
-  return `Backtest since ${monthYear(b.from)}: right ${nf(b.rate * 100)}% of ${nf(b.n)} weekly calls. Price rose in ${nf(b.upRate * 100)}% of weeks, so that's the bar to beat.`;
+  const L = b.late, E = b.early, r = (x: { n: number; hits: number }) => nf((x.hits / x.n) * 100) + "%";
+  const parts: string[] = [];
+  if (L.n >= 20) parts.push(`Since 2023, on data the weights never saw: right ${r(L)} of ${nf(L.n)} weekly calls, while price rose in ${nf((L.up / L.tot) * 100)}% of weeks.`);
+  if (E.n >= 20) parts.push(`${monthYear(b.from)} to 2022: ${r(E)} of ${nf(E.n)}.`);
+  return parts.join(" ") || `Backtest since ${monthYear(b.from)}: right ${nf(b.rate * 100)}% of ${nf(b.n)} weekly calls.`;
 }
 function cotLine(b: Brief) {
   const c = b.cot; if (!c) return "";
@@ -141,7 +145,9 @@ function methodHtml(asOfTxt: string) {
   <div class="mk-cols">
     <div>
       <p>Each market gets a score between −1 and +1 from a handful of measured factors. Every factor turns one fact into a small score for that market, with a fixed weight, and the call is the weighted average: above +${THRESH.lean} leans bullish, below −${THRESH.lean} leans bearish, beyond ${THRESH.firm} either way drops the word "leaning". Confidence rises when more of the factors agree and all of them have data.</p>
-      <p>The same rules run over every past week to give the backtest. A call counts as right when the next week's close moves the way it said. Next to the hit rate we show how often the market simply went up, because always saying "bullish" would score that much.</p>
+      <p>The same rules run over every past week to give the backtest. A call counts as right when the next week's close moves the way it said. The weights were chosen by looking at 2018 to 2022 only. From 2023 on, the model runs on data it never saw, so that's the honest test. Next to each hit rate we show how often the market simply went up, because always saying "bullish" would score that much.</p>
+      ${classTable(state.briefs)}
+      <p>What the test says: weekly direction is hard. The edge is clearest in forex, where the Fed path and crowded positioning have worked in both periods. In energy and crypto the model hasn't beaten a coin flip since 2023, so read those calls as a summary of the data, not a forecast. Confidence on each call comes from that market's own record since 2023, lowered when today's factors disagree.</p>
       <dl class="mk-f">${FACTOR_INFO.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>
     </div>
     <div class="mk-disc">
@@ -160,12 +166,28 @@ function methodHtml(asOfTxt: string) {
   </div>
 </div></section>`;
 }
+function classStats(bs: Brief[]) {
+  const by = new Map<string, { e: [number, number, number, number]; l: [number, number, number, number] }>();
+  for (const b of bs) if (b.back) {
+    const x = by.get(b.cls) || { e: [0, 0, 0, 0], l: [0, 0, 0, 0] };
+    const E = b.back.early, L = b.back.late;
+    x.e[0] += E.n; x.e[1] += E.hits; x.e[2] += E.up; x.e[3] += E.tot; x.l[0] += L.n; x.l[1] += L.hits; x.l[2] += L.up; x.l[3] += L.tot;
+    by.set(b.cls, x);
+  }
+  return by;
+}
 function summaryHtml(bs: Brief[]) {
   let n = 0, hits = 0, up = 0, tot = 0;
-  for (const b of bs) if (b.back) { n += b.back.n; hits += b.back.hits; up += b.back.upRate * b.back.n; tot += b.back.n; }
+  for (const b of bs) if (b.back) { n += b.back.late.n; hits += b.back.late.hits; up += b.back.late.up; tot += b.back.late.tot; }
   const lr = liveRecord();
-  return { back: n ? `Backtest: <b>${nf((hits / n) * 100)}%</b> of ${nf(n)} weekly calls right, against a ${nf((up / tot) * 100)}% up-week rate` : "",
+  return { back: n ? `Since 2023, out of sample: <b>${nf((hits / n) * 100)}%</b> of ${nf(n)} weekly calls right, against a ${nf((up / tot) * 100)}% up-week rate` : "",
     live: lr.n ? `Live since ${short(lr.since!)}: <b>${lr.hits}</b> of ${lr.n} right` : "Live record: starts with this week's calls" };
+}
+function classTable(bs: Brief[]) {
+  const by = classStats(bs), pc = (h: number, n: number) => (n ? nf((h / n) * 100) + "%" : "–");
+  const rows = CLASSES.filter((c) => by.has(c.id)).map((c) => { const x = by.get(c.id)!;
+    return `<tr><th scope="row">${c.name}</th><td class="num">${pc(x.e[1], x.e[0])} <span class="fine">of ${nf(x.e[0])}</span></td><td class="num"><b>${pc(x.l[1], x.l[0])}</b> <span class="fine">of ${nf(x.l[0])}</span></td><td class="num">${pc(x.l[2], x.l[3])}</td></tr>`; }).join("");
+  return `<div class="tblw mk-ct"><table class="board"><thead><tr><th scope="col">Markets</th><th scope="col">2018 to 2022<br><span class="fine">used to pick weights</span></th><th scope="col">2023 on<br><span class="fine">never seen</span></th><th scope="col">Up weeks<br><span class="fine">since 2023</span></th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 const asOfText = () => (state.asOf ? `for the week ending ${short(state.asOf)}` : "");
 

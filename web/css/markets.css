@@ -123,6 +123,9 @@
 .mk-cols{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:40px;margin-top:20px}
 .mk-cols p{color:var(--txt2);max-width:68ch}
 .mk-cols p+p{margin-top:12px}
+.mk-ct{margin:20px 0}
+.mk-ct th{white-space:normal}
+.mk-ct thead .fine{font-size:11px}
 .mk-f{display:grid;gap:10px;margin:22px 0 0}
 .mk-f div{display:grid;grid-template-columns:120px minmax(0,1fr);gap:12px;font-size:14px}
 .mk-f dt{font-weight:600}.mk-f dd{margin:0;color:var(--txt2)}

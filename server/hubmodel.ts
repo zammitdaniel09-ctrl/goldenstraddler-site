@@ -40,13 +40,14 @@ export type Weights = Record<string, number>;          // "factor" or "factor@cl
 const W0: Weights = { trend: 1.2, stretch: 0.8, cot: 0.8, crowd: 0.5, dollar: 1, realYield: 1, ryLevel: 0.5, fed: 0.8, vixHaven: 0.5, vixRisk: 0.6, vixRisk0: 0.4, vixHavenFx: 0.6, stocks: 0.7, oilCad: 0.7 };
 // candidates compared in the research log; weights are picked on 2018-2022 only, 2023 on stays untouched for checking
 export const VARIANTS: Record<string, Weights> = {
-  v0: W0,
+  v0: W0,                                                // the first guess, before looking at results
   v1: { fed: 1.2, crowd: 0.8, vixRisk: 0.6, vixRisk0: 0.6, realYield: 0.6, stocks: 0.6, oilCad: 0.5, "stretch@fx": 0.6, "stretch@energy": 0.2, "stretch@crypto": 0.1, "stretch@metals": 0.4,
     "trend@energy": 0.6, "trend@crypto": 0.4, "trend@fx": 0.2, "trend@metals": 0.5, cot: 0.2, dollar: 0.2, "dollar@metals": 0.3, vixHaven: 0.3, vixHavenFx: 0.2, ryLevel: 0.3 },
   v2: { fed: 1, crowd: 0.8, vixRisk: 0.6, vixRisk0: 0.6, "stretch@fx": 0.6, trend: 0.05, stretch: 0.05, cot: 0.05, dollar: 0.05, realYield: 0.05, ryLevel: 0.05, vixHaven: 0.05, vixHavenFx: 0.05, stocks: 0.05, oilCad: 0.05 },
   v3: { fed: 1.2, crowd: 0.8, vixRisk: 0.6, vixRisk0: 0.6, realYield: 0.6, stocks: 0.6, oilCad: 0.5, "stretch@fx": 0.6, stretch: 0.2, trend: 0.05, cot: 0.2, dollar: 0.2, vixHaven: 0.3, vixHavenFx: 0.2, ryLevel: 0.3 },
 };
-let W: Weights = W0;
+export const SPLIT = "2023-01-01";                     // weights were chosen on weeks before this; weeks from it on are the out-of-sample check
+let W: Weights = VARIANTS.v3;
 const wOf = (k: string, cls: Cls, ws: Weights = W) => ws[k + "@" + cls] ?? ws[k] ?? 1;
 export const FACTOR_INFO: [string, string][] = [
   ["Trend", "Price against its 20 week and 50 week averages."],
@@ -298,7 +299,7 @@ function factor(key: string, a: Asset, c: Ctx, i: number): F | null {
 }
 
 // ================================================================ the call
-export type Call = { score: number; dir: -1 | 0 | 1; label: string; conf: "low" | "moderate" | "high"; coverage: number };
+export type Call = { score: number; dir: -1 | 0 | 1; label: string; conf: "low" | "moderate" | "high"; coverage: number; agree: number };
 export function score(a: Asset, c: Ctx, i: number, ws?: Weights): { call: Call; fs: F[] } {
   let fs = a.factors.map((k) => factor(k, a, c, i)).filter(Boolean) as F[];
   if (ws) fs = fs.map((f) => ({ ...f, w: wOf(f.key, a.cls, ws) }));
@@ -310,27 +311,30 @@ export function score(a: Asset, c: Ctx, i: number, ws?: Weights): { call: Call; 
   const coverage = tw ? aw / tw : 0;
   const conf: Call["conf"] = Math.abs(sc) >= THRESH.firm && agree >= 0.75 && coverage >= 0.8 ? "high" : (Math.abs(sc) >= 0.18 || agree >= 0.7) && coverage >= 0.6 ? "moderate" : "low";
   const label = dir === 0 ? "No clear lean" : `${Math.abs(sc) >= THRESH.firm ? "" : "Leaning "}${dir > 0 ? "bullish" : "bearish"}`;
-  return { call: { score: Math.round(sc * 100) / 100, dir, label: label[0].toUpperCase() + label.slice(1), conf, coverage }, fs };
+  return { call: { score: Math.round(sc * 100) / 100, dir, label: label[0].toUpperCase() + label.slice(1), conf, coverage, agree }, fs };
 }
 
 // ================================================================ backtest: the same rules on past weeks, judged on the next week's move
-export type Back = { n: number; hits: number; rate: number; upRate: number; from: string; avgBull: number | null; avgBear: number | null; weeks: { wk: string; px: number; dir: number; next: number | null }[] };
+export type Back = { n: number; hits: number; rate: number; upRate: number; from: string; avgBull: number | null; avgBear: number | null;
+  early: { n: number; hits: number; up: number; tot: number }; late: { n: number; hits: number; up: number; tot: number };
+  weeks: { wk: string; px: number; dir: number; next: number | null }[] };
 export function backtest(a: Asset, c: Ctx, upto = c.weeks.length - 1): Back | null {
   const p = c.px[a.id]; let n = 0, hits = 0, ups = 0, tot = 0, from = "";
   const bull: number[] = [], bear: number[] = [], weeks: Back["weeks"] = [];
+  const early = { n: 0, hits: 0, up: 0, tot: 0 }, late = { n: 0, hits: 0, up: 0, tot: 0 };
   for (let i = 52; i <= upto; i++) {
     if (!nz(p[i])) continue;
     const { call } = score(a, c, i), next = i < upto && nz(p[i + 1]) ? p[i + 1]! : null;
     if (upto - i < 104) weeks.push({ wk: c.weeks[i], px: p[i]!, dir: call.coverage < 0.6 ? 0 : call.dir, next });
     if (next === null) continue;
-    const r = next / p[i]! - 1; tot++; if (r > 0) ups++;
+    const r = next / p[i]! - 1, part = c.weeks[i] >= SPLIT ? late : early; tot++; part.tot++; if (r > 0) { ups++; part.up++; }
     if (call.coverage < 0.6 || call.dir === 0) continue;
-    n++; if (!from) from = c.weeks[i];
-    if (Math.sign(r) === call.dir) hits++;
+    n++; part.n++; if (!from) from = c.weeks[i];
+    if (Math.sign(r) === call.dir) { hits++; part.hits++; }
     (call.dir > 0 ? bull : bear).push(r);
   }
   if (n < 10) return null;
-  return { n, hits, rate: hits / n, upRate: tot ? ups / tot : 0.5, from, avgBull: bull.length ? mean(bull) : null, avgBear: bear.length ? mean(bear) : null, weeks };
+  return { n, hits, rate: hits / n, upRate: tot ? ups / tot : 0.5, from, avgBull: bull.length ? mean(bull) : null, avgBear: bear.length ? mean(bear) : null, early, late, weeks };
 }
 
 // ================================================================ research: does each factor's sign line up with next week's move?
@@ -401,6 +405,13 @@ export function brief(a: Asset, c: Ctx, nowS = Date.now() / 1000, bt: (a: Asset,
   if (!nz(p[i])) i = c.weeks.length - 1;                                  // no history yet: the latest week, with the live price
   const { call, fs } = score(a, c, i);
   const sp0 = a.live ? spotNow(a.live) : null;
+  const bk = bt(a, c, i);
+  if (call.dir) {
+    const L = bk?.late, lr = L && L.n >= 40 ? L.hits / L.n : null, base = L && L.tot ? Math.max(L.up, L.tot - L.up) / L.tot : 0.5;
+    let lvl = lr === null ? 0 : lr >= 0.56 && lr > base ? 2 : lr >= 0.52 && lr > base - 0.01 ? 1 : 0;
+    if (call.agree < 0.6 || call.coverage < 0.8) lvl = Math.max(0, lvl - 1);
+    call.conf = (["low", "moderate", "high"] as const)[lvl];
+  }
   const pl = nz(p[i]) ? priceLine(a, p, i) : { line: sp0 ? `Price: ${fmtPx(a, sp0.price)} (live spot).` : "", chg: null as number | null };
   const pos = fs.filter((f) => f.s >= 0.08 && f.text).sort((x, y) => y.s * y.w - x.s * x.w);
   const neg = fs.filter((f) => f.s <= -0.08 && f.text).sort((x, y) => x.s * x.w - y.s * y.w);
@@ -434,7 +445,7 @@ export function brief(a: Asset, c: Ctx, nowS = Date.now() / 1000, bt: (a: Asset,
     id: a.id, name: a.name, sym: a.sym, cls: a.cls, asOf: c.weeks[i], title: `${a.name.toUpperCase()} WEEKLY, ${short(c.weeks[i])}`, call,
     px: nz(p[i]) ? p[i] : null, pxTxt: nz(p[i]) ? fmtPx(a, p[i]!) : "", chg: pl.chg, priceLine: pl.line,
     forIt: pros.slice(0, 5).map((f) => f.text), against: cons.slice(0, 4).map((f) => f.text), verdict, watch, watchLine,
-    live, back: bt(a, c, i), notes, cot, recent: [],
+    live, back: bk, notes, cot, recent: [],
   };
 }
 function spotNow(sym: string) { const s = spot[sym]; if (s && Date.now() - s.at < 6 * 3600_000) return s; const l = lastOf("spot:" + sym); return l ? { price: l.v, at: Date.parse(l.d + "T12:00:00Z") } : null; }
