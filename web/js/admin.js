@@ -426,6 +426,7 @@ VIEWS.settings = async () => {
   out.push(form("Website", "",
     inp("record_public", "Show the live track record on the sales page", { select: yn }), inp("record_min_trades", "Only once it has at least this many trades", { type: "number" }),
     inp("refund_days", "Money-back period (days)", { type: "number" }), inp("move_days", "Customers can move a licence every (days)", { type: "number" }),
+    inp("promo_code", "Code shown in the bar at the top of the home page (blank = no bar). Give it an end date under Codes and the bar counts down to it", { full: 1 }),
     inp("announcement", "Banner on the sales page (blank = none)", { full: 1 }), inp("ea_version", "Current EA version"), inp("site_url", "Site address")));
   if (owner) { const b = el("a", "btn sm", "Download a backup of the database"); b.href = "/api/admin/export"; out.push(card("Backup", el("p", "fine", "Everything: customers, licences, orders, codes, trades."), b)); }
   view.replaceChildren(...out);

@@ -24,6 +24,18 @@ export function quote(plan: Plan, rawCode = "") {
   return { ...base, amount, discount: list - amount, code, codeNote };
 }
 
+// the code featured in the bar at the top of the home page; null when it can't be used right now
+export function promo() {
+  const code = getS("promo_code").trim().toUpperCase().replace(/\s+/g, "");
+  if (!code) return null;
+  const c = one<Code>("SELECT * FROM codes WHERE code = ?", code);
+  if (!c || !c.active || (c.expires_at && c.expires_at < now()) || (c.max_uses !== null && c.uses >= c.max_uses)) return null;
+  const plans: Record<string, { list: number; amount: number; note: string }> = {};
+  for (const plan of ["lifetime", "monthly"] as Plan[]) { const q = quote(plan, code); if (!q.error && q.discount > 0) plans[plan] = { list: q.list, amount: q.amount, note: q.codeNote }; }
+  if (!Object.keys(plans).length) return null;
+  return { code, endsAt: c.expires_at || null, usesLeft: c.max_uses !== null ? c.max_uses - c.uses : null, plans };
+}
+
 // ---------------------------------------------------------------- orders
 export function createOrder(o: { email: string; plan: Plan; method: string; code: string; list: number; amount: number; ip: string; country: string; kind?: string; licenceId?: string }) {
   const id = (() => { let i = newOrderId(); while (one("SELECT id FROM orders WHERE id = ?", i)) i = newOrderId(); return i; })();

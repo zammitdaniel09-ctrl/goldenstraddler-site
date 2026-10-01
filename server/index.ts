@@ -11,7 +11,7 @@ import { all, audit, backupTo, DB_PATH, now, one, run } from "./db";
 import { DAY, E, SEC_H, SECRET_KEYS, bad, body, emailOk, esc, euros, getN, getS, ipOf, json, limited, newId, setS, siteUrl, str, sha256, cookie, token } from "./util";
 import { adminLogin, adminOf, bootstrapOwner, checkLoginCode, endAllSessions, endSession, newLoginCode, newTotpSecret, otpauthUri, sessionOf, startSession, type Admin } from "./auth";
 import { customerFor, dashState, eaHello, effective, issueLicence, licenceForSync, maskAcc, publicLicence, restore, revoke, storeStatus, storeTrades, type Customer, type Licence, type Order } from "./licence";
-import { billingPortal, connectStripe, createOrder, listPrice, nowpaymentsWebhook, orderById, ordersFor, quote, refundOrder, settleStripeSession, startPayment, stripe, stripeWebhook, type Plan } from "./pay";
+import { billingPortal, connectStripe, createOrder, listPrice, nowpaymentsWebhook, orderById, ordersFor, promo, quote, refundOrder, settleStripeSession, startPayment, stripe, stripeWebhook, type Plan } from "./pay";
 import { mailConfigured, mailExpiring, mailLicence, mailLoginCode, notifyAdmins, outbox, sendMail } from "./mail";
 import { fulfil } from "./licence";
 
@@ -103,7 +103,7 @@ function sse(req: Request, sub: Sub) {
 setInterval(() => push("ping", now(), () => true), 15000);
 
 // ================================================================ news + public track record
-const news = { events: [] as { utc: number; title: string; src: number }[], fetchedAt: 0, tryAt: 0, raw: "" };
+const news = { events: [] as { utc: number; title: string; src: number; fc: string; prev: string }[], fetchedAt: 0, tryAt: 0, raw: "" };
 async function refreshNews() {
   if (now() < news.tryAt) return;
   news.tryAt = now() + 600_000;
@@ -113,19 +113,48 @@ async function refreshNews() {
     const raw = await r.text(), list: any = JSON.parse(raw);
     if (Array.isArray(list) && list.length) news.raw = raw;   // served to customers' EAs, so they only need to allow one address
     news.events = (Array.isArray(list) ? list : []).filter((e: any) => e && e.country === "USD" && e.impact === "High" && typeof e.date === "string" && !/T00:00:00/.test(e.date))
-      .map((e: any) => ({ utc: Math.round(Date.parse(e.date) / 1000), title: str(e.title, 120), src: 1 })).filter((e) => Number.isFinite(e.utc)).sort((a, b) => a.utc - b.utc);
+      .map((e: any) => ({ utc: Math.round(Date.parse(e.date) / 1000), title: str(e.title, 120), src: 1, fc: str(e.forecast, 24), prev: str(e.previous, 24) })).filter((e) => Number.isFinite(e.utc)).sort((a, b) => a.utc - b.utc);
     news.fetchedAt = now(); news.tryAt = now() + 3_600_000;
   } catch (e: any) { console.error("news:", e.message); }
 }
 const record = { data: null as any, at: 0 };
 async function refreshRecord() {
-  if (now() - record.at < 300_000) return;
+  if (now() - record.at < 60_000) return;
   record.at = now();
   try {
     const r = await fetch(getS("record_url"), { signal: AbortSignal.timeout(8000) });
     const j: any = await r.json();
     record.data = j && j.record ? { ...j.record, online: !!j.online } : null;
   } catch { /* keep the last copy */ }
+}
+
+// ---------------------------------------------------------------- gold spot price for the home page (public feed, one-minute history kept for a day)
+type Sample = [number, number];   // [unix seconds, price]
+const gold = { price: 0, at: 0, fetchedAt: 0, tryAt: 0, buf: [] as Sample[], savedAt: 0 };
+try { const b = JSON.parse(getS("gold_buf") || "[]"); if (Array.isArray(b)) gold.buf = b.filter((x: any) => Array.isArray(x) && x.length === 2 && Number.isFinite(x[0]) && Number.isFinite(x[1])); } catch {}
+async function refreshGold(minGap: number) {
+  if (now() - gold.fetchedAt < minGap || now() < gold.tryAt) return;
+  gold.tryAt = now() + Math.max(minGap, 5000);
+  try {
+    const r = await fetch(E.GOLD_URL || "https://api.gold-api.com/price/XAU", { headers: { "User-Agent": "GoldenStraddler/3" }, signal: AbortSignal.timeout(5000) });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const j: any = await r.json(), px = Number(j && j.price);
+    if (!Number.isFinite(px) || px < 100 || px > 100000) throw new Error("no price");
+    gold.price = Math.round(px * 100) / 100; gold.at = Date.parse(j.updatedAt) || now(); gold.fetchedAt = now();
+    const t = Math.floor(now() / 1000), last = gold.buf[gold.buf.length - 1];
+    if (last && t - last[0] < 55) last[1] = gold.price; else gold.buf.push([t, gold.price]);
+    const cut = t - 86400 - 600; while (gold.buf.length && gold.buf[0][0] < cut) gold.buf.shift();
+    if (now() - gold.savedAt > 600_000) { gold.savedAt = now(); setS("gold_buf", JSON.stringify(gold.buf)); }
+  } catch (e: any) { if (now() - gold.fetchedAt > 600_000) gold.price = 0; }
+}
+setInterval(() => refreshGold(50_000), 60_000); refreshGold(0);
+function goldPublic() {
+  if (!gold.price) return null;
+  const t = Math.floor(now() / 1000), win = gold.buf.filter((x) => x[0] >= t - 6 * 3600);
+  const step = Math.max(1, Math.ceil(win.length / 120)), spark = win.filter((_, i) => i % step === 0 || i === win.length - 1);
+  const old = gold.buf.find((x) => x[0] >= t - 86400 - 300);
+  const day = old && t - old[0] >= 23 * 3600 ? old[1] : null;
+  return { price: gold.price, at: gold.at, spark, day };
 }
 
 // ================================================================ helpers
@@ -185,8 +214,14 @@ async function handle(req: Request): Promise<Response> {
     const minTrades = getN("record_min_trades"), rec = record.data;
     const showRec = getS("record_public") === "1" && rec && rec.trades >= minTrades;
     return json(200, { ok: true, serverNow: now(), prices: { lifetime: listPrice("lifetime"), monthly: listPrice("monthly") }, methods: methodsOn(),
-      refundDays: getN("refund_days"), news: news.events.filter((e) => e.utc > now() / 1000 - 75).slice(0, 8), record: showRec ? rec : null,
-      announcement: getS("announcement") });
+      refundDays: getN("refund_days"), news: news.events.filter((e) => e.utc > now() / 1000 - 75).slice(0, 8), week: news.events, record: showRec ? rec : null,
+      announcement: getS("announcement"), promo: promo() });
+  }
+  if (p === "/api/live") {
+    if (limited("live:" + ipOf(req), 90, 60_000)) return bad("Slow down", 429);
+    await Promise.all([refreshGold(6000), refreshRecord()]);
+    const rec = record.data, showRec = getS("record_public") === "1" && rec && rec.trades >= getN("record_min_trades");
+    return json(200, { ok: true, serverNow: now(), gold: goldPublic(), account: showRec ? { online: !!rec.online, trades: rec.trades, points: rec.points, winRate: rec.winRate } : null });
   }
   if (p === "/api/quote") {
     const plan = url.searchParams.get("plan") as Plan;
@@ -576,12 +611,13 @@ async function adminRoute(req: Request, url: URL, p: string, a: Admin): Promise<
   if (p === "/settings") {
     const editable = ["price_lifetime", "price_monthly", "mail_from", "support_email", "notify_emails", "bank_name", "bank_holder", "bank_iban", "bank_bic",
       "seller_name", "seller_address", "seller_vat", "seller_reg", "record_public", "record_min_trades", "stripe_tax", "methods_card", "methods_crypto", "methods_bank",
-      "refund_days", "move_days", "announcement", "site_url", "ea_version"];
+      "refund_days", "move_days", "announcement", "site_url", "ea_version", "promo_code"];
     if (post) {
       if (!owner) return bad("Only the owner can change settings.", 403);
       for (const k of editable) if (b[k] !== undefined) {
         let v = str(b[k], 600);
         if (k.startsWith("price_")) { const n = Math.round(Number(v) * 100); if (!(n >= 100)) return bad("Prices must be at least €1."); v = String(n); }
+        if (k === "promo_code") v = v.toUpperCase().replace(/\s+/g, "");
         setS(k, v);
       }
       audit(who, "settings changed", "", Object.keys(b).filter((k) => editable.includes(k)).join(", "));

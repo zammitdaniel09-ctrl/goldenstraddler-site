@@ -61,6 +61,7 @@ export const DEFAULTS: Record<string, string> = {
   record_public: "0", record_min_trades: "20",
   stripe_tax: "0", methods_card: "1", methods_crypto: "1", methods_bank: "1",
   refund_days: "7", move_days: "30", ea_version: "3.00", announcement: "",
+  promo_code: "GOLD999",
 };
 const cache = new Map<string, string>();
 export function getS(k: string): string {

@@ -29,7 +29,14 @@
 <a class="skip" href="#main">Skip to content</a>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="gs" viewBox="0 0 64 64"><rect x="1" y="1" width="62" height="62" rx="16" fill="#0E1116" stroke="#2e3644" stroke-width="2"/><text x="25" y="44" font-family="Unbounded,Arial Black,sans-serif" font-weight="800" font-size="30" fill="#fff" text-anchor="middle">G</text><text x="42" y="49" font-family="Sedgwick Ave,Segoe Script,cursive" font-size="36" fill="#3FC4FC" text-anchor="middle">S</text></symbol></svg>
 
-<header class="top" id="top"><div class="wrap">
+<header class="top" id="top">
+<div class="promo" id="promo" hidden><div class="wrap">
+  <p class="pm-deal"><span class="pm-save" id="pmSave">€500 off</span> <span class="pm-long" id="pmWhat">Lifetime with code</span></p>
+  <button class="pm-code" id="pmCode" type="button"><span id="pmCodeTxt">GOLD999</span><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M11 3.5V3a1.5 1.5 0 0 0-1.5-1.5H3A1.5 1.5 0 0 0 1.5 3v6.5A1.5 1.5 0 0 0 3 11h.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></button>
+  <p class="pm-t" id="pmT" hidden><span class="pm-lab" id="pmLab"></span> <b class="num" id="pmCount"></b></p>
+  <a class="pm-go" id="pmGo" href="/checkout?plan=lifetime">Claim it</a>
+</div></div>
+<div class="wrap">
   <a class="mark" href="/"><svg aria-hidden="true"><use href="#gs"/></svg><span>GoldenStraddler</span></a>
   <nav aria-label="Main"><a href="#how">How it works</a><a href="#get">What you get</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a></nav>
   <div class="r"><a class="signin" href="/account">Sign in</a><a class="btn pri sm" href="#pricing">Get it</a></div>
@@ -50,14 +57,31 @@
   </figure>
 </div>
 
-<div class="next" id="next" hidden><div class="wrap">
-  <div class="now">
-    <span class="lab"><span class="chip pulse" id="nxChip"><i></i>Next high-impact USD release</span></span>
-    <span class="ev" id="nxTitle"></span>
-    <span class="when" id="nxWhen"></span>
-  </div>
-  <div class="count" id="nxCount" aria-live="off"></div>
-  <ul class="later" id="nxLater" aria-label="Later this week"></ul>
+<div class="desk" id="desk"><div class="wrap">
+  <article class="dk dk-next" id="next" hidden>
+    <span class="chip pulse" id="nxChip"><i></i><span id="nxChipT">Next high-impact USD release</span></span>
+    <p class="ev" id="nxTitle"></p>
+    <p class="when" id="nxWhen"></p>
+    <div class="count" id="nxCount" role="timer" aria-live="off"></div>
+    <div class="arm"><div class="track" aria-hidden="true"><i id="nxBar"></i></div><span class="fine" id="nxArm"></span></div>
+  </article>
+  <article class="dk dk-gold" id="gold" hidden>
+    <div class="dk-h"><span class="lab">Gold spot, XAU/USD</span><span class="chip gold pulse" id="gLive"><i></i>Live</span></div>
+    <div class="px"><b class="num" id="gPx"></b><span class="num chg" id="gChg"></span></div>
+    <svg class="spark" id="gSpark" viewBox="0 0 300 90" preserveAspectRatio="none" aria-hidden="true"></svg>
+    <span class="fine" id="gNote"></span>
+  </article>
+  <article class="dk dk-acct" id="acct" hidden>
+    <div class="dk-h"><span class="lab">Our own account, running GoldenStraddler</span><span class="chip pulse" id="acChip"><i></i><span id="acChipT">Online now</span></span></div>
+    <div class="acn" id="acNums"></div>
+    <svg class="mini" id="acCurve" viewBox="0 0 300 70" preserveAspectRatio="none" aria-hidden="true" hidden></svg>
+    <p class="fine" id="acCap" hidden>Points after each closed trade since we started streaming it.</p>
+    <a class="dk-link" href="#record">See the full record</a>
+  </article>
+  <article class="dk dk-week" id="week" hidden>
+    <div class="dk-h"><span class="lab">This week's red-folder USD releases</span><span class="fine">Your time</span></div>
+    <ol class="wk" id="wkList"></ol>
+  </article>
 </div></div>
 </section>
 
@@ -116,17 +140,17 @@
     <article class="plan main">
       <span class="tag" id="pTag">Costs less than six months of monthly</span>
       <h3>Lifetime</h3>
-      <div class="price"><b id="pLife">{{PRICE_LIFETIME}}</b><span>once</span></div>
+      <div class="price"><s id="pLifeWas" hidden></s><b id="pLife">{{PRICE_LIFETIME}}</b><span id="pLifeU">once</span></div>
       <p class="for">One payment. The licence never expires.</p>
       <ul><li>Licence for one MT5 account</li><li>All future updates</li><li>Your live online dashboard</li><li>Move to a new account every {{MOVE_DAYS}} days</li><li>{{REFUND_DAYS}}-day money-back guarantee</li></ul>
-      <a class="btn pri" href="/checkout?plan=lifetime">Buy lifetime</a>
+      <a class="btn pri" id="buyLife" href="/checkout?plan=lifetime">Buy lifetime</a>
     </article>
     <article class="plan">
       <h3>Monthly</h3>
-      <div class="price"><b id="pMon">{{PRICE_MONTHLY}}</b><span>a month</span></div>
+      <div class="price"><s id="pMonWas" hidden></s><b id="pMon">{{PRICE_MONTHLY}}</b><span id="pMonU">a month</span></div>
       <p class="for">Cancel any time from your account page.</p>
       <ul><li>Licence for one MT5 account</li><li>All updates while subscribed</li><li>Your live online dashboard</li><li>Renews on its own by card, or pay each month by bank or crypto</li><li>{{REFUND_DAYS}}-day money-back on the first payment</li></ul>
-      <a class="btn" href="/checkout?plan=monthly">Start monthly</a>
+      <a class="btn" id="buyMon" href="/checkout?plan=monthly">Start monthly</a>
     </article>
   </div>
   <p class="payline" id="payLine">Pay by <b>card, Apple Pay or Google Pay</b>, by <b>bank transfer</b>, or in <b>crypto</b>. Got a discount code? Enter it at checkout.</p>
@@ -185,6 +209,7 @@
   </div>
   <nav aria-label="Legal"><a href="/account">Sign in</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a><a href="/privacy">Privacy</a><a href="/risk">Risk</a><a href="/imprint">Imprint</a></nav>
 </div></footer>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="/js/home.js"></script>
 </body>
 </html>
