@@ -90,13 +90,18 @@
 .lic .cap{margin-top:16px;font-size:13px;color:var(--muted)}
 
 /* ---------------------------------------------------------------- record */
-.rec{margin-top:48px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);gap:20px}
-.rec .stats{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.rec{margin-top:48px;display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:28px;align-items:start}
+.rec .recr{display:flex;flex-direction:column;gap:16px;min-width:0}
+.rec .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.shotcard{margin:0;background:var(--carbon);border:1px solid var(--edge);border-radius:18px;padding:12px}
+.shotcard img{display:block;width:100%;height:auto;border-radius:10px}
+.shotcard figcaption{font-size:13px;color:var(--muted);padding:12px 4px 2px}
+@media (max-width:900px){.rec{grid-template-columns:1fr}.shotcard{max-width:340px}}
+@media (max-width:560px){.rec .stats{grid-template-columns:1fr 1fr}}
 .rec .stat{background:var(--carbon);border:1px solid var(--edge);border-radius:16px;padding:18px}
 .rec .stat b{display:block;font:600 26px var(--mono);margin-top:6px;font-variant-numeric:tabular-nums}
 .rec .curve{background:var(--carbon);border:1px solid var(--edge);border-radius:16px;padding:18px}
 .rec .curve svg{width:100%;height:220px;display:block}
-@media (max-width:900px){.rec{grid-template-columns:1fr}}
 
 /* ---------------------------------------------------------------- pricing */
 .plans{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:56px;max-width:980px}

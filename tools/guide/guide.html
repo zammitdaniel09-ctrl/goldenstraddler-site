@@ -39,9 +39,13 @@ td:first-child{white-space:nowrap}
 table.wrap td:first-child{white-space:normal;width:34%}
 table.wrap td:nth-child(2){width:28%}
 .steps{list-style:none;padding:0;margin:0;counter-reset:s}
-.steps>li{counter-increment:s;position:relative;padding:0 0 3mm 13mm;margin:0;break-inside:avoid}
+.steps>li{counter-increment:s;position:relative;padding:0 0 3mm 13mm;margin:0;break-inside:auto}
+.steps>li>b:first-child{break-after:avoid}
 .steps>li::before{content:counter(s);position:absolute;left:0;top:-.4mm;width:8.5mm;height:8.5mm;border-radius:50%;background:var(--ink);color:#fff;font:600 10pt 'JetBrains Mono';display:grid;place-items:center}
 .steps>li>b:first-child{display:block;font-size:11pt;margin-bottom:1mm}
+.shot{margin:3mm 0 4mm;break-inside:avoid}
+.shot img{display:block;border-radius:6px;border:1px solid #c9d1da}
+.shot .cap{font-size:8.6pt;color:var(--mute);margin-top:2mm}
 .fig{border:1px solid var(--line);border-radius:10px;padding:4mm;margin:3mm 0 5mm;break-inside:avoid;background:#fff}
 .fig .cap{font-size:8.6pt;color:var(--mute);margin-top:2.5mm}
 .toc{list-style:none;padding:0;margin:6mm 0 0;font-size:11.5pt}
@@ -126,34 +130,31 @@ table.wrap td:nth-child(2){width:28%}
 
 <section>
   <h1>3. Install it in five steps</h1>
-  <p class="lede">About five minutes, start to finish.</p>
+  <p class="lede">About five minutes, start to finish. The pictures are real MetaTrader&nbsp;5 screens; yours may look slightly different depending on your broker's colours.</p>
   <ol class="steps">
-    <li><b>Download the EA.</b>Sign in at <code>goldenstraddler.com/account</code> and click <b>Download GoldenStraddler.ex5</b>. You can download it again any time, for example on a new PC or VPS.</li>
-    <li><b>Put the file into MetaTrader 5.</b>In MT5, click <b>File → Open Data Folder</b>. In the folder that opens, go into <b>MQL5</b>, then <b>Experts</b>, and copy <code>GoldenStraddler.ex5</code> there. Back in MT5, right-click <b>Expert Advisors</b> in the Navigator (<span class="kbd">Ctrl</span> + <span class="kbd">N</span> if it's hidden) and choose <b>Refresh</b>. GoldenStraddler appears in the list.</li>
-    <li><b>Allow its web address.</b>Click <b>Tools → Options</b> and open the <b>Expert Advisors</b> tab. Tick <b>Allow algorithmic trading</b> and <b>Allow WebRequest for listed URL</b>, then add this address and click <b>OK</b>:
-      <div class="fig" style="margin-top:3mm">
-        <svg viewBox="0 0 600 200" width="62%" style="display:block" xmlns="http://www.w3.org/2000/svg" font-family="Space Grotesk" font-size="13">
-          <rect x="1" y="1" width="598" height="198" rx="8" fill="#f7f9fb" stroke="#c9d1da"/>
-          <text x="18" y="28" font-weight="600">Options → Expert Advisors</text>
-          <rect x="18" y="44" width="14" height="14" rx="2" fill="#1E9FE3"/><path d="M21 51l3 3 6-7" stroke="#fff" stroke-width="2" fill="none"/><text x="42" y="56">Allow algorithmic trading</text>
-          <rect x="18" y="70" width="14" height="14" rx="2" fill="#1E9FE3"/><path d="M21 77l3 3 6-7" stroke="#fff" stroke-width="2" fill="none"/><text x="42" y="82">Allow WebRequest for listed URL:</text>
-          <rect x="42" y="94" width="400" height="74" rx="4" fill="#fff" stroke="#c9d1da"/>
-          <text x="54" y="118" font-family="JetBrains Mono" font-size="13">https://goldenstraddler.com</text>
-          <text x="320" y="118" fill="#6b7482" font-size="12">licence + news calendar</text>
-        </svg>
-        <p class="cap">Type it exactly as shown, starting with https://. Without it the EA can't check its licence or load the news calendar.</p>
-      </div></li>
-    <li><b>Attach it to a gold chart.</b>Open an <b>XAUUSD</b> chart (any timeframe works) and drag <b>GoldenStraddler</b> from the Navigator onto it. In the window that opens:
-      <ul style="margin-top:2mm"><li>On the <b>Common</b> tab, make sure <b>Allow Algo Trading</b> is ticked.</li>
-      <li>On the <b>Inputs</b> tab, double-click the value next to <b>Licence key</b> and paste your key.</li>
-      <li>Check <b>Lot size per order</b> and change it if you need to. Then click <b>OK</b>.</li></ul></li>
-    <li><b>Turn on Algo Trading.</b>Click <b>Algo Trading</b> in the MT5 toolbar so its icon turns green. Within a few seconds the panel on your chart shows your licence (for example <b>LIFETIME LICENCE</b> at the bottom) and the state <b>WAITING</b> with the time of the next red-folder release. <b>That's it.</b> Leave MT5 running: the EA arms itself 15 seconds before the next release.</li>
+    <li><b>Download the EA.</b>Sign in at <code>goldenstraddler.com/account</code> and click <b>Download GoldenStraddler.ex5</b>. Your licence key is on the same page, with a <b>Copy</b> button. You can download the EA again any time, for example on a new PC or VPS.</li>
+    <li><b>Put the file into MetaTrader 5.</b>In MT5 click <b>File</b> (1) and then <b>Open Data Folder</b> (2). In the folder that opens, go into <b>MQL5</b>, then <b>Experts</b>, and copy <code>GoldenStraddler.ex5</code> in there.
+      <div class="shot"><img src="img/g1_data_folder.jpg" style="width:52%"></div>
+      Back in MT5, show the Navigator with <span class="kbd">Ctrl</span> + <span class="kbd">N</span>, right-click <b>Expert Advisors</b> (1) and choose <b>Refresh</b> (2). GoldenStraddler now appears in the list.
+      <div class="shot"><img src="img/g2_refresh.jpg" style="width:50%"></div></li>
+    <li><b>Allow its web address.</b>Click <b>Tools → Options</b> and open the <b>Experts</b> tab (1). Tick <b>Allow algorithmic trading</b> (2) and <b>Allow WebRequest for listed URL</b> (3). Then double-click the last row of the list, type <code>https://goldenstraddler.com</code> (4) and press <b>Enter</b>. Click <b>OK</b>.
+      <div class="shot"><img src="img/g3_options.jpg" style="width:86%"><p class="cap">Other addresses already in your list can stay. Without this one the EA can't check its licence or load the news calendar.</p></div></li>
+    <li><b>Attach it to a gold chart.</b>Open an <b>XAUUSD</b> chart (any timeframe; your broker may call it GOLD or XAUUSD.r) and drag <b>GoldenStraddler</b> from the Navigator onto it. A settings window opens. On the <b>Common</b> tab, make sure <b>Allow Algo Trading</b> is ticked.
+      <div class="shot"><img src="img/g4_common.jpg" style="width:80%"></div>
+      Then open the <b>Inputs</b> tab (1). Double-click the empty value next to <b>Licence key</b> (2) and paste your key. Check <b>Lot size per order</b> (3) and change it if you need to. Click <b>OK</b>.
+      <div class="shot"><img src="img/g5_inputs.jpg" style="width:100%"></div></li>
+    <li><b>Turn on Algo Trading.</b>Click <b>Algo Trading</b> in the MT5 toolbar so its icon turns green.
+      <div class="shot"><img src="img/g6_algo.jpg" style="width:62%"></div>
+      Within a few seconds the GoldenStraddler panel appears on the chart. It shows <b>WAITING</b> with the next red-folder release and a countdown, and your licence at the bottom. <b>That's it.</b> Leave MT5 running: the EA arms itself 15 seconds before the next release.</li>
   </ol>
+  <div class="two" style="grid-template-columns:42% 1fr;align-items:start;margin-top:2mm;break-inside:avoid">
+    <div class="shot" style="margin:0"><img src="img/g7_panel.jpg" style="width:100%"></div>
+    <div><h3 style="margin-top:0">What you'll see</h3><p>This is a real GoldenStraddler panel, captured from our own live account on 1 October 2026. Yours fills in as your own trades close: net profit, win rate, profit factor, drawdown, the equity curve and the most recent trades.</p><p>Section 4 explains every state and button on it.</p></div>
+  </div>
 </section>
-
 <section>
   <h1>4. Reading the panel on your chart</h1>
-  <p class="lede">The panel in the corner of your chart shows what the EA is doing right now, your open position and your statistics. The coloured state badge is the part to watch.</p>
+  <p class="lede">The panel in the corner of your chart (pictured at the end of section 3) shows what the EA is doing right now, your open position and your statistics. The coloured state badge is the part to watch.</p>
   <table>
     <tr><th>State</th><th>What it means</th><th>What to do</th></tr>
     <tr><td><span class="state" style="background:#1E9FE3">WAITING</span></td><td>Outside a news window. The panel shows the next red-folder release and a countdown.</td><td>Nothing. This is normal most of the time.</td></tr>

@@ -30,3 +30,9 @@
 .orow:last-child{border-bottom:0}
 .orow .mono{font-size:13px}
 @media (max-width:620px){.orow{grid-template-columns:1fr auto}}
+.showme{margin-top:10px}
+.showme summary{cursor:pointer;color:var(--ice);font-size:14px;font-weight:600;list-style:none;display:inline-flex;align-items:center;gap:6px}
+.showme summary::-webkit-details-marker{display:none}
+.showme summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .15s}
+.showme[open] summary::before{transform:rotate(45deg)}
+.showme img{display:block;width:100%;height:auto;margin-top:12px;border-radius:10px;border:1px solid var(--edge2)}
