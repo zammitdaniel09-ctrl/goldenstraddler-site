@@ -3,7 +3,8 @@
  * Bun + SQLite on a Railway volume. Static pages live in /web.
  */
 import { gzipSync } from "node:zlib";
-import { existsSync, statSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
+import { createDecipheriv, createHash } from "node:crypto";
 import { join, normalize } from "node:path";
 import QRCode from "qrcode";
 import { all, audit, backupTo, DB_PATH, now, one, run } from "./db";
@@ -19,6 +20,26 @@ const WEB = join(import.meta.dir, "..", "web");
 const STARTED = now();
 const EA_FILE = join(DB_PATH, "..", "GoldenStraddler.ex5");     // uploaded from admin, lives on the volume (not in git)
 const eaPath = () => (existsSync(EA_FILE) ? EA_FILE : existsSync(join(WEB, "dl", "GoldenStraddler.ex5")) ? join(WEB, "dl", "GoldenStraddler.ex5") : "");
+// A build can also ship the EA encrypted in assets/ea (AES-256-GCM: iv[12] tag[16] data, key in EA_BLOB_KEY).
+// It's installed once per new file, so a later upload from admin isn't overwritten on restart.
+function installShippedEa() {
+  const enc = join(import.meta.dir, "..", "assets", "ea", "GoldenStraddler.ex5.enc"), key = (E.EA_BLOB_KEY || "").trim();
+  if (!key || !existsSync(enc)) return;
+  try {
+    const raw = readFileSync(enc), sha = createHash("sha256").update(raw).digest("hex");
+    if (getS("ea_blob_sha") === sha) return;
+    const d = createDecipheriv("aes-256-gcm", Buffer.from(key, "hex"), raw.subarray(0, 12));
+    d.setAuthTag(raw.subarray(12, 28));
+    const ex5 = Buffer.concat([d.update(raw.subarray(28)), d.final()]);
+    writeFileSync(EA_FILE + ".tmp", ex5); renameSync(EA_FILE + ".tmp", EA_FILE);
+    const vf = join(import.meta.dir, "..", "assets", "ea", "version.txt"), version = existsSync(vf) ? readFileSync(vf, "utf8").trim().slice(0, 12) : "";
+    if (version) setS("ea_version", version);
+    setS("ea_blob_sha", sha);
+    audit("system", "installed the EA shipped with this deploy", version, `${Math.round(ex5.length / 1024)} KB`);
+    console.log("ea: installed shipped EA", version, ex5.length, "bytes");
+  } catch (e: any) { console.error("ea: couldn't install the shipped EA:", e.message); }
+}
+installShippedEa();
 
 // ================================================================ static files
 const TYPES: Record<string, string> = { html: "text/html; charset=utf-8", css: "text/css; charset=utf-8", js: "text/javascript; charset=utf-8", svg: "image/svg+xml",
@@ -323,7 +344,7 @@ async function handle(req: Request): Promise<Response> {
       if (buf.length < 4096 || buf.length > 12 << 20) return bad("That doesn't look like a compiled EA (.ex5) file.");
       const version = str(url.searchParams.get("version") || "", 12).replace(/[^\w.\-]/g, "");
       await Bun.write(EA_FILE + ".tmp", buf);
-      const { renameSync } = await import("node:fs"); renameSync(EA_FILE + ".tmp", EA_FILE);
+      renameSync(EA_FILE + ".tmp", EA_FILE);
       if (version) setS("ea_version", version);
       audit(a.email, "uploaded a new EA", version || "", `${Math.round(buf.length / 1024)} KB`);
       return json(200, { ok: true, size: buf.length, version: getS("ea_version") });
