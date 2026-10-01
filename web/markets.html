@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<script>try{var t=localStorage.getItem("gs-theme");if(t&&/^[a-z]+$/.test(t))document.documentElement.dataset.theme=t}catch(e){}</script>
+<title>{{HUB_TITLE}}</title>
+<meta name="description" content="{{HUB_DESC}}">
+<link rel="canonical" href="{{SITE_URL}}{{HUB_PATH}}">
+<meta property="og:type" content="article"><meta property="og:site_name" content="GoldenStraddler"><meta property="og:title" content="{{HUB_TITLE}}"><meta property="og:description" content="{{HUB_DESC}}"><meta property="og:url" content="{{SITE_URL}}{{HUB_PATH}}"><meta property="og:image" content="{{SITE_URL}}/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preload" href="/fonts/unbounded-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/fonts/space-grotesk-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/fonts.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/site.css"><link rel="stylesheet" href="/css/markets.css"><link rel="stylesheet" href="/css/chat.css">
+</head>
+<body class="mkt">
+<a class="skip" href="#main">Skip to content</a>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="gs" viewBox="0 0 64 64"><rect x="1" y="1" width="62" height="62" rx="16" fill="#0E1116" stroke="#2e3644" stroke-width="2"/><text x="25" y="44" font-family="Unbounded,Arial Black,sans-serif" font-weight="800" font-size="30" fill="#fff" text-anchor="middle">G</text><text x="42" y="49" font-family="Sedgwick Ave,Segoe Script,cursive" font-size="36" style="fill:var(--ice)" text-anchor="middle">S</text></symbol>
+  <symbol id="i-check" viewBox="0 0 20 20"><path d="M4 10.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-x" viewBox="0 0 20 20"><path d="M5.5 5.5l9 9m0-9l-9 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2.8l7.5 3v5.6c0 4.6-3.1 8.4-7.5 9.8-4.4-1.4-7.5-5.2-7.5-9.8V5.8z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8.6 12.2l2.4 2.4 4.5-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13.2 2.5L5 13.4h6l-1.2 8.1 8.2-10.9h-6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4.5 5.5h15a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 3.5V17.5h-1A1.5 1.5 0 0 1 3 16V7a1.5 1.5 0 0 1 1.5-1.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="8.5" cy="11.5" r="1.1" fill="currentColor"/><circle cx="12" cy="11.5" r="1.1" fill="currentColor"/><circle cx="15.5" cy="11.5" r="1.1" fill="currentColor"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-up" viewBox="0 0 20 20"><path d="M10 4.5l5.5 9.5h-11z" fill="currentColor"/></symbol>
+  <symbol id="i-down" viewBox="0 0 20 20"><path d="M10 15.5L4.5 6h11z" fill="currentColor"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.7"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 16 16"><rect x="5" y="5" width="9" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M11 3.5V3a1.5 1.5 0 0 0-1.5-1.5H3A1.5 1.5 0 0 0 1.5 3v6.5A1.5 1.5 0 0 0 3 11h.5" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+</svg>
+
+<header class="top scrolled"><div class="wrap">
+  <a class="mark" href="/"><svg aria-hidden="true"><use href="#gs"/></svg><span>GoldenStraddler</span></a>
+  <nav aria-label="Main"><a href="/markets" aria-current="page">Markets</a><a href="/#how">The EA</a><a href="/#record">Results</a><a href="/#pricing">Pricing</a></nav>
+  <div class="r"><div class="thm"><button class="thm-btn" id="thmBtn" type="button" aria-expanded="false" aria-controls="thmPop" aria-label="Colours"><i class="thm-sw"></i></button>
+    <div class="thm-pop" id="thmPop" hidden><p>Colours</p><div class="thm-list" role="radiogroup" aria-label="Colours"><button type="button" role="radio" aria-checked="true" data-set-theme="ice"><i class="thm-sw" style="--a:#3FC4FC;--b:#E6B450"></i>Ice</button><button type="button" role="radio" aria-checked="false" data-set-theme="cobalt"><i class="thm-sw" style="--a:#7B93FF;--b:#E6B450"></i>Cobalt</button><button type="button" role="radio" aria-checked="false" data-set-theme="emerald"><i class="thm-sw" style="--a:#3DDC97;--b:#E6B450"></i>Emerald</button><button type="button" role="radio" aria-checked="false" data-set-theme="violet"><i class="thm-sw" style="--a:#B197FC;--b:#E6B450"></i>Violet</button><button type="button" role="radio" aria-checked="false" data-set-theme="bullion"><i class="thm-sw" style="--a:#E6B450;--b:#3FC4FC"></i>Bullion</button></div></div></div>
+    <a class="signin" href="/account">Sign in</a><a class="btn pri sm" href="/#pricing">Get the EA</a></div>
+</div></header>
+
+<main id="main">
+<!--HUB_MAIN-->
+</main>
+
+<footer class="foot"><div class="wrap">
+  <div>
+    <a class="mark" href="/"><svg aria-hidden="true"><use href="#gs"/></svg>GoldenStraddler</a>
+    <p>Market calls on this page come from a scoring model run on public data. They are general information, not personal advice, and don't take your situation into account. Trading CFDs, forex, commodities and crypto carries a high risk of losing money quickly. Read the <a href="/risk" style="color:var(--txt2)">risk disclosure</a>.</p>
+  </div>
+  <nav aria-label="Legal"><a href="/markets">Markets</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/risk">Risk</a><a href="/imprint">Imprint</a></nav>
+</div></footer>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="/js/theme.js"></script><script src="/js/markets.js" defer></script><script src="/js/chat.js" defer></script>
+</body>
+</html>

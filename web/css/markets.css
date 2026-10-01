@@ -1,0 +1,157 @@
+/* Markets hub: weekly calls written like a desk note, with the numbers behind each one. Tokens come from base.css. */
+.mkt .top nav a[aria-current=page]{color:var(--white);background:var(--carbon2)}
+.mkt .up{color:var(--ice)}.mkt .dn{color:var(--loss)}
+.mkt h4{margin:0;font:600 13px var(--body);color:var(--muted)}
+
+/* ---------------------------------------------------------------- heading */
+.mk-head{padding:56px 0 26px}
+.mk-head h1{font:800 clamp(36px,5vw,64px)/1 var(--disp);letter-spacing:-.04em}
+.mk-head .lede{margin-top:18px;max-width:66ch;color:var(--txt2);font-size:18px}
+.mk-meta{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:22px;font-size:14px;color:var(--muted)}
+.mk-meta b{color:var(--white);font-weight:600}
+
+/* ---------------------------------------------------------------- next releases */
+.mk-next{border-block:1px solid var(--edge);background:rgba(255,255,255,.012)}
+.mk-next ol{list-style:none;margin:0;padding:12px 0;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
+.mk-next ol::-webkit-scrollbar{display:none}
+.mk-next li{flex:none;display:grid;grid-template-columns:auto auto;gap:2px 8px;align-items:baseline;padding:9px 13px;border:1px solid var(--edge);border-radius:12px;background:var(--carbon);font-size:13.5px;max-width:300px}
+.mk-next li time{grid-column:1/-1;font-size:11.5px;color:var(--muted)}
+.mk-next li b{font:600 12px var(--mono);color:var(--gold)}
+.mk-next li span:not(.cd){white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mk-next .cd{grid-column:1/-1;font-size:11.5px;color:var(--ice)}
+.mk-next .cd:empty{display:none}
+
+/* ---------------------------------------------------------------- the board */
+.mk-boardw{padding:40px 0 10px}
+.mk-bh{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:14px}
+.mk-bh h2,.mk-cls,.mk-method h2{font:800 clamp(22px,2.6vw,30px)/1.1 var(--disp);letter-spacing:-.03em}
+.tblw{overflow-x:auto;border:1px solid var(--edge);border-radius:16px;background:var(--carbon)}
+.board{width:100%;border-collapse:collapse;font-size:14px}
+.board th,.board td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--edge);white-space:nowrap}
+.board tbody tr:last-child>*{border-bottom:0}
+.board thead th{font-size:12px;font-weight:500;color:var(--muted);background:rgba(255,255,255,.015)}
+.board tbody th{font-weight:600}
+.board tbody th a{text-decoration:none}
+.board tbody th a:hover{color:var(--ice)}
+.board tbody th span{margin-left:8px;font-size:11.5px;color:var(--muted);font-weight:400}
+.board tbody tr:hover{background:rgba(255,255,255,.02)}
+.board td.num{font-family:var(--mono)}
+.pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12.5px;font-weight:600;background:rgba(255,255,255,.07);color:var(--txt2);white-space:nowrap}
+.pill.up{background:rgba(var(--ice-rgb),.13);color:var(--ice)}
+.pill.dn{background:rgba(var(--loss-rgb),.13);color:var(--loss)}
+.sc{display:flex;align-items:center;gap:10px}
+.bar{position:relative;display:block;width:110px;height:6px;border-radius:3px;background:rgba(255,255,255,.06)}
+.bar::after{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--edge2)}
+.bar i{position:absolute;top:0;bottom:0;border-radius:3px}
+.bar i.pos{left:50%;background:var(--ice)}
+.bar i.neg{right:50%;background:var(--loss)}
+.sc .num{font-size:12.5px;color:var(--txt2);min-width:40px}
+.pctl{position:relative;display:inline-block;width:110px;height:6px;border-radius:3px;background:linear-gradient(90deg,rgba(var(--loss-rgb),.45),rgba(255,255,255,.08) 30%,rgba(255,255,255,.08) 70%,rgba(var(--ice-rgb),.45));vertical-align:middle}
+.pctl i{position:absolute;top:-4px;width:3px;height:14px;margin-left:-1.5px;border-radius:2px;background:var(--white)}
+.pctl.sm{width:90px}
+
+/* ---------------------------------------------------------------- the briefs */
+.mk-briefs{padding:40px 0 20px}
+.mk-tabs{display:flex;margin:0 0 6px;padding-inline:0}
+.mk-cls{margin:34px 0 14px}
+.mk-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+.bf{position:relative;display:flex;flex-direction:column;gap:14px;padding:22px 22px 18px;border:1px solid var(--edge);border-radius:18px;background:var(--carbon);scroll-margin-top:90px;min-width:0}
+.bf:target{border-color:rgba(var(--ice-rgb),.55)}
+.bf-h{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 14px;align-items:end}
+.bf-t{grid-column:1/-1;font-size:11.5px;letter-spacing:.04em;color:var(--muted)}
+.bf-n{font:800 22px/1.15 var(--disp);letter-spacing:-.02em}
+.bf.full .bf-n{font-size:clamp(30px,4vw,44px)}
+.bf-n a{text-decoration:none}
+.bf-n a:hover{color:var(--ice)}
+.bf-sym{margin-left:6px;font:500 12px var(--mono);letter-spacing:0;color:var(--muted);vertical-align:middle}
+.bf-call{display:flex;align-items:center;gap:8px;justify-self:end;font-size:14px;white-space:nowrap}
+.bf-call b{font-weight:700}
+.bf-call.up b{color:var(--ice)}.bf-call.dn b{color:var(--loss)}.bf-call.flat b{color:var(--txt2)}
+.bf-call .cf{font-size:12.5px;color:var(--muted)}
+.conf{display:inline-flex;gap:3px}
+.conf i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.14)}
+.bf-call.up .conf i{--c:var(--ice)}.bf-call.dn .conf i{--c:var(--loss)}
+.conf[data-c=low] i:nth-child(-n+1),.conf[data-c=moderate] i:nth-child(-n+2),.conf[data-c=high] i{background:var(--c)}
+.bf-px{font-size:15px;color:var(--white)}
+.bf-live{display:flex;align-items:center;gap:7px;margin-top:-6px;font-size:13px;color:var(--muted)}
+.bf-live .dot{width:7px;height:7px;border-radius:50%;background:var(--ice);animation:pulse 1.6s infinite}
+.bf-live b{color:var(--white);font-weight:600}
+.bf-body{display:flex;flex-direction:column;gap:14px}
+.bf-s ul,.bf-wl{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.bf-s li{display:grid;grid-template-columns:18px minmax(0,1fr);gap:9px;font-size:14.5px;line-height:1.5;color:var(--txt2)}
+.bf-s li svg{width:16px;height:16px;margin-top:3px}
+.bf-s .pro svg{color:var(--ice)}.bf-s .con svg{color:var(--loss)}
+.bf-v{padding:12px 14px;border-left:3px solid var(--edge2);border-radius:4px 10px 10px 4px;background:rgba(255,255,255,.025);font-size:15px;line-height:1.5;color:var(--white)}
+.bf:has(.bf-call.up) .bf-v{border-left-color:var(--ice)}
+.bf:has(.bf-call.dn) .bf-v{border-left-color:var(--loss)}
+.bf-w h4{display:flex;align-items:center;gap:7px}
+.bf-w h4 svg{width:16px;height:16px;color:var(--gold)}
+.bf-wl li{display:grid;grid-template-columns:118px minmax(0,1fr);gap:10px;font-size:13.5px;color:var(--txt2)}
+.bf-wl time{font-size:12px;color:var(--muted);padding-top:1px}
+.bf-wl b{font:600 11.5px var(--mono);color:var(--gold);margin-right:4px}
+.bf-wl em{font-style:normal;color:var(--muted);font-size:12.5px}
+.bf-f{display:flex;flex-direction:column;gap:9px;padding-top:14px;border-top:1px solid var(--edge)}
+.bf-cot{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;font-size:13px;color:var(--txt2)}
+.bf-cot b{color:var(--white);font-weight:600}
+.bf-act{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.bf-act .btn svg{width:14px;height:14px}
+.bf-more{display:none}
+
+/* ---------------------------------------------------------------- one market */
+.mk-one{padding:30px 0 20px}
+.crumbs{font-size:13px;color:var(--muted);margin-bottom:16px}
+.crumbs a{color:var(--txt2);text-decoration:none}
+.crumbs a:hover{color:var(--white)}
+.mk-onegrid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:20px;align-items:start}
+.mk-side{display:flex;flex-direction:column;gap:16px;position:sticky;top:90px}
+.mk-chart,.mk-hist{margin:0;padding:18px;border:1px solid var(--edge);border-radius:18px;background:var(--carbon)}
+.mk-chart figcaption{display:flex;flex-direction:column;gap:3px;margin-bottom:10px;font-size:14px}
+.mk-chart svg{display:block;width:100%;height:auto}
+.mk-chart .ln{fill:none;stroke:var(--gold);stroke-width:2;vector-effect:non-scaling-stroke}
+.mk-chart .bu{fill:var(--ice)}.mk-chart .be{fill:var(--loss)}
+.mk-chart .miss{fill:none;stroke-width:1.3}.mk-chart .bu.miss{stroke:var(--ice)}.mk-chart .be.miss{stroke:var(--loss)}
+.mk-chart .open{opacity:.45}
+.mk-chart .ax{fill:var(--muted);font:11px var(--mono)}
+.mk-hist h3{font-size:16px;margin-bottom:10px}
+.mk-hist table{width:100%;border-collapse:collapse;font-size:13.5px}
+.mk-hist th,.mk-hist td{padding:7px 6px;text-align:left;border-bottom:1px solid var(--edge)}
+.mk-hist th{font-size:12px;font-weight:500;color:var(--muted)}
+.mk-hist .fine{margin-top:10px}
+
+/* ---------------------------------------------------------------- method and disclosures */
+.mk-method{padding:56px 0 64px;margin-top:30px;border-top:1px solid var(--edge)}
+.mk-cols{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:40px;margin-top:20px}
+.mk-cols p{color:var(--txt2);max-width:68ch}
+.mk-cols p+p{margin-top:12px}
+.mk-f{display:grid;gap:10px;margin:22px 0 0}
+.mk-f div{display:grid;grid-template-columns:120px minmax(0,1fr);gap:12px;font-size:14px}
+.mk-f dt{font-weight:600}.mk-f dd{margin:0;color:var(--txt2)}
+.mk-disc{padding:22px;border:1px solid var(--edge);border-radius:18px;background:var(--carbon);font-size:14px}
+.mk-disc h3{font-size:15px;margin-bottom:8px}
+.mk-disc h3+p{margin-top:0}
+.mk-disc p+h3{margin-top:20px}
+.mk-src{margin:0;padding-left:18px;color:var(--txt2);display:flex;flex-direction:column;gap:6px}
+
+/* ---------------------------------------------------------------- smaller screens */
+@media (max-width:1000px){
+  .mk-grid{grid-template-columns:1fr}
+  .mk-onegrid,.mk-cols{grid-template-columns:1fr}
+  .mk-side{position:static}
+}
+@media (max-width:760px){
+  .mk-head{padding:34px 0 18px}
+  .mk-head .lede{font-size:16px}
+  .mk-meta{flex-direction:column;gap:4px;font-size:13px}
+  .mk-boardw{padding-top:26px}
+  .board th,.board td{padding:9px 10px}
+  .board tbody th span,.hide-s,.board .sc,.board thead th:nth-child(3){display:none}
+  .bf{padding:18px 16px 14px;gap:12px}
+  .bf-h{grid-template-columns:1fr}
+  .bf-call{justify-self:start}
+  .bf-wl li{grid-template-columns:1fr;gap:1px}
+  /* on phones each brief opens on demand, so the page stays short */
+  .js .bf:not(.open):not(.full) :is(.bf-body,.bf-w,.bf-f){display:none}
+  .js .bf:not(.full) .bf-more{display:flex;align-self:flex-start}
+  .mk-f div{grid-template-columns:1fr;gap:2px}
+}
+@media (prefers-reduced-motion:reduce){.bf-live .dot{animation:none}}

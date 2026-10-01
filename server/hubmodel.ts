@@ -1,0 +1,406 @@
+/*
+ * Markets hub, the model. A weekly call per market from a transparent factor score:
+ * every factor is a measured fact (a price, a yield, a positioning number) turned into a score between -1 and +1
+ * for that market, with a fixed weight. The call is the weighted average. The same rules run over past weeks
+ * to give an honest backtest. Text is written from the numbers, so every bullet can be checked.
+ */
+import { calendar, cotRows, lastOf, series, spot, type Ev } from "./hubdata";
+
+// ================================================================ markets
+export type Cls = "metals" | "energy" | "fx" | "crypto";
+type CotCat = "mm" | "lev" | "am";
+export type Asset = {
+  id: string; name: string; short: string; sym: string; cls: Cls; dp: number; pre: string; ccy: string[];
+  hist: string; live?: string; scaleTo?: string;            // price history series; live spot; rescale a proxy to the live spot
+  cot?: { code: string; cat: CotCat; inv?: boolean; what: string };
+  usdInv?: boolean;                                          // quoted USD per unit (EURUSD) vs units per USD (USDJPY)
+  factors: string[]; level: number;                          // level: round-number step for "cleared $4,500"
+};
+const METAL = ["trend", "stretch", "cot", "crowd", "dollar", "realYield", "ryLevel", "fed", "vixHaven"];
+export const ASSETS: Asset[] = [
+  { id: "gold", name: "Gold", short: "gold", sym: "XAUUSD", cls: "metals", dp: 0, pre: "$", ccy: ["USD"], hist: "px:PAXG", live: "XAU", scaleTo: "XAU", cot: { code: "088691", cat: "mm", what: "" }, factors: METAL, level: 100 },
+  { id: "silver", name: "Silver", short: "silver", sym: "XAGUSD", cls: "metals", dp: 2, pre: "$", ccy: ["USD"], hist: "spot:XAG", live: "XAG", cot: { code: "084691", cat: "mm", what: "" }, factors: ["trend", "stretch", "cot", "crowd", "dollar", "realYield", "fed", "vixRisk"], level: 1 },
+  { id: "platinum", name: "Platinum", short: "platinum", sym: "XPTUSD", cls: "metals", dp: 0, pre: "$", ccy: ["USD"], hist: "spot:XPT", live: "XPT", cot: { code: "076651", cat: "mm", what: "" }, factors: ["trend", "stretch", "cot", "crowd", "dollar", "vixRisk"], level: 50 },
+  { id: "copper", name: "Copper", short: "copper", sym: "HG", cls: "metals", dp: 3, pre: "$", ccy: ["USD", "CNY"], hist: "spot:HG", live: "HG", cot: { code: "085692", cat: "mm", what: "" }, factors: ["trend", "stretch", "cot", "crowd", "dollar", "vixRisk"], level: 0.25 },
+  { id: "wti", name: "WTI crude oil", short: "oil", sym: "USOIL", cls: "energy", dp: 2, pre: "$", ccy: ["USD"], hist: "fred:DCOILWTICO", cot: { code: "067651", cat: "mm", what: "" }, factors: ["trend", "stretch", "cot", "crowd", "dollar", "stocks", "vixRisk"], level: 5 },
+  { id: "brent", name: "Brent crude oil", short: "Brent", sym: "UKOIL", cls: "energy", dp: 2, pre: "$", ccy: ["USD"], hist: "fred:DCOILBRENTEU", cot: { code: "06765T", cat: "mm", what: "" }, factors: ["trend", "stretch", "cot", "crowd", "dollar", "stocks", "vixRisk"], level: 5 },
+  { id: "natgas", name: "Natural gas", short: "gas", sym: "NGAS", cls: "energy", dp: 2, pre: "$", ccy: ["USD"], hist: "fred:DHHNGSP", cot: { code: "023651", cat: "mm", what: "" }, factors: ["trend", "stretch", "cot"], level: 0.5 },
+  { id: "eurusd", name: "EUR/USD", short: "the euro", sym: "EURUSD", cls: "fx", dp: 4, pre: "", ccy: ["USD", "EUR"], hist: "fx:EUR", usdInv: true, cot: { code: "099741", cat: "lev", what: "euro" }, factors: ["trend", "stretch", "cot", "crowd", "fed", "vixRisk0"], level: 0.01 },
+  { id: "gbpusd", name: "GBP/USD", short: "the pound", sym: "GBPUSD", cls: "fx", dp: 4, pre: "", ccy: ["USD", "GBP"], hist: "fx:GBP", usdInv: true, cot: { code: "096742", cat: "lev", what: "pound" }, factors: ["trend", "stretch", "cot", "crowd", "fed", "vixRisk0"], level: 0.01 },
+  { id: "usdjpy", name: "USD/JPY", short: "dollar-yen", sym: "USDJPY", cls: "fx", dp: 2, pre: "", ccy: ["USD", "JPY"], hist: "fx:JPY", cot: { code: "097741", cat: "lev", inv: true, what: "yen" }, factors: ["trend", "stretch", "cot", "crowd", "fed", "vixHavenFx"], level: 1 },
+  { id: "audusd", name: "AUD/USD", short: "the Aussie", sym: "AUDUSD", cls: "fx", dp: 4, pre: "", ccy: ["USD", "AUD", "CNY"], hist: "fx:AUD", usdInv: true, cot: { code: "232741", cat: "lev", what: "Australian dollar" }, factors: ["trend", "stretch", "cot", "crowd", "fed", "vixRisk"], level: 0.01 },
+  { id: "usdcad", name: "USD/CAD", short: "dollar-CAD", sym: "USDCAD", cls: "fx", dp: 4, pre: "", ccy: ["USD", "CAD"], hist: "fx:CAD", cot: { code: "090741", cat: "lev", inv: true, what: "Canadian dollar" }, factors: ["trend", "stretch", "cot", "crowd", "fed", "oilCad"], level: 0.01 },
+  { id: "usdchf", name: "USD/CHF", short: "dollar-franc", sym: "USDCHF", cls: "fx", dp: 4, pre: "", ccy: ["USD", "CHF"], hist: "fx:CHF", cot: { code: "092741", cat: "lev", inv: true, what: "Swiss franc" }, factors: ["trend", "stretch", "cot", "crowd", "fed", "vixHavenFx"], level: 0.01 },
+  { id: "nzdusd", name: "NZD/USD", short: "the kiwi", sym: "NZDUSD", cls: "fx", dp: 4, pre: "", ccy: ["USD", "NZD"], hist: "fx:NZD", usdInv: true, cot: { code: "112741", cat: "lev", what: "New Zealand dollar" }, factors: ["trend", "stretch", "cot", "crowd", "fed", "vixRisk"], level: 0.01 },
+  { id: "btc", name: "Bitcoin", short: "bitcoin", sym: "BTCUSD", cls: "crypto", dp: 0, pre: "$", ccy: ["USD"], hist: "px:BTC", live: "BTC", cot: { code: "133741", cat: "am", what: "bitcoin" }, factors: ["trend", "stretch", "cot", "crowd", "dollar", "realYield", "fed", "vixRisk"], level: 5000 },
+  { id: "eth", name: "Ether", short: "ether", sym: "ETHUSD", cls: "crypto", dp: 0, pre: "$", ccy: ["USD"], hist: "px:ETH", live: "ETH", cot: { code: "146021", cat: "am", what: "ether" }, factors: ["trend", "stretch", "cot", "crowd", "dollar", "realYield", "fed", "vixRisk"], level: 250 },
+];
+export const CLASSES: { id: Cls; name: string }[] = [{ id: "metals", name: "Metals" }, { id: "energy", name: "Energy" }, { id: "fx", name: "Forex" }, { id: "crypto", name: "Crypto" }];
+const W: Record<string, number> = { trend: 1.2, stretch: 0.8, cot: 0.8, crowd: 0.5, dollar: 1, realYield: 1, ryLevel: 0.5, fed: 0.8, vixHaven: 0.5, vixRisk: 0.6, vixRisk0: 0.4, vixHavenFx: 0.6, stocks: 0.7, oilCad: 0.7 };
+export const FACTOR_INFO: [string, string][] = [
+  ["Trend", "Price against its 20 week and 50 week averages."],
+  ["Stretch", "Weekly RSI. Above 70 counts against more upside, below 30 against more downside."],
+  ["Positioning", "CFTC Commitments of Traders: the weekly change in the net position of hedge funds (managed money), leveraged funds or asset managers, and how crowded it is against the last 3 years."],
+  ["Dollar", "The dollar index, calculated with the DXY weights from ECB reference rates. A weaker dollar helps dollar-priced metals, oil and crypto."],
+  ["Real yields", "10 year inflation-protected Treasury yield (FRED DFII10): the change over 4 weeks, and the level against 10 years."],
+  ["Fed path", "The 4 week change in 2 year Treasury yields (FRED DGS2), the market's read of where the Fed is heading."],
+  ["Fear gauge", "The VIX (Cboe, via FRED). Fear supports gold, the yen and the franc, and weighs on oil, copper, crypto and the Aussie and kiwi."],
+  ["Oil stocks", "Weekly US crude inventories (EIA, via FRED WCESTUS1)."],
+  ["Oil and CAD", "The 4 week change in WTI, which tends to move the Canadian dollar."],
+];
+export const THRESH = { lean: 0.1, firm: 0.3 };
+
+// ================================================================ weekly alignment
+const DAYMS = 86_400_000;
+const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+export function lastCompletedFriday(nowMs = Date.now()) {
+  const d = new Date(iso(nowMs) + "T00:00:00Z"); let t = d.getTime() - DAYMS;     // a Friday counts once it's over (UTC)
+  while (new Date(t).getUTCDay() !== 5) t -= DAYMS;
+  return iso(t);
+}
+export function fridays(from: string, to: string) {
+  const out: string[] = []; let t = Date.parse(from + "T00:00:00Z");
+  while (new Date(t).getUTCDay() !== 5) t += DAYMS;
+  for (const end = Date.parse(to + "T00:00:00Z"); t <= end; t += 7 * DAYMS) out.push(iso(t));
+  return out;
+}
+type Row = { d: string; v: number };
+export function weekly(rows: Row[], weeks: string[], stale = 9) {
+  const out: (number | null)[] = []; let j = 0, last: Row | null = null;
+  for (const w of weeks) {
+    while (j < rows.length && rows[j].d <= w) last = rows[j++];
+    out.push(last && (Date.parse(w) - Date.parse(last.d)) / DAYMS <= stale ? last.v : null);
+  }
+  return out;
+}
+const nz = (x: number | null | undefined): x is number => typeof x === "number" && Number.isFinite(x);
+
+// the dollar index, DXY weights on ECB reference rates (rates are units of currency per US dollar)
+function dxyRows(): Row[] {
+  const ccy: [string, number][] = [["EUR", 0.576], ["JPY", 0.136], ["GBP", 0.119], ["CAD", 0.091], ["SEK", 0.042], ["CHF", 0.036]];
+  const maps = ccy.map(([c]) => new Map(series("ecb:" + c).map((r) => [r.d, r.v])));
+  return series("ecb:EUR").map((r) => {
+    let v = 50.14348112;
+    for (let k = 0; k < ccy.length; k++) { const x = maps[k].get(r.d); if (!x) return null; v *= Math.pow(x, ccy[k][1]); }
+    return { d: r.d, v };
+  }).filter(Boolean) as Row[];
+}
+function priceRows(a: Asset): Row[] {
+  if (a.hist.startsWith("fx:")) {
+    const rows = series("ecb:" + a.hist.slice(3));
+    return a.usdInv ? rows.map((r) => ({ d: r.d, v: 1 / r.v })) : rows;
+  }
+  let rows = series(a.hist);
+  if (a.scaleTo) {                                           // PAX Gold history, rescaled so the latest close matches spot gold
+    const sp = lastOf("spot:" + a.scaleTo), pr = rows.length ? rows[rows.length - 1].v : 0;
+    const k = sp && pr ? sp.v / pr : 1;
+    if (k > 0.9 && k < 1.1) rows = rows.map((r) => ({ d: r.d, v: r.v * k }));
+  }
+  return rows;
+}
+
+// ================================================================ small statistics
+const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / (xs.length || 1);
+const sd = (xs: number[]) => { const m = mean(xs); return Math.sqrt(mean(xs.map((x) => (x - m) ** 2))) || 0; };
+const clamp = (x: number, a: number, b: number) => Math.max(a, Math.min(b, x));
+function back(arr: (number | null)[], i: number, n: number) { const out: number[] = []; for (let k = Math.max(0, i - n + 1); k <= i; k++) if (nz(arr[k])) out.push(arr[k]!); return out; }
+function sma(arr: (number | null)[], i: number, n: number) { const xs = back(arr, i, n); return xs.length >= n * 0.9 ? mean(xs) : null; }
+function changes(arr: (number | null)[], i: number, n: number, pct = true) {
+  const out: number[] = [];
+  for (let k = Math.max(1, i - n + 1); k <= i; k++) if (nz(arr[k]) && nz(arr[k - 1])) out.push(pct ? arr[k]! / arr[k - 1]! - 1 : arr[k]! - arr[k - 1]!);
+  return out;
+}
+function rsi(arr: (number | null)[], i: number, n = 14) {
+  const ch = changes(arr, i, n); if (ch.length < n - 2) return null;
+  const up = mean(ch.map((c) => Math.max(0, c))), dn = mean(ch.map((c) => Math.max(0, -c)));
+  return dn === 0 ? 100 : 100 - 100 / (1 + up / dn);
+}
+const pctRank = (xs: number[], v: number) => (xs.length ? xs.filter((x) => x < v).length / xs.length : 0.5);
+function prevVal(arr: (number | null)[], i: number, k = 1) { const j = i - k; return j >= 0 && nz(arr[j]) ? arr[j]! : null; }
+
+// ================================================================ formatting
+const nf = (v: number, dp = 0) => v.toLocaleString("en-US", { minimumFractionDigits: dp, maximumFractionDigits: dp });
+export const fmtPx = (a: Asset, v: number) => a.pre + nf(v, a.dp);
+const pctS = (x: number) => { const p = Math.abs(x * 100); return (p >= 10 ? nf(p, 0) : p >= 1 ? nf(p, 1) : nf(p, 2)) + "%"; };
+function about(n: number) { const a = Math.abs(n); const r = a >= 100_000 ? 1000 : a >= 10_000 ? 1000 : a >= 1000 ? 100 : 10; return nf(Math.round(a / r) * r); }
+const months = (w: number) => (w >= 52 ? "1 year" : w >= 26 ? "6 month" : "3 month");
+
+// ================================================================ the inputs, as weekly arrays
+export type Ctx = {
+  weeks: string[]; px: Record<string, (number | null)[]>; pxDate: Record<string, string>;
+  dxy: (number | null)[]; ry: (number | null)[]; y2: (number | null)[]; vix: (number | null)[]; wti: (number | null)[]; stocks: (number | null)[];
+  cot: Record<string, { net: (number | null)[]; name: string }>;
+};
+export function buildCtx(nowMs = Date.now()): Ctx {
+  const end = lastCompletedFriday(nowMs), weeks = fridays("2017-01-06", end);
+  const px: Ctx["px"] = {}, pxDate: Ctx["pxDate"] = {};
+  for (const a of ASSETS) { const rows = priceRows(a); px[a.id] = weekly(rows, weeks, 6); pxDate[a.id] = rows.length ? rows[rows.length - 1].d : ""; }
+  const cot: Ctx["cot"] = {};
+  for (const a of ASSETS) if (a.cot) {
+    const rows = cotRows(a.cot.code), cat = a.cot.cat;
+    // a Tuesday report is public that Friday, so it belongs to the week ending three days later
+    const net = rows.map((r: any) => ({ d: iso(Date.parse(r.d) + 3 * DAYMS), v: nz(r[cat + "_l"]) && nz(r[cat + "_s"]) ? r[cat + "_l"] - r[cat + "_s"] : NaN })).filter((r: Row) => Number.isFinite(r.v));
+    cot[a.id] = { net: weekly(net, weeks, 6), name: rows.length ? rows[rows.length - 1].name : "" };
+  }
+  return {
+    weeks, px, pxDate, cot,
+    dxy: weekly(dxyRows(), weeks), ry: weekly(series("fred:DFII10"), weeks), y2: weekly(series("fred:DGS2"), weeks),
+    vix: weekly(series("fred:VIXCLS"), weeks), wti: weekly(series("fred:DCOILWTICO"), weeks, 10), stocks: weekly(series("fred:WCESTUS1"), weeks, 10),
+  };
+}
+
+// ================================================================ the factors
+export type F = { key: string; s: number; w: number; text: string; short: string };
+const WHO: Record<CotCat, string> = { mm: "Hedge funds", lev: "Leveraged funds", am: "Asset managers" };
+const usdBased = (a: Asset) => a.cls !== "fx";                 // priced in dollars, so a weaker dollar helps
+const DOLLAR_WHY: Record<Cls, string> = { metals: "making {x} cheaper for buyers outside the US", energy: "which makes {x} cheaper for buyers outside the US", crypto: "and a softer dollar has tended to go with firmer crypto", fx: "" };
+
+function factor(key: string, a: Asset, c: Ctx, i: number): F | null {
+  const p = c.px[a.id], w = W[key] ?? 1, x = a.short;
+  const mk = (s: number, text: string, short: string): F => ({ key, s: clamp(s, -1, 1), w, text, short });
+  switch (key) {
+    case "trend": {
+      const v = p[i], m20 = sma(p, i, 20), m50 = sma(p, i, 50);
+      if (!nz(v) || m20 === null || m50 === null) return null;
+      if (v > m20 && v > m50) return mk(m20 > m50 ? 0.9 : 0.6, `Price sits above its 20 week and 50 week averages, with the 50 week near ${fmtPx(a, m50)}.`, "an intact uptrend");
+      if (v < m20 && v < m50) return mk(m20 < m50 ? -0.9 : -0.6, `Price is below its 20 week and 50 week averages, with the 50 week near ${fmtPx(a, m50)} overhead.`, "a downtrend");
+      return mk(0, `Price is between its 20 week (${fmtPx(a, m20)}) and 50 week (${fmtPx(a, m50)}) averages.`, "a mixed trend");
+    }
+    case "stretch": {
+      const r = rsi(p, i), v = p[i], pv = prevVal(p, i);
+      if (r === null || !nz(v) || pv === null) return null;
+      const ch = v / pv - 1, wk = Math.abs(ch) >= 0.02 ? `${a.name} ${ch > 0 ? "rose" : "fell"} ${pctS(ch)} in a week and ` : "";
+      if (r >= 70) return mk(-0.4 - (r - 70) / 40, `${wk}${wk ? "m" : "M"}omentum is near overbought (weekly RSI ${nf(r)}).`, "stretched momentum");
+      if (r <= 30) return mk(0.4 + (30 - r) / 40, `${wk}${wk ? "m" : "M"}omentum is near oversold (weekly RSI ${nf(r)}), which often slows the selling.`, "oversold momentum");
+      return mk(0, `Weekly RSI is ${nf(r)}, neither stretched nor oversold.`, "");
+    }
+    case "cot": case "crowd": {
+      const ct = a.cot && c.cot[a.id]; if (!ct) return null;
+      const n = ct.net, v = n[i], pv = prevVal(n, i);
+      if (!nz(v) || pv === null) return null;
+      const d = v - pv, sdD = sd(changes(n, i, 104, false)), hist = back(n, i, 156);
+      if (hist.length < 52 || !sdD) return null;
+      const pr = pctRank(hist, v), sign = a.cot!.inv ? -1 : 1, what = a.cot!.what ? a.cot!.what + " " : "", who = WHO[a.cot!.cat];
+      const extreme = pr >= 0.9 || pr <= 0.1;
+      if (key === "crowd") {
+        if (!extreme) return mk(0, "", "");
+        // positioning at a 3 year extreme leaves fewer new buyers (or sellers) to push it further
+        const longSide = pr >= 0.9;
+        const txt = v >= 0
+          ? (longSide ? `At about ${about(v)} net long ${what}contracts, ${who.toLowerCase()} are near their biggest bet in 3 years, so the trade is crowded.` : `${who} hold only about ${about(v)} net long ${what}contracts, near a 3 year low, so there's room to buy.`)
+          : (longSide ? `${who}' net short of about ${about(v)} ${what}contracts is the smallest in 3 years.` : `${who} are about ${about(v)} ${what}contracts net short, near the biggest short in 3 years, so the trade is crowded.`);
+        return mk((longSide ? -0.45 : 0.45) * sign, txt, longSide ? (sign > 0 ? "crowded longs" : `a crowded ${a.cot!.what} long`) : (sign > 0 ? "room to buy" : `a crowded ${a.cot!.what} short`));
+      }
+      const z = d / sdD;
+      if (Math.abs(z) < 0.25) return mk(0, "", "");
+      const lvl = extreme ? "" : `, and at ${about(v)} the bet is ${pr >= 0.7 ? "on the high side for 3 years" : pr <= 0.3 ? "on the low side for 3 years" : "only mid range"}`;
+      const text = v >= 0
+        ? `${who} ${d >= 0 ? "added" : "cut"} about ${about(d)} net long ${what}contracts${lvl}.`
+        : `${who} ${d <= 0 ? "added about " + about(d) + " contracts to" : "trimmed about " + about(d) + " contracts from"} their net short ${what}position${extreme ? "" : `, now about ${about(v)}`}.`;
+      const sh = d * sign > 0 ? (a.cot!.inv ? `funds selling the ${a.cot!.what}` : "funds adding exposure") : (a.cot!.inv ? `funds buying the ${a.cot!.what}` : "funds cutting exposure");
+      return mk(clamp(z, -1.5, 1.5) * 0.45 * sign, text, sh);
+    }
+    case "dollar": {
+      if (!usdBased(a)) return null;
+      const v = c.dxy[i], pv = prevVal(c.dxy, i); if (!nz(v) || pv === null) return null;
+      const ch = v / pv - 1, s0 = sd(changes(c.dxy, i, 52)); if (!s0) return null;
+      const lo = back(c.dxy, i, 13), hi13 = Math.max(...lo), lo13 = Math.min(...lo);
+      const tag = v <= lo13 ? `, a ${months(13)} low` : v >= hi13 ? `, a ${months(13)} high` : "";
+      const why = DOLLAR_WHY[a.cls].replace("{x}", x);
+      if (Math.abs(ch) < 0.0015) return mk(0, `The dollar index was flat at ${nf(v, 2)}.`, "");
+      return ch < 0
+        ? mk(-clamp(ch / s0, -1.5, 1.5) * 0.55, `The dollar index fell ${pctS(ch)} to ${nf(v, 2)}${tag}, ${why}.`, "a weaker dollar")
+        : mk(-clamp(ch / s0, -1.5, 1.5) * 0.55, `The dollar index rose ${pctS(ch)} to ${nf(v, 2)}${tag}${a.cls === "crypto" ? ", a headwind for crypto" : `, which makes ${x} dearer outside the US`}.`, "a firmer dollar");
+    }
+    case "realYield": {
+      const v = c.ry[i], p1 = prevVal(c.ry, i), p4 = prevVal(c.ry, i, 4); if (!nz(v) || p1 === null || p4 === null) return null;
+      const d1 = v - p1, d4 = v - p4, s = -clamp(d4 / 0.2, -1, 1) * 0.6 - clamp(d1 / 0.1, -1, 1) * 0.2;
+      const dd = Math.abs(d1) >= 0.03 ? d1 : d4, when = Math.abs(d1) >= 0.03 ? "" : " over four weeks";
+      if (Math.abs(dd) < 0.03) return mk(0, `Inflation adjusted 10 year yields were steady at ${nf(v, 2)}%.`, "");
+      return dd < 0
+        ? mk(s, `Inflation adjusted 10 year yields eased to ${nf(v, 2)}%${when}, so holding ${x} costs slightly less.`, "lower real yields")
+        : mk(s, `Inflation adjusted 10 year yields rose to ${nf(v, 2)}%${when}, which raises the cost of holding ${x}.`, "rising real yields");
+    }
+    case "ryLevel": {
+      const v = c.ry[i]; if (!nz(v)) return null;
+      const hist = back(c.ry, i, 520); if (hist.length < 150) return null;
+      const pr = pctRank(hist, v);
+      if (pr >= 0.85) return mk(-0.35, `Real yields at ${nf(v, 2)}% are still historically high, so cash and bonds pay well.`, "high real yields");
+      if (pr <= 0.15) return mk(0.35, `Real yields at ${nf(v, 2)}% are low against the last 10 years, which suits ${x}.`, "low real yields");
+      return mk(0, "", "");
+    }
+    case "fed": {
+      const v = c.y2[i], p4 = prevVal(c.y2, i, 4); if (!nz(v) || p4 === null) return null;
+      const d = v - p4, usdUp = d > 0;
+      if (Math.abs(d) < 0.12) return mk(0, `Two year Treasury yields are little changed over four weeks at ${nf(v, 2)}%.`, "");
+      const txt = `Two year Treasury yields ${usdUp ? "rose" : "fell"} ${nf(Math.abs(d), 2)} points in four weeks to ${nf(v, 2)}%, so markets are pricing ${usdUp ? "a more hawkish Fed" : "more Fed cuts"}.`;
+      const k = clamp(Math.abs(d) / 0.3, 0.4, 1) * 0.6;
+      // a hawkish Fed lifts the dollar: bad for metals and crypto and for EURUSD-type pairs, good for USDJPY-type pairs
+      const forUsd = a.cls === "fx" ? (a.usdInv ? -1 : 1) : -1;
+      return mk((usdUp ? 1 : -1) * forUsd * k, txt, usdUp ? (forUsd > 0 ? "a more hawkish Fed" : "a more hawkish Fed") : "more Fed cuts priced");
+    }
+    case "vixHaven": case "vixRisk": case "vixRisk0": case "vixHavenFx": {
+      const v = c.vix[i], pv = prevVal(c.vix, i); if (!nz(v) || pv === null) return null;
+      const hist = back(c.vix, i, 52); if (hist.length < 40) return null;
+      const pr = pctRank(hist, v), d = v - pv;
+      if (key === "vixHaven") {
+        if (pr <= 0.15) return mk(-0.3, `The VIX sits near ${nf(v)}, close to a 52 week low, so there is no fear bid.`, "no fear bid");
+        if (pr >= 0.85 || d >= 4) return mk(0.35, `The VIX is up at ${nf(v)}${d >= 4 ? `, ${nf(d)} points higher on the week` : ", near a 52 week high"}, and fear tends to support gold.`, "a fear bid");
+        return mk(0, "", "");
+      }
+      if (key === "vixHavenFx") {
+        const ccyName = a.id === "usdjpy" ? "yen" : "franc";
+        if (d >= 3 || pr >= 0.85) return mk(-0.45, `The VIX jumped to ${nf(v)}, and the ${ccyName} tends to gain when fear rises.`, `a fear bid for the ${ccyName}`);
+        if (pr <= 0.2 && d <= 0) return mk(0.3, `The VIX is near ${nf(v)}, close to a 52 week low, so there is little demand for the ${ccyName} as a safe haven.`, "calm markets");
+        return mk(0, "", "");
+      }
+      const k = key === "vixRisk0" ? 0.6 : 1;
+      if (d >= 3 || pr >= 0.85) return mk(-0.45 * k, `The VIX jumped to ${nf(v)}${d >= 3 ? `, up ${nf(d)} points on the week` : ""}, a sign that investors are cutting risk.`, "rising fear");
+      if (pr <= 0.2 && d <= 0) return mk(0.3 * k, `The VIX eased to ${nf(v)}, close to a 52 week low, so markets are calm${a.cls === "fx" ? "" : ` and ${x} buyers have room`}.`, "calm markets");
+      return mk(0, "", "");
+    }
+    case "stocks": {
+      const v = c.stocks[i], pv = prevVal(c.stocks, i); if (!nz(v) || pv === null) return null;
+      const d = v - pv, s0 = sd(changes(c.stocks, i, 52, false)); if (!s0) return null;
+      const m = Math.abs(d) / 1000;
+      if (m < 0.5) return mk(0, `US crude stocks were little changed last week (EIA).`, "");
+      return d < 0
+        ? mk(clamp(-d / s0, 0, 1.5) * 0.4, `US crude stocks fell ${nf(m, 1)} million barrels last week (EIA), a tighter market.`, "falling crude stocks")
+        : mk(-clamp(d / s0, 0, 1.5) * 0.4, `US crude stocks rose ${nf(m, 1)} million barrels last week (EIA), a sign of softer demand.`, "rising crude stocks");
+    }
+    case "oilCad": {
+      const v = c.wti[i], p4 = prevVal(c.wti, i, 4); if (!nz(v) || p4 === null) return null;
+      const ch = v / p4 - 1;
+      if (Math.abs(ch) < 0.03) return mk(0, "", "");
+      return mk(-clamp(ch / 0.08, -1, 1) * 0.45, `Oil is ${ch > 0 ? "up" : "down"} ${pctS(ch)} in four weeks, which tends to ${ch > 0 ? "support" : "weigh on"} the Canadian dollar.`, ch > 0 ? "firmer oil" : "weaker oil");
+    }
+  }
+  return null;
+}
+
+// ================================================================ the call
+export type Call = { score: number; dir: -1 | 0 | 1; label: string; conf: "low" | "moderate" | "high"; coverage: number };
+export function score(a: Asset, c: Ctx, i: number): { call: Call; fs: F[] } {
+  const fs = a.factors.map((k) => factor(k, a, c, i)).filter(Boolean) as F[];
+  const tw = a.factors.reduce((t, k) => t + (W[k] ?? 1), 0), aw = fs.reduce((t, f) => t + f.w, 0);
+  const sc = aw ? fs.reduce((t, f) => t + f.s * f.w, 0) / aw : 0;
+  const dir = sc >= THRESH.lean ? 1 : sc <= -THRESH.lean ? -1 : 0;
+  const voting = fs.filter((f) => Math.abs(f.s) >= 0.1), vw = voting.reduce((t, f) => t + f.w, 0);
+  const agree = vw ? voting.filter((f) => Math.sign(f.s) === Math.sign(sc)).reduce((t, f) => t + f.w, 0) / vw : 0;
+  const coverage = tw ? aw / tw : 0;
+  const conf: Call["conf"] = Math.abs(sc) >= THRESH.firm && agree >= 0.75 && coverage >= 0.8 ? "high" : (Math.abs(sc) >= 0.18 || agree >= 0.7) && coverage >= 0.6 ? "moderate" : "low";
+  const label = dir === 0 ? "No clear lean" : `${Math.abs(sc) >= THRESH.firm ? "" : "Leaning "}${dir > 0 ? "bullish" : "bearish"}`;
+  return { call: { score: Math.round(sc * 100) / 100, dir, label: label[0].toUpperCase() + label.slice(1), conf, coverage }, fs };
+}
+
+// ================================================================ backtest: the same rules on past weeks, judged on the next week's move
+export type Back = { n: number; hits: number; rate: number; upRate: number; from: string; avgBull: number | null; avgBear: number | null; weeks: { wk: string; px: number; dir: number; next: number | null }[] };
+export function backtest(a: Asset, c: Ctx, upto = c.weeks.length - 1): Back | null {
+  const p = c.px[a.id]; let n = 0, hits = 0, ups = 0, tot = 0, from = "";
+  const bull: number[] = [], bear: number[] = [], weeks: Back["weeks"] = [];
+  for (let i = 52; i <= upto; i++) {
+    if (!nz(p[i])) continue;
+    const { call } = score(a, c, i), next = i < upto && nz(p[i + 1]) ? p[i + 1]! : null;
+    if (upto - i < 104) weeks.push({ wk: c.weeks[i], px: p[i]!, dir: call.coverage < 0.6 ? 0 : call.dir, next });
+    if (next === null) continue;
+    const r = next / p[i]! - 1; tot++; if (r > 0) ups++;
+    if (call.coverage < 0.6 || call.dir === 0) continue;
+    n++; if (!from) from = c.weeks[i];
+    if (Math.sign(r) === call.dir) hits++;
+    (call.dir > 0 ? bull : bear).push(r);
+  }
+  if (n < 10) return null;
+  return { n, hits, rate: hits / n, upRate: tot ? ups / tot : 0.5, from, avgBull: bull.length ? mean(bull) : null, avgBear: bear.length ? mean(bear) : null, weeks };
+}
+
+// ================================================================ the brief, written like a weekly post
+export type Brief = {
+  id: string; name: string; sym: string; cls: Cls; asOf: string; title: string; call: Call; px: number | null; pxTxt: string; chg: number | null;
+  priceLine: string; forIt: string[]; against: string[]; verdict: string; watch: Ev[]; watchLine: string;
+  live: { price: number; at: number; chg: number | null } | null; back: Back | null; notes: string[];
+  cot: { name: string; net: number; chg: number; pct: number; who: string; inv: boolean } | null; recent: { wk: string; dir: number; res: number | null }[];
+};
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"], WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+export const short = (d: string) => { const t = new Date(d + "T12:00:00Z"); return `${t.getUTCDate()} ${MON[t.getUTCMonth()]} ${String(t.getUTCFullYear()).slice(2)}`; };
+function dow(utc: number) {                                              // the day as seen in Malta, where the posts go out
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "numeric", timeZone: "Europe/Malta" }).formatToParts(new Date(utc * 1000)).map((x) => [x.type, x.value]));
+  return `${p.weekday} ${p.day} ${MON[Number(p.month) - 1]}`;
+}
+const join = (xs: string[]) => (xs.length <= 1 ? xs.join("") : xs.slice(0, -1).join(", ") + " and " + xs[xs.length - 1]);
+
+function priceLine(a: Asset, p: (number | null)[], i: number) {
+  const v = p[i], pv = prevVal(p, i); if (!nz(v)) return { line: "", chg: null as number | null };
+  if (pv === null) return { line: `Price: ${fmtPx(a, v)}.`, chg: null };
+  const ch = v / pv - 1, dir = ch >= 0 ? "up" : "down";
+  let line = `Price: ${fmtPx(a, v)}, ${Math.abs(ch) < 0.0005 ? "flat" : `${dir} ${pctS(ch)}`} on the week.`;
+  const step = a.level, crossed: number[] = [];
+  if (ch > 0) for (let L = Math.ceil(pv / step) * step; L <= v; L += step) crossed.push(L);
+  else for (let L = Math.floor(pv / step) * step; L >= v; L -= step) crossed.push(L);
+  const prior = back(p, i - 1, 52), n13 = back(p, i - 1, 13), n26 = back(p, i - 1, 26);
+  let ext = "";
+  if (prior.length >= 50 && (ch > 0 ? v > Math.max(...prior) : v < Math.min(...prior))) ext = months(52);
+  else if (n26.length >= 24 && (ch > 0 ? v > Math.max(...n26) : v < Math.min(...n26))) ext = months(26);
+  else if (n13.length >= 12 && (ch > 0 ? v > Math.max(...n13) : v < Math.min(...n13))) ext = months(13);
+  const lv = crossed.slice(-2).map((L) => fmtPx(a, L));
+  if (lv.length && ext) line += ` ${ch > 0 ? "Cleared" : "Broke below"} ${join(lv)} for a ${ext} ${ch > 0 ? "high" : "low"}.`;
+  else if (lv.length) line += ` ${ch > 0 ? "Cleared" : "Broke below"} ${join(lv)}.`;
+  else if (ext) line += ` That's a ${ext} ${ch > 0 ? "high" : "low"}.`;
+  return { line, chg: ch };
+}
+
+export function brief(a: Asset, c: Ctx, nowS = Date.now() / 1000, bt: (a: Asset, c: Ctx, i: number) => Back | null = backtest): Brief {
+  const p = c.px[a.id];
+  let i = c.weeks.length - 1; while (i > 0 && !nz(p[i])) i--;           // this market's latest complete week
+  if (!nz(p[i])) i = c.weeks.length - 1;                                  // no history yet: the latest week, with the live price
+  const { call, fs } = score(a, c, i);
+  const sp0 = a.live ? spotNow(a.live) : null;
+  const pl = nz(p[i]) ? priceLine(a, p, i) : { line: sp0 ? `Price: ${fmtPx(a, sp0.price)} (live spot).` : "", chg: null as number | null };
+  const pos = fs.filter((f) => f.s >= 0.08 && f.text).sort((x, y) => y.s * y.w - x.s * x.w);
+  const neg = fs.filter((f) => f.s <= -0.08 && f.text).sort((x, y) => x.s * x.w - y.s * y.w);
+  const pros = call.dir >= 0 ? pos : neg, cons = call.dir >= 0 ? neg : pos;
+  const sp = (xs: F[]) => xs.map((f) => f.short).filter(Boolean).slice(0, 2);
+  const why = sp(pros), but = sp(cons).slice(0, 1);
+  const watch = calendar().filter((e) => a.ccy.includes(e.ccy) && e.utc > nowS - 3600 && e.utc < nowS + 8 * 86400).slice(0, 8);
+  const big = watch.find((e) => e.ccy === "USD") || watch[0];
+  let verdict: string;
+  if (call.dir === 0) {
+    const bu = sp(pos)[0], be = sp(neg)[0];
+    verdict = bu && be ? `No clear lean: ${bu} and ${be} roughly cancel out.` : bu || be ? `No clear lean: ${bu || be} on its own isn't enough for a call.` : "No clear lean this week.";
+  }
+  else verdict = `${why.length ? join(why)[0].toUpperCase() + join(why).slice(1) : "The balance of signals"} ${why.length > 1 ? "outweigh" : "outweighs"} ${but.length ? but[0] : "the risks for now"}.`;
+  if (big) verdict += ` ${big.title} on ${dow(big.utc).split(" ")[0]} is the main risk to this view.`;
+  const days = new Map<string, string[]>();
+  for (const e of watch) { const k = dow(e.utc); days.set(k, [...(days.get(k) || []), e.title.replace(/\s+m\/m$|\s+y\/y$|\s+q\/q$/i, (m) => m)]); }
+  const watchLine = [...days.entries()].slice(0, 4).map(([d, t]) => `${join([...new Set(t)].slice(0, 3))} ${d}`).join(". ");
+  const notes: string[] = [];
+  const miss = a.factors.filter((k) => !fs.find((f) => f.key === k));
+  if (miss.includes("trend")) notes.push("Not enough price history yet for the trend factors. They switch on once we have 50 weeks of data.");
+  if (call.coverage < 0.6) notes.push("Fewer than 60% of this market's factors have data, so treat the call with extra caution.");
+  if (a.id === "gold") notes.push("Gold's price history uses PAX Gold (a token backed by one ounce of gold each), rescaled to the current spot price.");
+  const live = sp0 ? { price: sp0.price, at: sp0.at, chg: nz(p[i]) ? sp0.price / p[i]! - 1 : null } : null;
+  let cot: Brief["cot"] = null;
+  if (a.cot && c.cot[a.id]) {
+    const n = c.cot[a.id].net, v = n[i], pv = prevVal(n, i), hist = back(n, i, 156);
+    if (nz(v) && pv !== null && hist.length >= 52) cot = { name: c.cot[a.id].name, net: v, chg: v - pv, pct: pctRank(hist, v), who: WHO[a.cot.cat], inv: !!a.cot.inv };
+  }
+  return {
+    id: a.id, name: a.name, sym: a.sym, cls: a.cls, asOf: c.weeks[i], title: `${a.name.toUpperCase()} WEEKLY, ${short(c.weeks[i])}`, call,
+    px: nz(p[i]) ? p[i] : null, pxTxt: nz(p[i]) ? fmtPx(a, p[i]!) : "", chg: pl.chg, priceLine: pl.line,
+    forIt: pros.slice(0, 5).map((f) => f.text), against: cons.slice(0, 4).map((f) => f.text), verdict, watch, watchLine,
+    live, back: bt(a, c, i), notes, cot, recent: [],
+  };
+}
+function spotNow(sym: string) { const s = spot[sym]; if (s && Date.now() - s.at < 6 * 3600_000) return s; const l = lastOf("spot:" + sym); return l ? { price: l.v, at: Date.parse(l.d + "T12:00:00Z") } : null; }
+
+export const sides = (dir: number) => (dir ? ["For it", "Against it"] : ["Bullish side", "Bearish side"]);
+// the post as it would go on Telegram
+export function postText(b: Brief, url: string) {
+  const L = [`📊 ${b.title}`, `Call: ${b.call.label}${b.call.dir ? `, ${b.call.conf} confidence` : ""}.`, b.priceLine, ""];
+  const [h1, h2] = sides(b.call.dir);
+  if (b.forIt.length) { L.push(h1 + ":"); for (const t of b.forIt) L.push((b.call.dir ? "✅ " : "🟢 ") + t); L.push(""); }
+  if (b.against.length) { L.push(h2 + ":"); for (const t of b.against) L.push("🔻 " + t); L.push(""); }
+  L.push(b.verdict);
+  if (b.watchLine) L.push("", "👀 Watch: " + b.watchLine + ".");
+  L.push("", `Model call from public data, not advice. Data and track record: ${url}`);
+  return L.join("\n");
+}

@@ -15,6 +15,7 @@ import { billingPortal, connectStripe, createOrder, listPrice, nowpaymentsWebhoo
 import { mailConfigured, mailExpiring, mailLicence, mailLoginCode, notifyAdmins, outbox, sendMail } from "./mail";
 import { fulfil } from "./licence";
 import { chatAdmin, chatEnabled, chatRoute, initChat, testAnthropicKey } from "./chat";
+import { hubJson, hubPublic, hubRefreshNow, hubStatus, renderHub, startHub } from "./hub";
 
 const PORT = Number(E.PORT) || 3000, DEV = E.DEV === "1";
 const WEB = join(import.meta.dir, "..", "web");
@@ -73,6 +74,8 @@ async function file(req: Request, rel: string, opts: { noindex?: boolean; cache?
 }
 const notFound = (req: Request) => file(req, "404.html").then((r) => new Response(r.body, { status: 404, headers: r.headers }));
 
+// the Markets link appears in the home page menus once the hub is published
+const hubNav = (s: string) => (hubPublic() ? s.replace(/<!--HUB_NAV-->/g, '<a href="/markets">Markets</a>') : s);
 // seller details are filled into the legal pages
 function legalVars(s: string) {
   const v: Record<string, string> = {
@@ -270,6 +273,7 @@ async function handle(req: Request): Promise<Response> {
       refundDays: getN("refund_days"), news: news.events.filter((e) => e.utc > now() / 1000 - 75).slice(0, 8), week: news.events, record: showRec ? rec : null,
       announcement: getS("announcement"), promo: promo(), verifyUrl: /^https:\/\/[\w.-]+\//.test(getS("record_verify_url")) ? getS("record_verify_url") : "" });
   }
+  if (p === "/api/markets") return json(200, hubJson());
   if (p === "/api/live") {
     if (limited("live:" + ipOf(req), 90, 60_000)) return bad("Slow down", 429);
     await Promise.all([refreshGold(6000), refreshRecord()]);
@@ -475,12 +479,19 @@ async function handle(req: Request): Promise<Response> {
   if (req.method !== "GET" && req.method !== "HEAD") return bad("Method not allowed", 405);
   if (p === "/robots.txt") return new Response(`User-agent: *\nAllow: /\nDisallow: /account\nDisallow: /admin\nDisallow: /order/\nDisallow: /api/\nSitemap: ${siteUrl()}/sitemap.xml\n`, { headers: { "Content-Type": "text/plain" } });
   if (p === "/sitemap.xml") {
-    const u = ["", "/checkout", "/terms", "/refunds", "/privacy", "/risk", "/imprint"].map((x) => `<url><loc>${siteUrl()}${x}</loc></url>`).join("");
+    const u = ["", "/checkout", "/terms", "/refunds", "/privacy", "/risk", "/imprint", ...(hubPublic() ? ["/markets", ...hubJson().markets.map((m) => "/markets/" + m.id)] : [])]
+      .map((x) => `<url><loc>${siteUrl()}${x}</loc></url>`).join("");
     return new Response(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${u}</urlset>`, { headers: { "Content-Type": "application/xml" } });
   }
   if (p === "/health") return json(200, { ok: true, uptime: Math.round((now() - STARTED) / 1000) });
   const pages: Record<string, [string, boolean?]> = { "/": ["index.html"], "/checkout": ["checkout.html"], "/account": ["account.html", true], "/admin": ["admin.html", true] };
-  if (pages[p]) return file(req, pages[p][0], { noindex: !!pages[p][1], replace: legalVars });
+  if (pages[p]) return file(req, pages[p][0], { noindex: !!pages[p][1], replace: (s) => hubNav(legalVars(s)) });
+  if (p === "/markets" || /^\/markets\/[a-z]{2,12}$/.test(p)) {
+    const r = renderHub(p);
+    if (!r) return notFound(req);
+    return file(req, "markets.html", { noindex: !hubPublic(), replace: (s) => legalVars(s.replace("<!--HUB_MAIN-->", r.html)
+      .replace(/\{\{HUB_TITLE\}\}/g, esc(r.title)).replace(/\{\{HUB_DESC\}\}/g, esc(r.desc)).replace(/\{\{HUB_PATH\}\}/g, p)) });
+  }
   if (/^\/order\/[A-Z0-9-]{6,12}$/i.test(p)) return file(req, "order.html", { noindex: true });
   if (["/terms", "/refunds", "/privacy", "/risk", "/imprint"].includes(p)) return file(req, "legal" + p + ".html", { replace: legalVars });
   if (/^\/(css|js|img|fonts)\/[\w.\-/]+$/.test(p) || /^\/[\w.-]+\.(png|ico|svg|webmanifest|jpg)$/.test(p)) return file(req, p.slice(1), { cache: 86400 });
@@ -496,6 +507,12 @@ async function adminRoute(req: Request, url: URL, p: string, a: Admin): Promise<
   if (p === "/me") return json(200, { ok: true, admin: { id: a.id, email: a.email, name: a.name, role: a.role }, mail: mailConfigured(), serverNow: now() });
   if (p === "/stream") return sse(req, { admin: true, licence: "" });
   { const r = await chatAdmin(req, url, p, a, b); if (r) return r; }
+  if (p === "/hub") return json(200, { ok: true, ...hubStatus() });
+  if (p === "/hub/refresh" && post) {
+    if (!owner) return bad("Only the owner can do that.", 403);
+    hubRefreshNow(true).catch((e) => console.error("hub refresh", e.message));
+    return json(200, { ok: true });
+  }
 
   if (p === "/overview") {
     const t = now(), day = t - DAY, month = t - 30 * DAY;
@@ -668,7 +685,7 @@ async function adminRoute(req: Request, url: URL, p: string, a: Admin): Promise<
     const editable = ["price_lifetime", "price_monthly", "mail_from", "support_email", "notify_emails", "bank_name", "bank_holder", "bank_iban", "bank_bic",
       "seller_name", "seller_address", "seller_vat", "seller_reg", "record_public", "record_min_trades", "stripe_tax", "methods_card", "methods_crypto", "methods_bank",
       "refund_days", "move_days", "announcement", "site_url", "ea_version", "promo_code", "record_verify_url",
-      "chat_enabled", "chat_ai", "chat_model", "chat_daily_cap", "chat_greeting"];
+      "chat_enabled", "chat_ai", "chat_model", "chat_daily_cap", "chat_greeting", "hub_public"];
     if (post) {
       if (!owner) return bad("Only the owner can change settings.", 403);
       for (const k of editable) if (b[k] !== undefined) {
@@ -738,3 +755,4 @@ const server = Bun.serve({ port: PORT, hostname: "0.0.0.0", idleTimeout: 120,
   fetch: (req) => handle(req).catch(err) });
 console.log(`goldenstraddler.com on :${server.port} | db ${DB_PATH} | stripe ${getS("stripe_secret") ? "on" : "off"} | crypto ${getS("np_api_key") ? "on" : "off"} | email ${mailConfigured() ? "on" : "off"}${DEV ? " | DEV" : ""}`);
 hourly();
+startHub();

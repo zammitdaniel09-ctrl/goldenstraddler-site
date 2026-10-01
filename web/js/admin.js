@@ -554,6 +554,22 @@ VIEWS.settings = async () => {
     inp("record_verify_url", "Verified record link, e.g. your public Myfxbook page (blank = none)", { full: 1, ph: "https://www.myfxbook.com/members/..." }),
     inp("promo_code", "Code shown in the bar at the top of the home page (blank = no bar). Give it an end date under Codes and the bar counts down to it", { full: 1 }),
     inp("announcement", "Banner on the sales page (blank = none)", { full: 1 }), inp("ea_version", "Current EA version"), inp("site_url", "Site address")));
+  // the Markets page: publish switch and the health of each free data source
+  const hub = await api("/api/admin/hub").catch(() => null);
+  if (hub) {
+    out.push(form("Markets page", hub.public ? "Published: linked from the site menu and open to search engines." : "Hidden: anyone with the link can open it, but it isn't in the menu and search engines are asked not to index it.",
+      inp("hub_public", "Publish the Markets page", { select: yn })));
+    const list = el("div", "stack");
+    for (const r of hub.sources) {
+      const row = el("div", "key-row"), ok = !!r.ok_at, fresh = ok && !r.err;
+      row.append(el("b", "", r.src), pill(fresh ? "active" : ok ? "pending" : "revoked", fresh ? "ok" : ok ? "last try failed" : "failing"), el("span", "fine", (r.err || r.last || "").slice(0, 120)));
+      list.append(row);
+    }
+    const open = el("a", "btn sm", "Open the Markets page"); open.href = "/markets"; open.target = "_blank"; open.rel = "noopener";
+    const acts = el("div", "row"); acts.append(open);
+    if (owner) acts.append(act(btn("Fetch all data now", "btn sm"), () => api("/api/admin/hub/refresh", {}), () => "Fetching. It takes about a minute; reload this page after."));
+    out.push(card("Markets data", el("p", "fine", `${hub.markets} markets, calls for the week ending ${hub.asOf || "(not yet)"}${hub.computedAt ? ", worked out " + new Date(hub.computedAt).toLocaleString() : ""}. Live record: ${hub.live.n ? hub.live.hits + " of " + hub.live.n + " right" : "starts once the first week is graded"}.${hub.err ? " Error: " + hub.err : ""}`), list, acts));
+  }
   if (owner) { const b = el("a", "btn sm", "Download a backup of the database"); b.href = "/api/admin/export"; out.push(card("Backup", el("p", "fine", "Everything: customers, licences, orders, codes, trades."), b)); }
   view.replaceChildren(...out);
 };
