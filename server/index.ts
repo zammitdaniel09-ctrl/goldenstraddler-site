@@ -18,6 +18,7 @@ import { fulfil } from "./licence";
 const PORT = Number(E.PORT) || 3000, DEV = E.DEV === "1";
 const WEB = join(import.meta.dir, "..", "web");
 const STARTED = now();
+const ASSET_V = (E.RAILWAY_GIT_COMMIT_SHA || String(STARTED)).slice(0, 10);
 const EA_FILE = join(DB_PATH, "..", "GoldenStraddler.ex5");     // uploaded from admin, lives on the volume (not in git)
 const eaPath = () => (existsSync(EA_FILE) ? EA_FILE : existsSync(join(WEB, "dl", "GoldenStraddler.ex5")) ? join(WEB, "dl", "GoldenStraddler.ex5") : "");
 // A build can also ship the EA encrypted in assets/ea (AES-256-GCM: iv[12] tag[16] data, key in EA_BLOB_KEY).
@@ -59,6 +60,8 @@ async function file(req: Request, rel: string, opts: { noindex?: boolean; cache?
   const textual = /^(text|application\/(json|xml|manifest)|image\/svg)/.test(type);
   let data: Uint8Array | string = textual ? await Bun.file(p).text() : new Uint8Array(await Bun.file(p).arrayBuffer());
   if (opts.replace && typeof data === "string") data = opts.replace(data);
+  // version the page's own css/js/img links so a new deploy is never hidden behind a cached file
+  if (ext === "html" && typeof data === "string") data = data.replace(/((?:href|src)=")(\/(?:css|js|img)\/[^"?#]+)"/g, `$1$2?v=${ASSET_V}"`);
   if (textual && /\bgzip\b/.test(req.headers.get("accept-encoding") || "")) {
     const k = p + (opts.replace ? ":r" : "");
     let c = gzCache.get(k);
