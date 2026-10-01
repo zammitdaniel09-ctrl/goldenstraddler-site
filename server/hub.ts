@@ -4,7 +4,7 @@
  */
 import { all, now, one, run } from "./db";
 import { esc, getS, siteUrl } from "./util";
-import { calendar, kvGet, kvSet, refreshAll, sources, startHubData } from "./hubdata";
+import { calendar, kvGet, kvSet, refreshAll, series, sources, startHubData } from "./hubdata";
 import { ASSETS, CLASSES, FACTOR_INFO, THRESH, backtest, brief, buildCtx, fmtPx, postText, short, sides, type Asset, type Back, type Brief, type Ctx } from "./hubmodel";
 
 const state = { briefs: [] as Brief[], at: 0, asOf: "", busy: false, err: "" };
@@ -232,6 +232,13 @@ function historyHtml(a: Asset, b: Brief) {
   }).join("")}</tbody></table><p class="fine">${lr.n ? `Graded live calls for ${esc(b.name)}: ${lr.hits} of ${lr.n} right since ${esc(short(lr.since!))}.` : "Weeks before the live launch are the backtest, run with the same rules."}</p></div>`;
 }
 
+// the raw inputs behind one market, so anyone can check a number on the page
+export function hubDetail(id: string) {
+  const a = ASSET.get(id); if (!a) return null;
+  const c = buildCtx(), p = c.px[id], n = c.weeks.length, wk = (arr: (number | null)[]) => c.weeks.slice(n - 10).map((w, k) => [w, arr[n - 10 + k]]);
+  return { ok: true, id, source: a.hist, weekly: wk(p), dollarIndex: wk(c.dxy), realYield10y: wk(c.ry), twoYear: wk(c.y2), vix: wk(c.vix),
+    positioning: c.cot[id] ? wk(c.cot[id].net) : null, raw: series(a.hist.startsWith("fx:") ? "ecb:" + a.hist.slice(3) : a.hist, c.weeks[n - 4]) };
+}
 export function hubJson() {
   return { ok: true, asOf: state.asOf, at: state.at, markets: state.briefs.map((b) => ({ id: b.id, name: b.name, cls: b.cls, call: b.call, price: b.px, chg: b.chg, verdict: b.verdict })) };
 }

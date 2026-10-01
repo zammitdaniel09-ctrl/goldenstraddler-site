@@ -15,7 +15,7 @@ import { billingPortal, connectStripe, createOrder, listPrice, nowpaymentsWebhoo
 import { mailConfigured, mailExpiring, mailLicence, mailLoginCode, notifyAdmins, outbox, sendMail } from "./mail";
 import { fulfil } from "./licence";
 import { chatAdmin, chatEnabled, chatRoute, initChat, testAnthropicKey } from "./chat";
-import { hubJson, hubPublic, hubRefreshNow, hubStatus, renderHub, startHub } from "./hub";
+import { hubDetail, hubJson, hubPublic, hubRefreshNow, hubStatus, renderHub, startHub } from "./hub";
 
 const PORT = Number(E.PORT) || 3000, DEV = E.DEV === "1";
 const WEB = join(import.meta.dir, "..", "web");
@@ -273,7 +273,11 @@ async function handle(req: Request): Promise<Response> {
       refundDays: getN("refund_days"), news: news.events.filter((e) => e.utc > now() / 1000 - 75).slice(0, 8), week: news.events, record: showRec ? rec : null,
       announcement: getS("announcement"), promo: promo(), verifyUrl: /^https:\/\/[\w.-]+\//.test(getS("record_verify_url")) ? getS("record_verify_url") : "" });
   }
-  if (p === "/api/markets") return json(200, hubJson());
+  if (p === "/api/markets") {
+    const id = url.searchParams.get("id");
+    if (id) { if (limited("mkd:" + ipOf(req), 30, 60_000)) return bad("Slow down", 429); const d = hubDetail(id); return d ? json(200, d) : bad("Unknown market", 404); }
+    return json(200, hubJson());
+  }
   if (p === "/api/live") {
     if (limited("live:" + ipOf(req), 90, 60_000)) return bad("Slow down", 429);
     await Promise.all([refreshGold(6000), refreshRecord()]);
