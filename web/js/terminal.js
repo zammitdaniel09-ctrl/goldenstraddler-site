@@ -10,7 +10,13 @@ const $ = (s) => root.querySelector(s);
 const cv = $("canvas"), cx = cv.getContext("2d");
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const MINUS = "−";
-const C = { gold: "#E6B450", ice: "#3FC4FC", white: "#dfe5ee", loss: "#F2616F", axis: "#6f7787", txt2: "#a3abb9", ink: "#07090d" };
+const C = { gold: "#E6B450", ice: "#3FC4FC", white: "#dfe5ee", loss: "#F2616F", axis: "#6f7787", txt2: "#a3abb9", ink: "#07090d", g: "230,180,80", i: "63,196,252", l: "242,97,111" };
+function palette() {                                   // the chart follows the site's colour theme
+  const cs = getComputedStyle(document.documentElement), v = (n, d) => cs.getPropertyValue(n).trim() || d;
+  C.gold = v("--gold", C.gold); C.ice = v("--ice", C.ice); C.loss = v("--loss", C.loss); C.ink = v("--term2", C.ink);
+  C.g = v("--gold-rgb", C.g); C.i = v("--ice-rgb", C.i); C.l = v("--loss-rgb", C.l);
+}
+const rgba = (rgb, a) => `rgba(${rgb},${a})`;
 const MONO = '"JetBrains Mono", ui-monospace, Consolas, monospace';
 const DISP = 'Unbounded, "Arial Black", sans-serif';
 const V0 = -16.5, V1 = P.POST + 1, VW = V1 - V0;       // the part of the minute the chart shows
@@ -135,7 +141,7 @@ function draw(now) {
   cx.fillStyle = "rgba(0,0,0,.28)";
   if (xa > 0) cx.fillRect(0, TOP, Math.min(pw, xa), ph + VOL);
   if (xe < pw) cx.fillRect(Math.max(0, xe), TOP, pw - Math.max(0, xe), ph + VOL);
-  const gb = cx.createLinearGradient(x0, 0, X(10), 0); gb.addColorStop(0, "rgba(230,180,80,.06)"); gb.addColorStop(1, "rgba(230,180,80,0)");
+  const gb = cx.createLinearGradient(x0, 0, X(10), 0); gb.addColorStop(0, rgba(C.g, 0.06)); gb.addColorStop(1, rgba(C.g, 0));
   if (x0 < pw && X(10) > 0) { cx.fillStyle = gb; cx.fillRect(Math.max(0, x0), TOP, Math.min(pw, X(10)) - Math.max(0, x0), ph + VOL); }
 
   // watermark
@@ -162,7 +168,7 @@ function draw(now) {
   }
   // window marks along the top
   cx.font = `600 ${fs}px ${MONO}`; cx.textBaseline = "middle";
-  for (const [t, label, col, dash] of [[-P.PRE, "Armed", "rgba(63,196,252,.5)", [2, 4]], [0, "News out", "rgba(230,180,80,.75)", [4, 4]], [P.POST, "Window closes", "rgba(163,171,185,.45)", [2, 4]]]) {
+  for (const [t, label, col, dash] of [[-P.PRE, "Armed", rgba(C.i, 0.5), [2, 4]], [0, "News out", rgba(C.g, 0.75), [4, 4]], [P.POST, "Window closes", "rgba(163,171,185,.45)", [2, 4]]]) {
     const x = Math.round(X(t)) + 0.5; if (x < 0 || x > pw) continue;
     cx.strokeStyle = col; cx.setLineDash(dash); cx.beginPath(); cx.moveTo(x, TOP); cx.lineTo(x, TOP + ph + VOL); cx.stroke(); cx.setLineDash([]);
     cx.fillStyle = col.replace(/[\d.]+\)$/, "1)"); const w = cx.measureText(label).width;
@@ -175,7 +181,7 @@ function draw(now) {
     const a = at(t), b = at(Math.min(tMkt, t + bucket)); let s = 0;
     for (let i = a + 1; i <= b; i++) s += Math.abs(tk[i].mid - tk[i - 1].mid);
     const h = Math.min(VOL - 3, (s / (bucket * 700)) * (VOL - 3)); if (h < 0.6) continue;
-    cx.fillStyle = t >= 0 && t < 10 ? "rgba(230,180,80,.55)" : "rgba(63,196,252,.28)";
+    cx.fillStyle = t >= 0 && t < 10 ? rgba(C.g, 0.55) : rgba(C.i, 0.28);
     cx.fillRect(X(t), TOP + ph + VOL - h, bw, h);
   }
 
@@ -186,7 +192,7 @@ function draw(now) {
   cx.beginPath();
   for (let i = i0; i <= cur; i++) { const x = X(tk[i].t), y = Y(tk[i].ask); i === i0 ? cx.moveTo(x, y) : cx.lineTo(x, y); }
   for (let i = cur; i >= i0; i--) cx.lineTo(X(tk[i].t), Y(tk[i].bid));
-  cx.closePath(); cx.fillStyle = "rgba(230,180,80,.09)"; cx.fill();
+  cx.closePath(); cx.fillStyle = rgba(C.g, 0.09); cx.fill();
   cx.beginPath();
   for (let i = i0; i <= cur; i++) { const x = X(tk[i].t), y = Y(tk[i].ask); i === i0 ? cx.moveTo(x, y) : cx.lineTo(x, y); }
   cx.strokeStyle = "rgba(223,229,238,.22)"; cx.lineWidth = 1; cx.stroke();
@@ -234,7 +240,7 @@ function draw(now) {
       const q = tk[cur], pl = ((x.side > 0 ? q.bid : q.ask) - x.entry) * x.side;
       const lab = `${x.side > 0 ? "BUY" : "SELL"} #${x.n}  ${sg(pl)} pts`; cx.font = `600 ${fs}px ${MONO}`;
       const w = cx.measureText(lab).width + 14, lx = pw - w - 8, ly = ey + (x.side > 0 ? 6 : -24);
-      box(lx, ly, w, 18, 5); cx.fillStyle = "rgba(9,12,17,.88)"; cx.fill(); cx.strokeStyle = pl >= 0 ? "rgba(63,196,252,.6)" : "rgba(242,97,111,.6)"; cx.lineWidth = 1; cx.stroke();
+      box(lx, ly, w, 18, 5); cx.fillStyle = "rgba(9,12,17,.88)"; cx.fill(); cx.strokeStyle = pl >= 0 ? rgba(C.i, 0.6) : rgba(C.l, 0.6); cx.lineWidth = 1; cx.stroke();
       cx.fillStyle = pl >= 0 ? C.ice : C.loss; cx.textAlign = "left"; cx.textBaseline = "middle"; cx.fillText(lab, lx + 7, ly + 9.5); cx.textBaseline = "alphabetic";
       if (s.trail) { cx.font = `${fs}px ${MONO}`; cx.fillStyle = C.ice; cx.textAlign = "right"; cx.fillText("Trailing stop", lx - 10, Y(s.v) + (x.side > 0 ? 13 : -5)); }
       else { cx.font = `${fs}px ${MONO}`; cx.fillStyle = C.loss; cx.textAlign = "right"; cx.fillText("Stop loss", pw - 8, Y(x.sl0) + (x.side > 0 ? 13 : -5)); }
@@ -244,7 +250,7 @@ function draw(now) {
   // price
   cx.lineJoin = "round"; cx.lineCap = "round"; cx.beginPath();
   for (let i = i0; i <= cur; i++) { const x = X(tk[i].t), y = Y(tk[i].bid); i === i0 ? cx.moveTo(x, y) : cx.lineTo(x, y); }
-  cx.strokeStyle = "rgba(230,180,80,.16)"; cx.lineWidth = small ? 6 : 7; cx.stroke();          // glow, without the cost of shadowBlur
+  cx.strokeStyle = rgba(C.g, 0.16); cx.lineWidth = small ? 6 : 7; cx.stroke();          // glow, without the cost of shadowBlur
   cx.strokeStyle = C.gold; cx.lineWidth = small ? 1.6 : 1.9; cx.stroke();
   const lastX = X(tk[cur].t), lastY = Y(tk[cur].bid);
   if (!ending) { cx.fillStyle = C.gold; cx.beginPath(); cx.arc(lastX, lastY, 3, 0, Math.PI * 2); cx.fill(); cx.globalAlpha = 0.25 + 0.2 * Math.sin(now / 160); cx.beginPath(); cx.arc(lastX, lastY, 7, 0, Math.PI * 2); cx.fill(); cx.globalAlpha = 1; }
@@ -303,7 +309,7 @@ function draw(now) {
     box(tx, Hpx - BOT + 2, tw, 17, 4); cx.fillStyle = "#2e3644"; cx.fill(); cx.fillStyle = "#fff"; cx.textAlign = "center"; cx.fillText(tl, tx + tw / 2, Hpx - BOT + 10.5);
   }
   cx.restore(); // shake
-  if (flash > 0) { cx.fillStyle = `rgba(230,180,80,${0.14 * flash})`; cx.fillRect(0, 0, Wpx, Hpx); }
+  if (flash > 0) { cx.fillStyle = rgba(C.g, 0.14 * flash); cx.fillRect(0, 0, Wpx, Hpx); }
 }
 
 // ---------------------------------------------------------------- everything around the chart
@@ -443,6 +449,8 @@ stage.addEventListener("pointermove", (e) => { if (e.pointerType !== "mouse") re
 stage.addEventListener("pointerleave", () => { hover = null; paint(); });
 
 // ---------------------------------------------------------------- boot
+palette();
+document.addEventListener("gs-theme", () => { palette(); paint(); });
 const pct = (t) => ((t - V0) / VW) * 100 + "%";
 root.querySelectorAll(".tm-line .lb").forEach((l) => (l.style.left = pct(+l.dataset.t)));
 const wd = $(".tm-line .wd"); wd.style.left = pct(-P.PRE); wd.style.width = (P.POST + P.PRE) / VW * 100 + "%";

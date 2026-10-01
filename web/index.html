@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#000000">
+<script>try{var t=localStorage.getItem("gs-theme");if(t&&/^[a-z]+$/.test(t))document.documentElement.dataset.theme=t}catch(e){}</script>
 <title>GoldenStraddler | The news straddle EA for gold on MT5</title>
 <meta name="description" content="An Expert Advisor for MetaTrader 5. Fifteen seconds before every high-impact US release it places a buy stop and a sell stop around gold, lets the number pick the side and trails the winner.">
 <link rel="canonical" href="{{SITE_URL}}/">
@@ -28,7 +29,7 @@
 <body class="home">
 <a class="skip" href="#main">Skip to content</a>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <symbol id="gs" viewBox="0 0 64 64"><rect x="1" y="1" width="62" height="62" rx="16" fill="#0E1116" stroke="#2e3644" stroke-width="2"/><text x="25" y="44" font-family="Unbounded,Arial Black,sans-serif" font-weight="800" font-size="30" fill="#fff" text-anchor="middle">G</text><text x="42" y="49" font-family="Sedgwick Ave,Segoe Script,cursive" font-size="36" fill="#3FC4FC" text-anchor="middle">S</text></symbol>
+  <symbol id="gs" viewBox="0 0 64 64"><rect x="1" y="1" width="62" height="62" rx="16" fill="#0E1116" stroke="#2e3644" stroke-width="2"/><text x="25" y="44" font-family="Unbounded,Arial Black,sans-serif" font-weight="800" font-size="30" fill="#fff" text-anchor="middle">G</text><text x="42" y="49" font-family="Sedgwick Ave,Segoe Script,cursive" font-size="36" style="fill:var(--ice)" text-anchor="middle">S</text></symbol>
   <symbol id="i-check" viewBox="0 0 20 20"><path d="M4 10.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-x" viewBox="0 0 20 20"><path d="M5.5 5.5l9 9m0-9l-9 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2.8l7.5 3v5.6c0 4.6-3.1 8.4-7.5 9.8-4.4-1.4-7.5-5.2-7.5-9.8V5.8z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8.6 12.2l2.4 2.4 4.5-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
@@ -47,7 +48,9 @@
 <div class="wrap">
   <a class="mark" href="/"><svg aria-hidden="true"><use href="#gs"/></svg><span>GoldenStraddler</span></a>
   <nav aria-label="Main"><a href="#how">How it works</a><a href="#record">Results</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a></nav>
-  <div class="r"><a class="signin" href="/account">Sign in</a><a class="btn pri sm" href="#pricing">Get it</a>
+  <div class="r"><div class="thm"><button class="thm-btn" id="thmBtn" type="button" aria-expanded="false" aria-controls="thmPop" aria-label="Colours"><i class="thm-sw"></i></button>
+    <div class="thm-pop" id="thmPop" hidden><p>Colours</p><div class="thm-list" role="radiogroup" aria-label="Colours"><button type="button" role="radio" aria-checked="true" data-set-theme="ice"><i class="thm-sw" style="--a:#3FC4FC;--b:#E6B450"></i>Ice</button><button type="button" role="radio" aria-checked="false" data-set-theme="cobalt"><i class="thm-sw" style="--a:#7B93FF;--b:#E6B450"></i>Cobalt</button><button type="button" role="radio" aria-checked="false" data-set-theme="emerald"><i class="thm-sw" style="--a:#3DDC97;--b:#E6B450"></i>Emerald</button><button type="button" role="radio" aria-checked="false" data-set-theme="violet"><i class="thm-sw" style="--a:#B197FC;--b:#E6B450"></i>Violet</button><button type="button" role="radio" aria-checked="false" data-set-theme="bullion"><i class="thm-sw" style="--a:#E6B450;--b:#3FC4FC"></i>Bullion</button></div></div></div>
+    <a class="signin" href="/account">Sign in</a><a class="btn pri sm" href="#pricing">Get it</a>
     <button class="menu-btn" id="menuBtn" type="button" aria-expanded="false" aria-controls="sheet" aria-label="Open menu"><svg aria-hidden="true"><use href="#i-menu"/></svg></button></div>
 </div></header>
 
@@ -55,6 +58,7 @@
   <nav aria-label="Menu">
     <a href="#how">How it works</a><a href="#desk">Next release and live gold</a><a href="#record">Results</a><a href="#need">What you need</a><a href="#brokers">Brokers</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a><a href="/account">Sign in</a>
   </nav>
+  <div class="sheet-thm"><p>Colours</p><div class="thm-list" role="radiogroup" aria-label="Colours"><button type="button" role="radio" aria-checked="true" data-set-theme="ice"><i class="thm-sw" style="--a:#3FC4FC;--b:#E6B450"></i>Ice</button><button type="button" role="radio" aria-checked="false" data-set-theme="cobalt"><i class="thm-sw" style="--a:#7B93FF;--b:#E6B450"></i>Cobalt</button><button type="button" role="radio" aria-checked="false" data-set-theme="emerald"><i class="thm-sw" style="--a:#3DDC97;--b:#E6B450"></i>Emerald</button><button type="button" role="radio" aria-checked="false" data-set-theme="violet"><i class="thm-sw" style="--a:#B197FC;--b:#E6B450"></i>Violet</button><button type="button" role="radio" aria-checked="false" data-set-theme="bullion"><i class="thm-sw" style="--a:#E6B450;--b:#3FC4FC"></i>Bullion</button></div></div>
   <div class="sheet-cta"><a class="btn pri" id="sheetBuy" href="#pricing">Get GoldenStraddler</a><button class="btn" type="button" data-chat-open>Ask a question</button></div>
 </div>
 
@@ -373,7 +377,7 @@
   <a class="btn pri" id="mbGo" href="#pricing" tabindex="-1">Get it</a>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
-<script src="/js/sim.js"></script><script src="/js/terminal.js"></script>
+<script src="/js/theme.js"></script><script src="/js/sim.js"></script><script src="/js/terminal.js"></script>
 <script src="/js/home.js"></script>
 <script src="/js/chat.js" defer></script>
 </body>

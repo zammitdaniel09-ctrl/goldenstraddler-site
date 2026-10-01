@@ -195,8 +195,8 @@ function drawSpark(sp) {
   const X = (t) => (t1 > t0 ? (t - t0) / (t1 - t0) : 1) * 300, Y = (v) => 86 - (v - lo) / (hi - lo) * 80;
   let d = ""; sp.forEach((x, i) => (d += (i ? "L" : "M") + X(x[0]).toFixed(1) + " " + Y(x[1]).toFixed(1)));
   const last = sp[sp.length - 1];
-  svg.innerHTML = `<defs><linearGradient id="gFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#E6B450" stop-opacity=".22"/><stop offset="1" stop-color="#E6B450" stop-opacity="0"/></linearGradient></defs>` +
-    `<path class="ar" d="${d}L300 90L0 90Z"/><path class="ln" pathLength="1" d="${d}"/><circle cx="${X(last[0]).toFixed(1)}" cy="${Y(last[1]).toFixed(1)}" r="3.5" fill="#E6B450"/>`;
+  svg.innerHTML = `<defs><linearGradient id="gFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" style="stop-color:var(--gold)" stop-opacity=".22"/><stop offset="1" style="stop-color:var(--gold)" stop-opacity="0"/></linearGradient></defs>` +
+    `<path class="ar" d="${d}L300 90L0 90Z"/><path class="ln" pathLength="1" d="${d}"/><circle cx="${X(last[0]).toFixed(1)}" cy="${Y(last[1]).toFixed(1)}" r="3.5" style="fill:var(--gold)"/>`;
   if (!sparkDrawn) { sparkDrawn = true; svg.classList.add("draw"); } else svg.classList.remove("draw");
 }
 function applyLive(j) {
@@ -314,7 +314,7 @@ function record(r) {
   if (c.length > 1) {
     const lo = Math.min(0, ...c), hi = Math.max(0, ...c), span = hi - lo || 1, y = (v) => 210 - (v - lo) / span * 200, x = (i) => i / (c.length - 1) * 600;
     let d = ""; c.forEach((v, i) => (d += (i ? "L" : "M") + x(i).toFixed(1) + " " + y(v).toFixed(1)));
-    s.innerHTML = `<line x1="0" x2="600" y1="${y(0)}" y2="${y(0)}" stroke="#2e3644" stroke-dasharray="3 5"/><path d="${d}" fill="none" stroke="#3FC4FC" stroke-width="2" vector-effect="non-scaling-stroke"/>`;
+    s.innerHTML = `<line x1="0" x2="600" y1="${y(0)}" y2="${y(0)}" stroke="#2e3644" stroke-dasharray="3 5"/><path d="${d}" fill="none" style="stroke:var(--ice)" stroke-width="2" vector-effect="non-scaling-stroke"/>`;
   }
 }
 
@@ -408,7 +408,7 @@ function setupMenu() {
     document.body.classList.toggle("lock", open);
   };
   btn.addEventListener("click", () => set(sheet.hidden));
-  sheet.addEventListener("click", (e) => { if (e.target.closest("a,button")) set(false); });
+  sheet.addEventListener("click", (e) => { if (e.target.closest("a,button") && !e.target.closest("[data-set-theme]")) set(false); });   // trying colours keeps the menu open
   addEventListener("keydown", (e) => { if (e.key === "Escape" && !sheet.hidden) { set(false); btn.focus(); } });
   addEventListener("resize", () => { if (!phone() && innerWidth > 940 && !sheet.hidden) set(false); });
 }

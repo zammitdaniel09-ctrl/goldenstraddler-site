@@ -8,7 +8,7 @@
 @media (max-width:520px){.acc-bar .mark span{display:none}}
 .lics{display:grid;gap:14px}
 .licard{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px 28px;background:linear-gradient(180deg,#0e1218,#0b0e13);border:1px solid var(--edge);border-radius:18px;padding:22px 24px;position:relative;overflow:hidden}
-.licard::before{content:"";position:absolute;inset:-40% auto auto -10%;width:420px;height:420px;background:radial-gradient(closest-side,rgba(63,196,252,.10),transparent);pointer-events:none}
+.licard::before{content:"";position:absolute;inset:-40% auto auto -10%;width:420px;height:420px;background:radial-gradient(closest-side,rgba(var(--ice-rgb),.10),transparent);pointer-events:none}
 .licard .key{font:600 clamp(17px,2.2vw,22px) var(--mono);letter-spacing:.04em;margin:8px 0 4px;overflow-wrap:anywhere}
 .licard .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
 .licard dl{margin:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:9px 16px;font-size:14px;align-self:center}
@@ -19,7 +19,7 @@
 .setup-grid .dl{display:flex;flex-direction:column;gap:10px}
 .how{margin:0;padding:0;list-style:none;counter-reset:s;display:flex;flex-direction:column;gap:10px}
 .how li{counter-increment:s;position:relative;padding:14px 16px 14px 54px;background:var(--carbon);border:1px solid var(--edge);border-radius:14px;color:var(--txt2);font-size:15px}
-.how li::before{content:counter(s);position:absolute;left:16px;top:13px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font:600 13px var(--mono);background:rgba(63,196,252,.14);color:var(--ice)}
+.how li::before{content:counter(s);position:absolute;left:16px;top:13px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font:600 13px var(--mono);background:rgba(var(--ice-rgb),.14);color:var(--ice)}
 .how li b{color:var(--white)}
 .how li i{font-style:normal;color:var(--frost)}
 .how .cpy{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
