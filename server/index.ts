@@ -100,14 +100,15 @@ function sse(req: Request, sub: Sub) {
 setInterval(() => push("ping", now(), () => true), 15000);
 
 // ================================================================ news + public track record
-const news = { events: [] as { utc: number; title: string; src: number }[], fetchedAt: 0, tryAt: 0 };
+const news = { events: [] as { utc: number; title: string; src: number }[], fetchedAt: 0, tryAt: 0, raw: "" };
 async function refreshNews() {
   if (now() < news.tryAt) return;
   news.tryAt = now() + 600_000;
   try {
     const r = await fetch(E.FF_URL || "https://nfs.faireconomy.media/ff_calendar_thisweek.json", { headers: { "User-Agent": "GoldenStraddler/3" }, signal: AbortSignal.timeout(8000) });
     if (!r.ok) throw new Error("HTTP " + r.status);
-    const list: any = await r.json();
+    const raw = await r.text(), list: any = JSON.parse(raw);
+    if (Array.isArray(list) && list.length) news.raw = raw;   // served to customers' EAs, so they only need to allow one address
     news.events = (Array.isArray(list) ? list : []).filter((e: any) => e && e.country === "USD" && e.impact === "High" && typeof e.date === "string" && !/T00:00:00/.test(e.date))
       .map((e: any) => ({ utc: Math.round(Date.parse(e.date) / 1000), title: str(e.title, 120), src: 1 })).filter((e) => Number.isFinite(e.utc)).sort((a, b) => a.utc - b.utc);
     news.fetchedAt = now(); news.tryAt = now() + 3_600_000;
@@ -161,6 +162,14 @@ async function handle(req: Request): Promise<Response> {
       return json(200, { ok: true, ...r });
     }
     return bad("unknown EA route", 404);
+  }
+
+  // ---------------------------------------------------------------- news calendar for the EA (a cached copy of the ForexFactory weekly feed)
+  if (p === "/ea/calendar.json") {
+    if (limited("cal:" + ipOf(req), 120, 3_600_000)) return bad("Slow down", 429);
+    await refreshNews();
+    if (!news.raw) return bad("Calendar not available yet", 503);
+    return new Response(news.raw, { headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=300", "X-Fetched-At": String(news.fetchedAt) } });
   }
 
   // ---------------------------------------------------------------- payment webhooks
