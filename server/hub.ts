@@ -5,9 +5,9 @@
 import { all, now, one, run } from "./db";
 import { esc, getS, siteUrl } from "./util";
 import { calendar, kvGet, kvSet, refreshAll, series, sources, startHubData } from "./hubdata";
-import { ASSETS, CLASSES, FACTOR_INFO, THRESH, backtest, brief, buildCtx, fmtPx, postText, short, sides, type Asset, type Back, type Brief, type Ctx } from "./hubmodel";
+import { ASSETS, CLASSES, FACTOR_INFO, THRESH, backtest, brief, buildCtx, factorStats, fmtPx, postText, short, sides, type Asset, type Back, type Brief, type Ctx } from "./hubmodel";
 
-const state = { briefs: [] as Brief[], at: 0, asOf: "", busy: false, err: "", sig: "" };
+const state = { briefs: [] as Brief[], at: 0, asOf: "", busy: false, err: "", sig: "", statsDone: false };
 const backCache = new Map<string, Back | null>();
 const cachedBack = (a: Asset, c: Ctx, i: number) => {
   // keyed on the data too, so a backtest is redone when history arrives or changes, but not on every refresh
@@ -30,6 +30,7 @@ export async function computeHub() {
     if (sig !== state.sig && out.some((b) => b.px !== null)) {
       state.sig = sig;
       for (const b of out) { const p = c.px[b.id], n = c.weeks.length; console.log(`hub ${b.id} ${b.asOf} ${b.call.label} ${b.call.score} | last weeks ${p.slice(n - 4).map((v) => (v == null ? "-" : +v.toPrecision(6))).join(" ")} | ${b.priceLine}`); }
+      if (!state.statsDone && out.filter((b) => b.back).length >= 8) { state.statsDone = true; setTimeout(() => { try { for (const l of factorStats(buildCtx())) console.log("hub stat " + l); } catch (e: any) { console.error("hub stat", e.message); } }, 20_000); }
     }
     kvSet("briefs_at", String(state.at));
   } catch (e: any) { state.err = e.message; console.error("hub compute", e.stack || e.message); }

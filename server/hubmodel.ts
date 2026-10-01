@@ -85,12 +85,20 @@ function dxyRows(): Row[] {
     return { d: r.d, v };
   }).filter(Boolean) as Row[];
 }
+function despike(rows: Row[], thr = 0.07) {
+  return rows.filter((r, k) => {
+    if (k === 0 || k === rows.length - 1) return true;
+    const a = r.v / rows[k - 1].v - 1, b = rows[k + 1].v / r.v - 1;
+    return !(Math.abs(a) > thr && Math.abs(b) > thr && Math.sign(a) !== Math.sign(b));
+  });
+}
 function priceRows(a: Asset): Row[] {
   if (a.hist.startsWith("fx:")) {
     const rows = series("ecb:" + a.hist.slice(3));
     return a.usdInv ? rows.map((r) => ({ d: r.d, v: 1 / r.v })) : rows;
   }
   let rows = series(a.hist);
+  if (a.hist.startsWith("fred:")) rows = despike(rows);
   if (a.scaleTo) {                                           // PAX Gold history, rescaled so the latest close matches spot gold
     const sp = lastOf("spot:" + a.scaleTo), pr = rows.length ? rows[rows.length - 1].v : 0;
     const k = sp && pr ? sp.v / pr : 1;
@@ -311,6 +319,30 @@ export function backtest(a: Asset, c: Ctx, upto = c.weeks.length - 1): Back | nu
   }
   if (n < 10) return null;
   return { n, hits, rate: hits / n, upRate: tot ? ups / tot : 0.5, from, avgBull: bull.length ? mean(bull) : null, avgBear: bear.length ? mean(bear) : null, weeks };
+}
+
+// ================================================================ research: does each factor's sign line up with next week's move?
+export function factorStats(c: Ctx) {
+  const st = new Map<string, { n: [number, number]; h: [number, number]; r: [number, number] }>();
+  const add = (k: string, late: number, hit: boolean, r: number) => {
+    const x = st.get(k) || { n: [0, 0], h: [0, 0], r: [0, 0] }; x.n[late]++; if (hit) x.h[late]++; x.r[late] += r; st.set(k, x);
+  };
+  for (const a of ASSETS) {
+    const p = c.px[a.id];
+    for (let i = 52; i < c.weeks.length - 1; i++) {
+      if (!nz(p[i]) || !nz(p[i + 1])) continue;
+      const r = p[i + 1]! / p[i]! - 1, late = c.weeks[i] >= "2023-01-01" ? 1 : 0;
+      for (const k of a.factors) {
+        const f = factor(k, a, c, i); if (!f || Math.abs(f.s) < 0.1) continue;
+        add(k, late, Math.sign(f.s) === Math.sign(r), Math.sign(f.s) * r);
+        add(k + "@" + a.cls, late, Math.sign(f.s) === Math.sign(r), Math.sign(f.s) * r);
+      }
+      const { call } = score(a, c, i);
+      if (call.dir && call.coverage >= 0.6) { add("MODEL", late, call.dir === Math.sign(r), call.dir * r); add("MODEL@" + a.cls, late, call.dir === Math.sign(r), call.dir * r); }
+      add("UP", late, r > 0, r);
+    }
+  }
+  return [...st.entries()].sort().map(([k, x]) => `${k}: early ${x.n[0]} ${x.n[0] ? Math.round((x.h[0] / x.n[0]) * 1000) / 10 : "-"}% ${x.n[0] ? Math.round((x.r[0] / x.n[0]) * 1e5) / 10 : "-"}bp | late ${x.n[1]} ${x.n[1] ? Math.round((x.h[1] / x.n[1]) * 1000) / 10 : "-"}% ${x.n[1] ? Math.round((x.r[1] / x.n[1]) * 1e5) / 10 : "-"}bp`);
 }
 
 // ================================================================ the brief, written like a weekly post
