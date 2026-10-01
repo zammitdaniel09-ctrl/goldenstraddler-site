@@ -342,6 +342,9 @@ function applyPromo(pm) {
   };
   set("lifetime", "pLifeWas", "pLife", "pLifeU", "buyLife", "Buy lifetime");
   set("monthly", "pMonWas", "pMon", "pMonU", "buyMon", "Start monthly");
+  const hb = $("heroBuy"); hb.href = href; hb.textContent = `Get it for ${eur(q.amount)}`;
+  $("sheetBuy").href = href; $("sheetBuy").textContent = `Get it for ${eur(q.amount)}`;
+  $("mbWas").textContent = eur(q.list); $("mbNow").textContent = eur(q.amount); $("mbU").textContent = plan === "lifetime" ? "lifetime" : "first month"; $("mbGo").href = href;
   if (PROMO.plans.lifetime) { const tg = $("pTag"); tg.textContent = `${eur(PROMO.plans.lifetime.list - PROMO.plans.lifetime.amount)} off with code ${code}`; tg.classList.add("gold"); }
 }
 $("pmCode").addEventListener("click", async () => {
@@ -362,6 +365,11 @@ function layoutDesk() {
   desk.hidden = !any;
   desk.style.setProperty("--areas", [top, bot].filter(Boolean).join(" ") || '"next"');
   desk.style.setProperty("--areas-m", ["next", "gold", "acct", "week"].filter(on).map((k) => `"${ids[k]}"`).join(" ") || '"next"');
+  // phone tabs: hide tabs for cards without data, and keep a visible card selected
+  const tabs = [...desk.querySelectorAll(".desk-tabs [data-tab]")];
+  tabs.forEach((b) => (b.hidden = !on(b.dataset.tab)));
+  const sel = tabs.find((b) => b.getAttribute("aria-selected") === "true");
+  if (!sel || sel.hidden) { const first = tabs.find((b) => !b.hidden); if (first) first.click(); }
 }
 
 // ================================================================ live: gold price and our account
@@ -397,6 +405,13 @@ function applyLive(j) {
     $("gLive").lastChild.textContent = "Live";
   } else card.hidden = true;
   const a = j.account, ac = $("acct");
+  const pf = $("pfLive");
+  if (a) {
+    pf.hidden = false;
+    pf.querySelector(".live-dot").classList.toggle("off", !a.online);
+    const t = $("pfLiveT"); t.replaceChildren(a.online ? "Our own live account is running it right now. " : "Our own live account runs it. ");
+    const l = document.createElement("a"); l.href = "#record"; l.textContent = "See the results"; t.appendChild(l);
+  }
   if (a) {
     ac.hidden = false;
     const chip = $("acChip");
@@ -435,6 +450,7 @@ function stepLine() {
   const line = document.querySelector(".line"); if (!line || reduce) return;
   const items = [...line.children]; let i = 0, on = false, t = 0;
   const step = () => {
+    if (phone()) return;
     const li = items[i], vertical = getComputedStyle(line).gridTemplateColumns.split(" ").length === 1;
     items.forEach((x, k) => x.classList.toggle("lit", k === i));
     line.style.setProperty("--p", (vertical ? li.offsetTop + 8 : li.offsetLeft + 8) + "px");
@@ -520,6 +536,99 @@ f.addEventListener("submit", async (e) => {
   } catch (x) { err.textContent = x.message; } finally { b.disabled = false; }
 });
 
+// ================================================================ phones: tabs and swipe
+const phone = () => matchMedia("(max-width:760px)").matches;
+function tabs(list, panels) {
+  const btns = [...list.querySelectorAll("[data-tab]")];
+  const pick = (b, focus) => {
+    btns.forEach((x) => x.setAttribute("aria-selected", x === b ? "true" : "false"));
+    panels().forEach((p) => p.classList.toggle("on", p.dataset.panel === b.dataset.tab));
+    if (focus) b.focus();
+    // keep the chosen tab in view in a scrolling tab row
+    const r = b.getBoundingClientRect(), lr = list.getBoundingClientRect();
+    if (r.left < lr.left || r.right > lr.right) list.scrollBy({ left: r.left - lr.left - 16, behavior: reduce ? "auto" : "smooth" });
+  };
+  btns.forEach((b, i) => {
+    b.id = b.id || `tab-${Math.random().toString(36).slice(2, 8)}`;
+    b.addEventListener("click", () => pick(b));
+    b.addEventListener("keydown", (e) => {
+      const vis = btns.filter((x) => !x.hidden), k = vis.indexOf(b);
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft") { e.preventDefault(); pick(vis[(k + (e.key === "ArrowRight" ? 1 : vis.length - 1)) % vis.length], true); }
+    });
+  });
+  return { next(d) { const vis = btns.filter((x) => !x.hidden), k = vis.findIndex((x) => x.getAttribute("aria-selected") === "true"); const n = vis[k + d]; if (n) pick(n); } };
+}
+function swipe(el, ctl) {
+  let x0 = 0, y0 = 0, t0 = 0;
+  el.addEventListener("touchstart", (e) => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; t0 = Date.now(); }, { passive: true });
+  el.addEventListener("touchend", (e) => {
+    if (!phone()) return;
+    const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5 && Date.now() - t0 < 700) ctl.next(dx < 0 ? 1 : -1);
+  }, { passive: true });
+}
+function setupTabs() {
+  const desk = $("desk"), dt = tabs(desk.querySelector(".desk-tabs"), () => [...desk.querySelectorAll(".dk")]); swipe(desk, dt);
+  const rec = $("record"), rt = tabs(rec.querySelector(".rec-tabs"), () => [...rec.querySelectorAll(".rec>[data-panel]")]); swipe(rec.querySelector(".rec"), rt);
+  const pr = $("pricing"), pt = tabs(pr.querySelector(".plan-tabs"), () => [...pr.querySelectorAll(".plan")]); swipe(pr.querySelector(".plans"), pt);
+  // the five steps become tabs labelled with their times
+  const line = document.querySelector(".line"), ht = document.querySelector(".how-tabs");
+  [...line.children].forEach((li, i) => {
+    li.dataset.panel = "s" + i; if (i === 0) li.classList.add("on");
+    const b = document.createElement("button"); b.type = "button"; b.setAttribute("role", "tab"); b.dataset.tab = "s" + i;
+    b.setAttribute("aria-selected", i === 0 ? "true" : "false"); b.textContent = li.querySelector(".t").textContent; b.setAttribute("aria-label", li.querySelector(".t").textContent + ", " + li.querySelector("h3").textContent);
+    ht.appendChild(b);
+  });
+  const hc = tabs(ht, () => [...line.children]); swipe(line, hc);
+}
+
+// ================================================================ phone menu
+function setupMenu() {
+  const btn = $("menuBtn"), sheet = $("sheet");
+  const set = (open) => {
+    document.documentElement.style.setProperty("--hdr", Math.round(top.getBoundingClientRect().bottom) + "px");
+    sheet.hidden = !open; btn.setAttribute("aria-expanded", open ? "true" : "false"); btn.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+    document.body.classList.toggle("lock", open);
+  };
+  btn.addEventListener("click", () => set(sheet.hidden));
+  sheet.addEventListener("click", (e) => { if (e.target.closest("a,button")) set(false); });
+  addEventListener("keydown", (e) => { if (e.key === "Escape" && !sheet.hidden) { set(false); btn.focus(); } });
+  addEventListener("resize", () => { if (!phone() && innerWidth > 940 && !sheet.hidden) set(false); });
+}
+
+// ================================================================ sticky buy bar on phones
+function setupBuyBar() {
+  const bar = $("mbuy"), seenNow = new Map();
+  const update = () => {
+    const show = phone() && !seenNow.get("cta") && !seenNow.get("pricing") && !seenNow.get("foot") && scrollY > 200;
+    bar.classList.toggle("show", show); bar.setAttribute("aria-hidden", show ? "false" : "true"); $("mbGo").tabIndex = show ? 0 : -1;
+    document.body.classList.toggle("mbuy-on", show);
+  };
+  const io = new IntersectionObserver((es) => { for (const e of es) seenNow.set(e.target.dataset.k, e.isIntersecting); update(); });
+  const watch = (el, k) => { if (el) { el.dataset.k = k; io.observe(el); } };
+  watch(document.querySelector(".hero .cta"), "cta"); watch($("pricing"), "pricing"); watch(document.querySelector(".foot"), "foot");
+  addEventListener("scroll", update, { passive: true });
+}
+
+// ================================================================ lot-size calculator
+function setupCalc() {
+  const r = $("cLots"), bal = $("cBal");
+  const money = (v) => "$" + v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const run = () => {
+    const lots = Number(r.value) / 100, pt = lots * 100 * 0.01, sl = pt * 100, b = Number(bal.value);
+    $("cLotsV").textContent = lots.toFixed(2);
+    $("cPt").textContent = money(pt); $("cSl").textContent = money(sl);
+    const has = b > 0; $("cPctRow").hidden = !has;
+    if (has) { const pc = sl / b * 100; $("cPct").textContent = (pc < 0.1 ? pc.toFixed(2) : pc.toFixed(1)) + "%"; }
+    r.style.setProperty("--fill", ((r.value - r.min) / (r.max - r.min) * 100).toFixed(1) + "%");
+  };
+  r.addEventListener("input", run); bal.addEventListener("input", run); run();
+}
+
+setupTabs();
+setupMenu();
+setupBuyBar();
+setupCalc();
 startScope();
 stepLine();
 load();

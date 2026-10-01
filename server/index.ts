@@ -14,6 +14,7 @@ import { customerFor, dashState, eaHello, effective, issueLicence, licenceForSyn
 import { billingPortal, connectStripe, createOrder, listPrice, nowpaymentsWebhook, orderById, ordersFor, promo, quote, refundOrder, settleStripeSession, startPayment, stripe, stripeWebhook, type Plan } from "./pay";
 import { mailConfigured, mailExpiring, mailLicence, mailLoginCode, notifyAdmins, outbox, sendMail } from "./mail";
 import { fulfil } from "./licence";
+import { chatAdmin, chatEnabled, chatRoute, initChat, testAnthropicKey } from "./chat";
 
 const PORT = Number(E.PORT) || 3000, DEV = E.DEV === "1";
 const WEB = join(import.meta.dir, "..", "web");
@@ -167,6 +168,55 @@ const methodsOn = () => ({ card: getS("methods_card") === "1" && (MOCK || !!getS
 const ago = (t: number | null) => (t ? Math.round((now() - t) / 1000) : null);
 function err(e: any) { console.error(e?.stack || e); return bad(e?.message || "Something went wrong", e?.code && e.code >= 400 && e.code < 600 ? e.code : 500); }
 
+// ================================================================ AI chat wiring
+function chatFacts(tz: string) {
+  let zone = "UTC"; try { if (tz) { new Intl.DateTimeFormat("en-GB", { timeZone: tz }); zone = tz; } } catch {}
+  const fmt = (utc: number) => new Date(utc * 1000).toLocaleString("en-GB", { timeZone: zone, weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const L: string[] = [`LIVE FACTS (now ${new Date().toLocaleString("en-GB", { timeZone: zone, dateStyle: "full", timeStyle: "short" })}, visitor's time zone ${zone})`];
+  L.push(`- Prices: Lifetime ${euros(listPrice("lifetime"))} once. Monthly ${euros(listPrice("monthly"))} a month.`);
+  const pm = promo();
+  if (pm) {
+    for (const [plan, q] of Object.entries(pm.plans)) L.push(`- Discount code ${pm.code}: ${plan} ${euros(q.amount)} instead of ${euros(q.list)} (${euros(q.list - q.amount)} off${plan === "monthly" ? ", " + (q.note || "first month") : ""}). Checkout link with the code filled in: /checkout?plan=${plan}&code=${pm.code}`);
+    L.push(pm.endsAt ? `- The code ends ${fmt(Math.round(pm.endsAt / 1000))}.` : "- The code has no end date set, so never say it's ending or limited.");
+    if (pm.usesLeft !== null) L.push(`- ${pm.usesLeft} uses of the code are left.`);
+    if (!pm.plans.monthly) L.push(`- The code doesn't apply to the monthly plan.`);
+  } else L.push("- There is no public discount code right now.");
+  const m = methodsOn(), meth = [m.card && "card, Apple Pay and Google Pay (Stripe)", m.crypto && "crypto (NOWPayments)", m.bank && "bank transfer"].filter(Boolean);
+  L.push(`- Payment methods available now: ${meth.join(", ") || "none at the moment"}.`);
+  L.push(`- Money-back guarantee: ${getN("refund_days")} days from the first payment. A licence can move to another MT5 account once every ${getN("move_days")} days.`);
+  const up = news.events.filter((e) => e.utc > now() / 1000 - 60).slice(0, 10);
+  if (up.length) {
+    const g = new Map<number, typeof up>(); for (const e of up) g.set(e.utc, [...(g.get(e.utc) || []), e]);
+    L.push("- Next high-impact USD releases this week (visitor's time): " + [...g.entries()].slice(0, 5).map(([t, es]) => `${fmt(t)}: ${es.map((e) => e.title + (e.fc ? ` (forecast ${e.fc}${e.prev ? ", previous " + e.prev : ""})` : "")).join("; ")}`).join(" | "));
+  } else L.push("- No more high-impact USD releases on this week's calendar.");
+  const rec = record.data;
+  if (getS("record_public") === "1" && rec && rec.trades >= getN("record_min_trades"))
+    L.push(`- Our own ${rec.demo ? "demo" : "live"} account's public record: ${rec.trades} closed trades since ${String(rec.since).slice(0, 10)}, ${rec.points >= 0 ? "+" : ""}${Math.round(rec.points)} points net, ${Math.round(rec.winRate * 100)}% of trades won, profit factor ${rec.pf == null ? "n/a" : rec.pf.toFixed(2)}, deepest drawdown ${Math.round(rec.maxDD)} points. ${rec.online ? "It's online right now." : ""} One account at one broker, small lots. Past results don't predict future results.`);
+  else L.push("- Our live account record isn't published on the site yet.");
+  L.push(`- Current EA version: ${getS("ea_version")}.`, `- Support email: ${getS("support_email")}.`);
+  return L.join("\n") + "\n";
+}
+function chatCustomerFacts(customerId: string) {
+  const c = one<Customer>("SELECT * FROM customers WHERE id = ?", customerId);
+  if (!c) return "- The visitor is not signed in to a customer account.\n";
+  const lics = all<Licence>("SELECT * FROM licences WHERE customer_id = ? ORDER BY created_at DESC", c.id);
+  const L = [`- The visitor is signed in as a customer (${c.email}). Don't read out private details unless they ask about their own account.`];
+  for (const l of lics.slice(0, 3)) {
+    const pl = publicLicence(l);
+    L.push(`  - ${l.plan} licence, status ${pl.status}${l.expires_at ? ", paid up to " + new Date(l.expires_at).toISOString().slice(0, 10) : ""}, ${l.account ? "locked to an MT5 " + (l.account_demo ? "demo" : "live") + " account" : "not locked to an MT5 account yet (the EA hasn't run with this key)"}, EA ${pl.online ? "online right now" : l.last_seen ? "last checked in " + new Date(l.last_seen).toISOString().slice(0, 16).replace("T", " ") + " UTC" : "never checked in"}.`);
+  }
+  if (!lics.length) L.push("  - No licence yet.");
+  return L.join("\n") + "\n";
+}
+initChat({
+  facts: chatFacts,
+  refresh: () => Promise.all([refreshNews(), refreshRecord()]),
+  customer: (req) => { const c = meCustomer(req); return c ? { id: c.id, email: c.email, name: c.name } : null; },
+  customerFacts: chatCustomerFacts,
+  pushAdmin: (ev, d) => push(ev, d, (s) => s.admin),
+  adminsOnline: () => { let n = 0; for (const s of subs.values()) if (s.admin) n++; return n; },
+});
+
 // ================================================================ routes
 async function handle(req: Request): Promise<Response> {
   const url = new URL(req.url), p = url.pathname.replace(/\/+$/, "") || "/", post = req.method === "POST";
@@ -203,6 +253,9 @@ async function handle(req: Request): Promise<Response> {
     if (!news.raw) return bad("Calendar not available yet", 503);
     return new Response(news.raw, { headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=300", "X-Fetched-At": String(news.fetchedAt) } });
   }
+
+  // ---------------------------------------------------------------- website chat
+  if (p.startsWith("/api/chat/")) return chatRoute(req, url, p);
 
   // ---------------------------------------------------------------- payment webhooks
   if (p === "/webhooks/stripe" && post) return stripeWebhook(req);
@@ -442,6 +495,7 @@ async function adminRoute(req: Request, url: URL, p: string, a: Admin): Promise<
 
   if (p === "/me") return json(200, { ok: true, admin: { id: a.id, email: a.email, name: a.name, role: a.role }, mail: mailConfigured(), serverNow: now() });
   if (p === "/stream") return sse(req, { admin: true, licence: "" });
+  { const r = await chatAdmin(req, url, p, a, b); if (r) return r; }
 
   if (p === "/overview") {
     const t = now(), day = t - DAY, month = t - 30 * DAY;
@@ -461,8 +515,10 @@ async function adminRoute(req: Request, url: URL, p: string, a: Admin): Promise<
       pendingBank: all("SELECT id, email, plan, amount_cents, created_at FROM orders WHERE method = 'bank' AND status IN ('pending','processing') ORDER BY created_at DESC LIMIT 20"),
       refundRequests: all("SELECT id, at, email, message FROM messages WHERE topic = 'refund' AND handled = 0 ORDER BY at DESC"),
       unread: one<{ n: number }>("SELECT COUNT(*) n FROM messages WHERE handled = 0")!.n,
+      chatsWaiting: one<{ n: number }>("SELECT COUNT(*) n FROM chats WHERE wants_human = 1 AND unread > 0 AND status = 'open'")!.n,
+      chats24: one<{ n: number }>("SELECT COUNT(DISTINCT chat_id) n FROM chat_msgs WHERE role = 'user' AND at > ?", t - DAY)!.n,
       recent: all(`SELECT o.id, o.email, o.plan, o.kind, o.method, o.status, o.amount_cents, o.code, o.created_at, o.paid_at FROM orders o ORDER BY o.created_at DESC LIMIT 12`),
-      setup: { stripe: !!getS("stripe_secret"), crypto: !!getS("np_api_key"), bank: !!getS("bank_iban"), email: mailConfigured(), seller: !!getS("seller_name") } });
+      setup: { stripe: !!getS("stripe_secret"), crypto: !!getS("np_api_key"), bank: !!getS("bank_iban"), email: mailConfigured(), seller: !!getS("seller_name"), chat: !!getS("anthropic_key") } });
   }
 
   if (p === "/customers") {
@@ -611,7 +667,8 @@ async function adminRoute(req: Request, url: URL, p: string, a: Admin): Promise<
   if (p === "/settings") {
     const editable = ["price_lifetime", "price_monthly", "mail_from", "support_email", "notify_emails", "bank_name", "bank_holder", "bank_iban", "bank_bic",
       "seller_name", "seller_address", "seller_vat", "seller_reg", "record_public", "record_min_trades", "stripe_tax", "methods_card", "methods_crypto", "methods_bank",
-      "refund_days", "move_days", "announcement", "site_url", "ea_version", "promo_code"];
+      "refund_days", "move_days", "announcement", "site_url", "ea_version", "promo_code",
+      "chat_enabled", "chat_ai", "chat_model", "chat_daily_cap", "chat_greeting"];
     if (post) {
       if (!owner) return bad("Only the owner can change settings.", 403);
       for (const k of editable) if (b[k] !== undefined) {
@@ -625,7 +682,7 @@ async function adminRoute(req: Request, url: URL, p: string, a: Admin): Promise<
     const out: Record<string, string> = {};
     for (const k of editable) out[k] = getS(k);
     return json(200, { ok: true, settings: out, connected: { stripe: !!getS("stripe_secret"), stripe_webhook: !!getS("stripe_webhook_secret"), np: !!getS("np_api_key"),
-      np_ipn: !!getS("np_ipn_secret"), resend: mailConfigured() }, webhooks: { stripe: siteUrl() + "/webhooks/stripe", nowpayments: siteUrl() + "/webhooks/nowpayments" } });
+      np_ipn: !!getS("np_ipn_secret"), resend: mailConfigured(), anthropic: !!getS("anthropic_key") }, webhooks: { stripe: siteUrl() + "/webhooks/stripe", nowpayments: siteUrl() + "/webhooks/nowpayments" } });
   }
   if (p === "/integrations" && post) {
     if (!owner) return bad("Only the owner can connect payment accounts.", 403);
@@ -637,6 +694,7 @@ async function adminRoute(req: Request, url: URL, p: string, a: Admin): Promise<
         audit(who, "NOWPayments connected"); return json(200, { ok: true });
       }
       if (b.resend_key) { setS("resend_key", str(b.resend_key, 200)); audit(who, "Resend connected"); return json(200, { ok: true }); }
+      if (b.anthropic_key) { const k = str(b.anthropic_key, 300); await testAnthropicKey(k); setS("anthropic_key", k); audit(who, "AI chat connected"); return json(200, { ok: true }); }
       if (b.disconnect && SECRET_KEYS.has(b.disconnect)) { setS(b.disconnect, ""); audit(who, "disconnected", b.disconnect); return json(200, { ok: true }); }
     } catch (e: any) { return bad(e.message, 502); }
     return bad("Nothing to connect.");

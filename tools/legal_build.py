@@ -13,7 +13,7 @@ HEAD = '''<!doctype html>
 <meta property="og:type" content="website"><meta property="og:site_name" content="GoldenStraddler"><meta property="og:title" content="{title} | GoldenStraddler"><meta property="og:image" content="{{{{SITE_URL}}}}/og.png">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preload" href="/fonts/unbounded-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/fonts/space-grotesk-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/css/fonts.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/site.css">
+<link rel="stylesheet" href="/css/fonts.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/site.css"><link rel="stylesheet" href="/css/chat.css">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="gs" viewBox="0 0 64 64"><rect x="1" y="1" width="62" height="62" rx="16" fill="#0E1116" stroke="#2e3644" stroke-width="2"/><text x="25" y="44" font-family="Unbounded,Arial Black,sans-serif" font-weight="800" font-size="30" fill="#fff" text-anchor="middle">G</text><text x="42" y="49" font-family="Sedgwick Ave,Segoe Script,cursive" font-size="36" fill="#3FC4FC" text-anchor="middle">S</text></symbol></svg>
@@ -30,6 +30,7 @@ FOOT = '''</main>
   <p>GoldenStraddler is trading software. It doesn't give investment advice and never holds client funds. Trading leveraged products carries a high risk of losing money.</p>
   <nav aria-label="Legal"><a href="/terms">Terms</a><a href="/refunds">Refunds</a><a href="/privacy">Privacy</a><a href="/risk">Risk</a><a href="/imprint">Imprint</a></nav>
 </div></footer>
+<script src="/js/chat.js" defer></script>
 </body>
 </html>
 '''
@@ -135,18 +136,20 @@ PAGES['privacy'] = ('Privacy policy', 'What personal data GoldenStraddler collec
 <tr><td>Licence data: your MT5 account number, broker server and the times the EA checked in</td><td>To lock the licence to one account and keep it working</td><td>Contract</td></tr>
 <tr><td>Dashboard data, if dashboard sync is on: account balance and equity, open position and closed trades placed by the EA</td><td>To show your own live dashboard</td><td>Contract. You can switch it off in the EA inputs.</td></tr>
 <tr><td>Messages you send us</td><td>To answer you</td><td>Legitimate interest</td></tr>
+<tr><td>Website chat: what you write, our replies, the page you were on, your time zone, your IP address and, if you give it, your email</td><td>To answer your questions in the chat, let a person from our team take over and reply to you by email if you've left</td><td>Legitimate interest. For customers, also contract.</td></tr>
 <tr><td>Basic server logs: IP address, page requested, time</td><td>To keep the service secure and working</td><td>Legitimate interest</td></tr>
 </table>
 <p>We never receive your card number, your MT5 password or access to your trading account.</p>
 
 <h2>Cookies</h2>
-<p>We only use cookies that are needed for the site to work: one that keeps you signed in, and one that links your browser to an order you just placed. There are no advertising or analytics cookies, so there's no cookie banner. Fonts are hosted on our own server.</p>
+<p>We only use cookies that are needed for the site to work: one that keeps you signed in, one that links your browser to an order you just placed, and two that keep your website chat going when you move between pages. There are no advertising or analytics cookies, so there's no cookie banner. Fonts are hosted on our own server.</p>
 
 <h2>Who we share it with</h2>
 <ul>
 <li><strong>Stripe</strong> (card and wallet payments) and <strong>NOWPayments</strong> (crypto payments) receive the details they need to take your payment.</li>
 <li><strong>Railway</strong> hosts the website and its database.</li>
 <li><strong>Resend</strong> sends our emails.</li>
+<li><strong>Anthropic</strong> provides the AI that answers in the website chat. What you write in the chat is sent to it to produce the answer. It doesn't use these messages to train its models.</li>
 <li>Our accountant and the tax authorities, where the law requires it.</li>
 </ul>
 <p>Some of these providers process data outside the EU. Where they do, they use the European Commission's standard contractual clauses or another lawful safeguard. We don't sell your data and we don't share it for advertising.</p>
@@ -156,6 +159,7 @@ PAGES['privacy'] = ('Privacy policy', 'What personal data GoldenStraddler collec
 <li>Order and invoice records: as long as tax and accounting law requires, up to 10 years.</li>
 <li>Your account and licence: while you have a licence, and for 12 months after it ends.</li>
 <li>Dashboard trade data: while the licence is active. It's deleted when you move the licence to another account or ask us to delete it.</li>
+<li>Website chats: up to 12 months after the last message, then deleted. Ask us and we delete a chat sooner.</li>
 <li>Server logs: up to 30 days.</li>
 </ul>
 

@@ -100,6 +100,16 @@ export function mailRefunded(email: string, o: Order) {
   ].join("")));
 }
 
+// a team member answered in the website chat while the visitor was away
+export function mailChatReply(email: string, who: string, text: string) {
+  return sendMail(email, `${who} replied to your chat`, layout("We replied to your chat", [
+    p(`${esc(who)} from GoldenStraddler wrote:`),
+    `<div style="margin:0 0 16px;padding:14px 16px;background:#f2f5f9;border-radius:10px;font-size:15px;line-height:1.6;color:#0e1116;white-space:pre-wrap">${esc(text)}</div>`,
+    btn(siteUrl() + "/?chat=1", "Continue the chat"),
+    p("You can also just reply to this email."),
+  ].join("")), `${who} from GoldenStraddler wrote:\n\n${text}\n\nContinue the chat: ${siteUrl()}/?chat=1`);
+}
+
 export async function notifyAdmins(subject: string, text: string) {
   const extra = getS("notify_emails").split(/[,\s]+/).filter(Boolean);
   const admins = all<{ email: string }>("SELECT email FROM admins WHERE active = 1").map((a) => a.email);

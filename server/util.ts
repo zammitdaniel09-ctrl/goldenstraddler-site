@@ -49,7 +49,7 @@ export function unseal(box: string) {
 }
 
 // ---------------------------------------------------------------- settings
-export const SECRET_KEYS = new Set(["stripe_secret", "stripe_webhook_secret", "np_api_key", "np_ipn_secret", "resend_key"]);
+export const SECRET_KEYS = new Set(["stripe_secret", "stripe_webhook_secret", "np_api_key", "np_ipn_secret", "resend_key", "anthropic_key"]);
 export const DEFAULTS: Record<string, string> = {
   price_lifetime: "149900", price_monthly: "27900", currency: "eur",
   site_url: E.SITE_URL || "https://goldenstraddler.com",
@@ -62,6 +62,7 @@ export const DEFAULTS: Record<string, string> = {
   stripe_tax: "0", methods_card: "1", methods_crypto: "1", methods_bank: "1",
   refund_days: "7", move_days: "30", ea_version: "3.00", announcement: "",
   promo_code: "GOLD999",
+  chat_enabled: "1", chat_ai: "1", chat_model: "claude-haiku-4-5-20251001", chat_daily_cap: "500", chat_greeting: "",
 };
 const cache = new Map<string, string>();
 export function getS(k: string): string {

@@ -35,6 +35,7 @@ function openStream() {
   let t;
   const soon = () => { clearTimeout(t); t = setTimeout(() => { if (["overview", "live", "messages", "orders"].includes(page())) render(page(), true); }, 700); };
   ["status", "trades", "message"].forEach((ev) => STREAM.addEventListener(ev, soon));
+  STREAM.addEventListener("chat", (e) => { const d = JSON.parse(e.data); chatEvent(d); });
 }
 const page = () => (location.hash.slice(1) || "overview").split("/")[0];
 function route() {
@@ -75,6 +76,7 @@ VIEWS.overview = async () => {
   const d = await api("/api/admin/overview");
   $("nPending").hidden = !d.pendingBank.length; $("nPending").textContent = d.pendingBank.length;
   $("nMsg").hidden = !d.unread; $("nMsg").textContent = d.unread;
+  setChatBadge(d.chatsWaiting || 0);
   const stat = (label, v, s) => { const x = el("div", "stat"); x.append(el("span", "lab", label), el("div", "v", v), el("div", "s", s || "")); return x; };
   const g = el("div", "grid g4");
   g.append(stat("Revenue today", eur(d.revenue.today.s), `${d.revenue.today.n} payment${d.revenue.today.n === 1 ? "" : "s"}`),
@@ -82,7 +84,7 @@ VIEWS.overview = async () => {
     stat("Active licences", String(d.licences.active), `${d.licences.lifetime} lifetime · ${d.licences.monthly} monthly`),
     stat("Online now", String(d.online), `MRR ${eur(d.mrr)} · ${d.customers} customers`));
   const out = [head("Overview"), g];
-  const setup = d.setup, steps = [["stripe", "Connect Stripe (card, Apple Pay, Google Pay)"], ["crypto", "Connect NOWPayments (crypto)"], ["bank", "Add bank details for transfers"], ["email", "Connect email sending (Resend)"], ["seller", "Add seller details for the legal pages"]];
+  const setup = d.setup, steps = [["stripe", "Connect Stripe (card, Apple Pay, Google Pay)"], ["crypto", "Connect NOWPayments (crypto)"], ["bank", "Add bank details for transfers"], ["email", "Connect email sending (Resend)"], ["seller", "Add seller details for the legal pages"], ["chat", "Connect the AI chat (Claude API key)"]];
   if (steps.some(([k]) => !setup[k])) {
     const s = el("div", "setup");
     steps.forEach(([k, t]) => { const a = el("a", setup[k] ? "done" : ""); a.href = "#settings"; a.append(el("b", "", setup[k] ? "✓" : ""), document.createTextNode(t)); s.appendChild(a); });
@@ -330,6 +332,113 @@ VIEWS.messages = async () => {
   view.replaceChildren(head("Messages"), list);
 };
 
+// ---------------------------------------------------------------- chats
+let CHAT_ID = null, CHAT_FILTER = "open", CHAT_TYPING = 0;
+function setChatBadge(n) { const b = $("nChat"); b.hidden = !n; b.textContent = n; document.title = (n ? `(${n}) ` : "") + "Admin | GoldenStraddler"; }
+let chatT;
+function chatEvent(d) {
+  if (page() !== "chats") { if (d.kind === "human" || d.kind === "message") api("/api/admin/chat-stats").then((s) => setChatBadge(s.waiting)).catch(() => {}); return; }
+  clearTimeout(chatT); chatT = setTimeout(() => { loadChatList(); if (CHAT_ID === d.id) { if (d.kind === "delete") { CHAT_ID = null; showChat(null); } else openChat(d.id, true); } }, 250);
+}
+const chatWho = (c) => c.name || c.email || c.cust_email || "Visitor" + (c.country ? " (" + c.country + ")" : "");
+function chatPill(c) {
+  if (c.status === "closed") return pill("closed", "closed");
+  if (c.wants_human && c.unread) return pill("pending", "needs you");
+  return c.mode === "human" ? pill("active", "with team") : pill("", "AI");
+}
+VIEWS.chats = async () => {
+  const st = await api("/api/admin/chat-stats");
+  setChatBadge(st.waiting);
+  const out = [];
+  const flt = el("select", "field"); [["open", "Open chats"], ["all", "All chats"]].forEach(([v, t]) => { const o = el("option", "", t); o.value = v; flt.appendChild(o); });
+  flt.value = CHAT_FILTER; flt.onchange = () => { CHAT_FILTER = flt.value; loadChatList(); };
+  flt.style.width = "auto";
+  const nameBtn = btn("Your name in replies: " + (/^(owner|admin)$/i.test(ME.name || "") || !ME.name ? "not set" : ME.name), "btn sm");
+  nameBtn.onclick = () => {
+    const f = el("form", "formgrid"), i = el("input", "field"); i.value = /^(owner|admin)$/i.test(ME.name || "") ? "" : ME.name || ""; i.placeholder = "e.g. Daniel"; i.maxLength = 40;
+    const l = el("label", "full"); l.append("Shown to visitors above your replies, for example Daniel", i);
+    const s = btn("Save", "btn sm pri"); s.type = "submit"; f.append(l, s);
+    f.onsubmit = async (e) => { e.preventDefault(); try { const r = await api("/api/admin/chat-name", { name: i.value.trim() }); ME.name = r.name; $("meName").textContent = r.name; $("drawer").classList.remove("open"); toast("Saved."); render("chats"); } catch (x) { toast(x.message, true); } };
+    drawer(drHead("Your name in chat", "Visitors see this name above your replies."), f); setTimeout(() => i.focus(), 50);
+  };
+  out.push(head("Chats", flt, nameBtn));
+  if (!st.connected) out.push(el("p", "note", "The AI assistant isn't connected yet, so every chat comes straight to you. Add a Claude API key under Settings, AI chat."));
+  const w = el("div", "chatw"), list = el("div", "chat-list"), pane = el("section", "chat-pane");
+  list.id = "chatList"; pane.id = "chatPane";
+  w.append(list, pane); out.push(w);
+  const foot = el("p", "fine"); foot.textContent = `Last 30 days: ${st.month.chats} chats, ${st.month.replies} AI answers, about $${st.month.costUsd.toFixed(2)} in AI costs. Today: ${st.today} of ${st.cap} AI answers.`;
+  out.push(foot);
+  view.replaceChildren(...out);
+  await loadChatList();
+  const want = location.hash.split("/")[1];
+  if (want) openChat(want); else if (CHAT_ID) openChat(CHAT_ID); else showChat(null);
+};
+async function loadChatList() {
+  const list = $("chatList"); if (!list) return;
+  const d = await api("/api/admin/chats?status=" + CHAT_FILTER);
+  list.replaceChildren();
+  if (!d.chats.length) list.appendChild(el("p", "fine pad", "No chats yet. When a visitor writes in the chat on the website it shows up here straight away."));
+  d.chats.forEach((c) => {
+    const b = el("button", "chat-i" + (c.id === CHAT_ID ? " on" : "") + (c.wants_human && c.unread ? " hot" : "")); b.type = "button"; b.dataset.id = c.id;
+    const t = el("div", "r1"); const who = el("b", "", chatWho(c)); if (c.online) who.prepend(el("i", "dot on"));
+    t.append(who, el("span", "fine", agoFmt(c.updated_at)));
+    const r2 = el("div", "r2"); r2.append(chatPill(c)); if (c.unread) r2.append(el("em", "cnt", String(c.unread)));
+    const pv = el("p", "pv", (c.last_role === "agent" ? "You: " : c.last_role === "ai" ? "AI: " : c.last_role === "sys" ? "" : "") + (c.last_text || ""));
+    b.append(t, r2, pv);
+    b.onclick = () => { history.replaceState(null, "", "#chats/" + c.id); openChat(c.id); };
+    list.appendChild(b);
+  });
+}
+function showChat(node) {
+  const pane = $("chatPane"); if (!pane) return;
+  if (!node) { pane.replaceChildren(el("div", "chat-empty", "Pick a chat on the left. New messages appear here live.")); document.querySelector(".chatw").classList.remove("open"); return; }
+  pane.replaceChildren(node); document.querySelector(".chatw").classList.add("open");
+}
+async function openChat(id, quiet) {
+  let d; try { d = await api("/api/admin/chat/" + id); } catch (x) { if (!quiet) toast(x.message, true); return; }
+  const c = d.chat, keep = $("chatReply") ? $("chatReply").value : "";
+  const prevId = CHAT_ID; CHAT_ID = id;
+  document.querySelectorAll(".chat-i").forEach((x) => x.classList.toggle("on", x.dataset.id === id));
+  const box = el("div", "chat-box");
+  const hd = el("div", "chat-hd"), back = btn("Back", "btn xs chat-back"); back.onclick = () => { CHAT_ID = null; history.replaceState(null, "", "#chats"); showChat(null); };
+  const info = el("div", "chat-info"), title = el("b", "", chatWho(c));
+  const meta = el("span", "fine", [c.email && c.email !== chatWho(c) ? c.email : "", c.page ? "on " + c.page : "", "started " + dateFmt(c.created_at), c.online ? "here now" : "not on the site now"].filter(Boolean).join(", "));
+  info.append(title, meta);
+  if (c.customer) { const a = el("a", "btn xs", "Customer"); a.href = "#customers"; a.onclick = (e) => { e.preventDefault(); openCustomer(c.customer.id); }; info.append(a); }
+  const acts = el("div", "row-acts");
+  const mode = act(btn(c.mode === "human" ? "Hand back to the AI" : "Take over", "btn xs"), async () => { await api(`/api/admin/chat/${id}/${c.mode === "human" ? "handback" : "takeover"}`, {}); openChat(id, true); loadChatList(); });
+  const cl = act(btn(c.status === "closed" ? "Closed" : "Close chat", "btn xs"), async () => { await api(`/api/admin/chat/${id}/close`, {}); openChat(id, true); loadChatList(); });
+  if (c.status === "closed") cl.disabled = true;
+  acts.append(mode, cl);
+  if (ME.role === "owner") { const del = btn("Delete", "btn xs danger"); del.dataset.confirm = "Delete for good?"; act(del, async () => { await api(`/api/admin/chat/${id}/delete`, {}); CHAT_ID = null; showChat(null); loadChatList(); }, "Chat deleted."); acts.append(del); }
+  hd.append(back, info, acts);
+  const msgs = el("div", "chat-msgs");
+  d.messages.forEach((m) => {
+    const row = el("div", "cm " + m.role);
+    if (m.role !== "user" && m.role !== "sys") row.append(el("span", "by", m.role === "ai" ? "AI assistant" : (m.who || "Team")));
+    if (m.role === "user") row.append(el("span", "by", chatWho(c)));
+    const bb = el("div", "bb", m.text); row.append(bb, el("span", "at", new Date(m.at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })));
+    msgs.append(row);
+  });
+  const f = el("form", "chat-compose"), ta = el("textarea", "field"); ta.id = "chatReply"; ta.rows = 2; ta.placeholder = c.mode === "human" ? "Write a reply. Enter sends, Shift+Enter for a new line." : "Write a reply to take over from the AI"; ta.value = keep;
+  const send = btn("Send", "btn sm pri"); send.type = "submit";
+  f.append(ta, send);
+  const sub = async (e) => {
+    e && e.preventDefault(); const text = ta.value.trim(); if (!text) return;
+    send.disabled = true;
+    try { const r = await api(`/api/admin/chat/${id}/reply`, { text }); ta.value = ""; if (r.mailed) toast("They've left the site, so your reply was also emailed to them."); else if (!r.online) toast(c.email ? "They've left the site. They'll see it next time, and we email at most every 10 minutes." : "They've left the site and left no email. They'll see your reply if they come back."); openChat(id, true); loadChatList(); }
+    catch (x) { toast(x.message, true); } finally { send.disabled = false; }
+  };
+  f.onsubmit = sub;
+  ta.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sub(); } });
+  ta.addEventListener("input", () => { if (Date.now() - CHAT_TYPING > 3000) { CHAT_TYPING = Date.now(); api(`/api/admin/chat/${id}/typing`, {}).catch(() => {}); } });
+  const tip = el("p", "fine", c.mode === "human" ? "You're handling this chat. The AI stays quiet until you hand it back." : "The AI is answering. Replying takes over, or use Take over.");
+  box.append(hd, msgs, f, tip);
+  showChat(box);
+  msgs.scrollTop = msgs.scrollHeight;
+  if (prevId !== id || !quiet) ta.focus();
+}
+
 // ---------------------------------------------------------------- admins
 VIEWS.admins = async () => {
   const d = await api("/api/admin/admins");
@@ -399,6 +508,22 @@ VIEWS.settings = async () => {
   integ.querySelectorAll("hr").forEach((h) => { h.style.border = "0"; h.style.borderTop = "1px solid var(--edge)"; h.style.margin = "4px 0"; });
   const wh = el("p", "fine"); wh.textContent = `Webhook addresses (set automatically for Stripe): ${d.webhooks.stripe} · ${d.webhooks.nowpayments}`;
   if (owner) out.push(card("Payments and email", el("p", "fine", "Paste each key once. They're stored encrypted and never shown again."), integ, wh));
+  // AI chat
+  const cs = await api("/api/admin/chat-stats").catch(() => null);
+  if (owner && cs) {
+    const kRow = el("div", "stack"), ak = el("input", "field"); ak.type = "password"; ak.autocomplete = "off"; ak.placeholder = "Claude API key (sk-ant-...)";
+    kRow.append(el("div", "key-row"), ak, el("div", "key-row"));
+    kRow.firstChild.append(el("b", "", "Claude (Anthropic)"), conn(d.connected.anthropic), el("span", "fine", "Answers chat questions"));
+    kRow.lastChild.append(act(btn("Connect AI chat", "btn sm pri"), async () => { await api("/api/admin/integrations", { anthropic_key: ak.value.trim() }); ak.value = ""; render("settings"); }, "AI chat connected. The assistant now answers on the website."));
+    const help = el("p", "fine", "Create a key at console.anthropic.com, under API keys, and add some credit under Billing. We check the key before saving it.");
+    const use = el("p", "fine", `Last 30 days: ${cs.month.chats} chats, ${cs.month.replies} AI answers, about $${cs.month.costUsd.toFixed(2)}. Today: ${cs.today} of ${cs.cap} answers.`);
+    out.push(card("AI chat", kRow, help, use));
+    const modelOpts = cs.models.map((m) => [m.id, m.label]);
+    out.push(form("Chat settings", "The chat sits in the corner of every public page. The AI answers first; anyone can ask for a person, and you reply from Chats.",
+      inp("chat_enabled", "Show the chat on the website", { select: yn }), inp("chat_ai", "AI answers first", { select: yn }),
+      inp("chat_model", "AI model", { select: modelOpts }), inp("chat_daily_cap", "Most AI answers per day (cost cap)", { type: "number" }),
+      inp("chat_greeting", "Greeting (blank = default)", { full: 1, area: 1 })));
+  }
 
   if (owner) {
     const ea = await api("/api/admin/ea"), f = el("input", "field"), v = el("input", "field");
