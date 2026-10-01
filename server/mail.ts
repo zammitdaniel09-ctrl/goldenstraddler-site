@@ -52,7 +52,7 @@ export function mailLicence(o: Order, l: Licence) {
     p("Set-up takes about five minutes:"),
     `<ol style="margin:0 0 16px 18px;padding:0;font-size:15px;line-height:1.7;color:#2a3140">
       <li>Sign in to your account and download the EA and the user guide.</li>
-      <li>Add GoldenStraddler to MT5 and allow its two web addresses (the guide shows where).</li>
+      <li>Add GoldenStraddler to MT5 and allow its web address (the guide shows where).</li>
       <li>Attach it to an XAUUSD chart and paste your licence key. It locks to that MT5 account.</li></ol>`,
     btn(site + "/account", "Open your account"),
     p(`Order ${esc(o.id)}. ${l.plan === "lifetime" ? "This licence never expires." : "Your subscription renews every month until you cancel it from your account."}`),

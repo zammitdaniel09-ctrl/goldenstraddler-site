@@ -130,7 +130,7 @@ table.wrap td:nth-child(2){width:28%}
   <ol class="steps">
     <li><b>Download the EA.</b>Sign in at <code>goldenstraddler.com/account</code> and click <b>Download GoldenStraddler.ex5</b>. You can download it again any time, for example on a new PC or VPS.</li>
     <li><b>Put the file into MetaTrader 5.</b>In MT5, click <b>File → Open Data Folder</b>. In the folder that opens, go into <b>MQL5</b>, then <b>Experts</b>, and copy <code>GoldenStraddler.ex5</code> there. Back in MT5, right-click <b>Expert Advisors</b> in the Navigator (<span class="kbd">Ctrl</span> + <span class="kbd">N</span> if it's hidden) and choose <b>Refresh</b>. GoldenStraddler appears in the list.</li>
-    <li><b>Allow its two web addresses.</b>Click <b>Tools → Options</b> and open the <b>Expert Advisors</b> tab. Tick <b>Allow algorithmic trading</b> and <b>Allow WebRequest for listed URL</b>, then add these two addresses, each on its own line, and click <b>OK</b>:
+    <li><b>Allow its web address.</b>Click <b>Tools → Options</b> and open the <b>Expert Advisors</b> tab. Tick <b>Allow algorithmic trading</b> and <b>Allow WebRequest for listed URL</b>, then add this address and click <b>OK</b>:
       <div class="fig" style="margin-top:3mm">
         <svg viewBox="0 0 600 200" width="62%" style="display:block" xmlns="http://www.w3.org/2000/svg" font-family="Space Grotesk" font-size="13">
           <rect x="1" y="1" width="598" height="198" rx="8" fill="#f7f9fb" stroke="#c9d1da"/>
@@ -139,11 +139,9 @@ table.wrap td:nth-child(2){width:28%}
           <rect x="18" y="70" width="14" height="14" rx="2" fill="#1E9FE3"/><path d="M21 77l3 3 6-7" stroke="#fff" stroke-width="2" fill="none"/><text x="42" y="82">Allow WebRequest for listed URL:</text>
           <rect x="42" y="94" width="400" height="74" rx="4" fill="#fff" stroke="#c9d1da"/>
           <text x="54" y="118" font-family="JetBrains Mono" font-size="13">https://goldenstraddler.com</text>
-          <text x="54" y="144" font-family="JetBrains Mono" font-size="13">https://nfs.faireconomy.media</text>
-          <text x="458" y="118" fill="#6b7482" font-size="12">your licence</text>
-          <text x="458" y="144" fill="#6b7482" font-size="12">the news calendar</text>
+          <text x="320" y="118" fill="#6b7482" font-size="12">licence + news calendar</text>
         </svg>
-        <p class="cap">Type them exactly as shown, starting with https://. Without them the EA can't check its licence or load the news.</p>
+        <p class="cap">Type it exactly as shown, starting with https://. Without it the EA can't check its licence or load the news calendar.</p>
       </div></li>
     <li><b>Attach it to a gold chart.</b>Open an <b>XAUUSD</b> chart (any timeframe works) and drag <b>GoldenStraddler</b> from the Navigator onto it. In the window that opens:
       <ul style="margin-top:2mm"><li>On the <b>Common</b> tab, make sure <b>Allow Algo Trading</b> is ticked.</li>
@@ -203,7 +201,7 @@ table.wrap td:nth-child(2){width:28%}
     <tr><td>Keep running N seconds after</td><td class="mono">60</td><td>When the window closes after each release.</td></tr>
     <tr><td>Where events come from</td><td class="mono">FF + MT5</td><td>ForexFactory with MT5's calendar as backup, either one alone, or both combined.</td></tr>
     <tr><td>Currency</td><td class="mono">USD</td><td>Which currency's high-impact events to trade.</td></tr>
-    <tr><td>ForexFactory weekly feed</td><td class="mono">nfs.faireconomy.media</td><td>Leave as it is.</td></tr>
+    <tr><td>News calendar feed</td><td class="mono">goldenstraddler.com</td><td>Leave as it is. It's ForexFactory's weekly calendar, served from our site.</td></tr>
   </table>
   <h2>Execution and display</h2>
   <table>
@@ -283,7 +281,7 @@ table.wrap td:nth-child(2){width:28%}
     <tr><td>Turn on Algo Trading</td><td>The toolbar button is off, or <b>Allow Algo Trading</b> isn't ticked on the EA's Common tab.</td><td>Switch both on.</td></tr>
     <tr><td>Order rejected: invalid stops</td><td>Your broker's minimum stop distance is bigger than the settings.</td><td>Increase the pending distance or stop loss, or ask your broker about its stop level.</td></tr>
     <tr><td>Order rejected: not enough money</td><td>The lot size is too big for your free margin.</td><td>Lower the lot size.</td></tr>
-    <tr><td>No upcoming releases shown</td><td>The calendar couldn't load.</td><td>Check that https://nfs.faireconomy.media is in the WebRequest list. MT5's calendar is used as a backup.</td></tr>
+    <tr><td>No upcoming releases shown</td><td>The calendar couldn't load.</td><td>Check that https://goldenstraddler.com is in the WebRequest list. MT5's calendar is used as a backup.</td></tr>
   </table>
   <h2>Still stuck?</h2>
   <p>Use the help form on your account page. A screenshot of the chart panel and the <b>Experts</b> tab at the bottom of MT5 (<span class="kbd">Ctrl</span> + <span class="kbd">T</span> opens it) helps us answer quickly.</p>
