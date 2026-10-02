@@ -12,7 +12,7 @@ const KR: Record<string, string> = { eurusd: "EURUSD", gbpusd: "GBPUSD", usdjpy:
 const URL_GA = E.HUB_GA || "https://api.gold-api.com", URL_KR = E.HUB_KR || "https://api.kraken.com";
 export const quotes = new Map<string, Q>();
 const buf = new Map<string, [number, number][]>();
-let saved = 0, lastErr = "";
+let saved = 0, lastErr = "", krOk: string[] | null = null;
 try { const o = JSON.parse(kvGet("live_buf") || "{}"); for (const [k, v] of Object.entries(o)) if (Array.isArray(v)) buf.set(k, v as [number, number][]); } catch {}
 
 function keep(id: string, p: number, src: string) {
@@ -36,8 +36,15 @@ async function poll() {
     await Bun.sleep(150);
   }
   try {
-    const j = await get(`${URL_KR}/0/public/Ticker?pair=${Object.values(KR).join(",")}`);
-    if (j && Array.isArray(j.error) && j.error.length && !j.result) throw new Error(j.error.join(", "));
+    // one unknown pair makes Kraken reject the whole request, so find the ones it lists once, then ask for those
+    if (!krOk) {
+      krOk = [];
+      for (const pair of Object.values(KR)) { try { const t = await get(`${URL_KR}/0/public/Ticker?pair=${pair}`); if (t?.result && Object.keys(t.result).length) krOk.push(pair); } catch {} await Bun.sleep(200); }
+      console.log("hub live: Kraken lists " + (krOk.join(", ") || "none of our pairs"));
+    }
+    if (!krOk.length) throw new Error("no pairs");
+    const j = await get(`${URL_KR}/0/public/Ticker?pair=${krOk.join(",")}`);
+    if (j && Array.isArray(j.error) && j.error.length && !j.result) { krOk = null; throw new Error(j.error.join(", ")); }
     for (const [k, v] of Object.entries<any>(j?.result || {})) {
       const norm = k.replace(/^[XZ]([A-Z]{3})[XZ]([A-Z]{3})$/, "$1$2");
       const id = Object.keys(KR).find((x) => KR[x] === norm);
