@@ -148,8 +148,9 @@ async function ecb() {
 // ---------------------------------------------------------------- crypto and the PAXG gold proxy: daily closes from Coinbase, Kraken as a fallback
 async function coin(sym: string) {
   const s = "coin:" + sym, sid = "px:" + sym;
-  if (!due(s, 6 * HOUR, 2 * HOUR)) return;
   const have = lastOf(sid), full = !have || ohlcCount(sid) < 200;              // the first run with candles reads the whole history once
+  if (!full && !due(s, 6 * HOUR, 2 * HOUR)) return;
+  if (full && have && !due(s, 20 * 60_000, 20 * 60_000)) return;              // ...and doesn't retry a failed backfill more than every 20 minutes
   try {
     const rows: [string, number][] = [], bars: Bar[] = [];
     let end = Date.now(), start0 = Date.parse(full ? HISTORY_FROM : ago(20));
