@@ -41,9 +41,8 @@ const W0: Weights = { trend: 1.2, stretch: 0.8, cot: 0.8, crowd: 0.5, dollar: 1,
 // candidates compared in the research log; weights are picked on 2018-2022 only, 2023 on stays untouched for checking
 export const VARIANTS: Record<string, Weights> = {
   v0: W0,                                                // the first guess, before looking at results
-  v1: { fed: 1.2, crowd: 0.8, vixRisk: 0.6, vixRisk0: 0.6, realYield: 0.6, stocks: 0.6, oilCad: 0.5, "stretch@fx": 0.6, "stretch@energy": 0.2, "stretch@crypto": 0.1, "stretch@metals": 0.4,
-    "trend@energy": 0.6, "trend@crypto": 0.4, "trend@fx": 0.2, "trend@metals": 0.5, cot: 0.2, dollar: 0.2, "dollar@metals": 0.3, vixHaven: 0.3, vixHavenFx: 0.2, ryLevel: 0.3 },
-  v2: { fed: 1, crowd: 0.8, vixRisk: 0.6, vixRisk0: 0.6, "stretch@fx": 0.6, trend: 0.05, stretch: 0.05, cot: 0.05, dollar: 0.05, realYield: 0.05, ryLevel: 0.05, vixHaven: 0.05, vixHavenFx: 0.05, stocks: 0.05, oilCad: 0.05 },
+  // tried on 1 Oct 2026 and dropped: a version leaning on trend by class (2023-on 51%) and a core of Fed path, crowding and VIX only (52.7%)
+  // chosen: 58% on 2018-2022, 53% on 2023 on (forex 56%)
   v3: { fed: 1.2, crowd: 0.8, vixRisk: 0.6, vixRisk0: 0.6, realYield: 0.6, stocks: 0.6, oilCad: 0.5, "stretch@fx": 0.6, stretch: 0.2, trend: 0.05, cot: 0.2, dollar: 0.2, vixHaven: 0.3, vixHavenFx: 0.2, ryLevel: 0.3 },
 };
 export const SPLIT = "2023-01-01";                     // weights were chosen on weeks before this; weeks from it on are the out-of-sample check
@@ -408,7 +407,7 @@ export function brief(a: Asset, c: Ctx, nowS = Date.now() / 1000, bt: (a: Asset,
   const bk = bt(a, c, i);
   if (call.dir) {
     const L = bk?.late, lr = L && L.n >= 40 ? L.hits / L.n : null, base = L && L.tot ? Math.max(L.up, L.tot - L.up) / L.tot : 0.5;
-    let lvl = lr === null ? 0 : lr >= 0.56 && lr > base ? 2 : lr >= 0.52 && lr > base - 0.01 ? 1 : 0;
+    let lvl = lr === null ? 0 : lr >= 0.56 && lr >= base + 0.03 ? 2 : lr >= 0.53 && lr >= base + 0.01 ? 1 : 0;
     if (call.agree < 0.6 || call.coverage < 0.8) lvl = Math.max(0, lvl - 1);
     call.conf = (["low", "moderate", "high"] as const)[lvl];
   }

@@ -4,7 +4,7 @@
  */
 import { all, now, one, run } from "./db";
 import { esc, getS, siteUrl } from "./util";
-import { calendar, kvGet, kvSet, refreshAll, series, sources, startHubData } from "./hubdata";
+import { COT, calendar, kvGet, kvSet, refreshAll, series, sources, startHubData } from "./hubdata";
 import { ASSETS, CLASSES, FACTOR_INFO, THRESH, backtest, brief, buildCtx, factorStats, fmtPx, postText, short, sides, type Asset, type Back, type Brief, type Ctx } from "./hubmodel";
 
 const state = { briefs: [] as Brief[], at: 0, asOf: "", busy: false, err: "", sig: "", statsDone: false };
@@ -59,8 +59,10 @@ export function startHub() {
   startHubData(() => computeHub());
 }
 export const hubPublic = () => getS("hub_public") === "1";
+const SRC_NAMES: Record<string, string> = { ecb: "ECB exchange rates", spot: "Spot prices (gold-api)", calendar: "Release calendar", "eia:WCESTUS1": "EIA crude stocks" };
+const srcName = (k: string) => SRC_NAMES[k] || (k.startsWith("fred:") ? "FRED " + k.slice(5) : k.startsWith("cot:") ? "CFTC positioning: " + (COT[k.slice(4)]?.name || k.slice(4)) : k.startsWith("coin:") ? "Price history: " + k.slice(5) : k);
 export function hubStatus() {
-  return { public: hubPublic(), computedAt: state.at, asOf: state.asOf, err: state.err, sources: sources(), markets: state.briefs.length, live: liveRecord() };
+  return { public: hubPublic(), computedAt: state.at, asOf: state.asOf, err: state.err, sources: sources().map((r) => ({ ...r, name: srcName(r.src) })), markets: state.briefs.length, live: liveRecord() };
 }
 export async function hubRefreshNow(force = false) { await refreshAll(undefined, force); await computeHub(); }
 
@@ -180,7 +182,8 @@ function summaryHtml(bs: Brief[]) {
   let n = 0, hits = 0, up = 0, tot = 0;
   for (const b of bs) if (b.back) { n += b.back.late.n; hits += b.back.late.hits; up += b.back.late.up; tot += b.back.late.tot; }
   const lr = liveRecord();
-  return { back: n ? `Since 2023, out of sample: <b>${nf((hits / n) * 100)}%</b> of ${nf(n)} weekly calls right, against a ${nf((up / tot) * 100)}% up-week rate` : "",
+  const fx = classStats(bs).get("fx"), fxr = fx && fx.l[0] >= 50 ? ` and <b>${nf((fx.l[1] / fx.l[0]) * 100)}%</b> in forex` : "";
+  return { back: n ? `Since 2023, on data the model never saw: <b>${nf((hits / n) * 100)}%</b> of ${nf(n)} weekly calls right overall${fxr}, against a ${nf((up / tot) * 100)}% up-week rate` : "",
     live: lr.n ? `Live since ${short(lr.since!)}: <b>${lr.hits}</b> of ${lr.n} right` : "Live record: starts with this week's calls" };
 }
 function classTable(bs: Brief[]) {

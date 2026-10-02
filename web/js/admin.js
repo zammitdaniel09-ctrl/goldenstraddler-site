@@ -559,10 +559,12 @@ VIEWS.settings = async () => {
   if (hub) {
     out.push(form("Markets page", hub.public ? "Published: linked from the site menu and open to search engines." : "Hidden: anyone with the link can open it, but it isn't in the menu and search engines are asked not to index it.",
       inp("hub_public", "Publish the Markets page", { select: yn })));
-    const list = el("div", "stack");
-    for (const r of hub.sources) {
-      const row = el("div", "key-row"), ok = !!r.ok_at, fresh = ok && !r.err;
-      row.append(el("b", "", r.src), pill(fresh ? "active" : ok ? "pending" : "revoked", fresh ? "ok" : ok ? "last try failed" : "failing"), el("span", "fine", (r.err || r.last || "").slice(0, 120)));
+    const list = el("div", "hub-srcs"), bad = hub.sources.filter((r) => !r.ok_at || r.err);
+    for (const r of [...bad, ...hub.sources.filter((r) => r.ok_at && !r.err)]) {
+      const ok = !!r.ok_at, fresh = ok && !r.err, row = el("div", "hub-src");
+      row.title = (r.err || r.last || "");
+      row.append(pill(fresh ? "active" : ok ? "pending" : "revoked", fresh ? "ok" : ok ? "stale" : "failing"), el("span", "", r.name || r.src));
+      if (!fresh) row.append(el("span", "fine", (r.err || "").slice(0, 90)));
       list.append(row);
     }
     const open = el("a", "btn sm", "Open the Markets page"); open.href = "/markets"; open.target = "_blank"; open.rel = "noopener";
