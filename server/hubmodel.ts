@@ -148,7 +148,7 @@ const months = (w: number) => (w >= 52 ? "1 year" : w >= 26 ? "6 month" : "3 mon
 export type Ctx = {
   weeks: string[]; px: Record<string, (number | null)[]>; pxDate: Record<string, string>;
   dxy: (number | null)[]; ry: (number | null)[]; y2: (number | null)[]; vix: (number | null)[]; wti: (number | null)[]; stocks: (number | null)[];
-  cot: Record<string, { net: (number | null)[]; name: string }>;
+  cot: Record<string, { net: (number | null)[]; name: string; last: { d: string; l: number; s: number; oi: number } | null }>;
 };
 export function buildCtx(nowMs = Date.now()): Ctx {
   const end = lastCompletedFriday(nowMs), weeks = fridays("2017-01-06", end);
@@ -159,7 +159,8 @@ export function buildCtx(nowMs = Date.now()): Ctx {
     const rows = cotRows(a.cot.code), cat = a.cot.cat;
     // a Tuesday report is public that Friday, so it belongs to the week ending three days later
     const net = rows.map((r: any) => ({ d: iso(Date.parse(r.d) + 3 * DAYMS), v: nz(r[cat + "_l"]) && nz(r[cat + "_s"]) ? r[cat + "_l"] - r[cat + "_s"] : NaN })).filter((r: Row) => Number.isFinite(r.v));
-    cot[a.id] = { net: weekly(net, weeks, 6), name: rows.length ? rows[rows.length - 1].name : "" };
+    const lr = rows.length ? rows[rows.length - 1] : null;
+    cot[a.id] = { net: weekly(net, weeks, 6), name: lr ? lr.name : "", last: lr && nz(lr[cat + "_l"]) && nz(lr[cat + "_s"]) ? { d: lr.d, l: lr[cat + "_l"], s: lr[cat + "_s"], oi: lr.oi } : null };
   }
   return {
     weeks, px, pxDate, cot,
@@ -170,6 +171,13 @@ export function buildCtx(nowMs = Date.now()): Ctx {
 
 // ================================================================ the factors
 export type F = { key: string; s: number; w: number; text: string; short: string };
+// the factors grouped into the columns of the signal matrix
+export const COLS: { id: string; name: string; keys: string[] }[] = [
+  { id: "trend", name: "Trend", keys: ["trend"] }, { id: "stretch", name: "Stretch", keys: ["stretch"] }, { id: "cot", name: "Fund flows", keys: ["cot"] },
+  { id: "crowd", name: "Crowding", keys: ["crowd"] }, { id: "dollar", name: "Dollar", keys: ["dollar"] }, { id: "realYield", name: "Real yields", keys: ["realYield", "ryLevel"] },
+  { id: "fed", name: "Fed path", keys: ["fed"] }, { id: "fear", name: "Fear gauge", keys: ["vixHaven", "vixRisk", "vixRisk0", "vixHavenFx"] }, { id: "oil", name: "Oil link", keys: ["stocks", "oilCad"] },
+];
+export type Cell = { s: number; c: number; w: number; text: string } | null | undefined;   // undefined: not used for this market; null: no data yet
 const WHO: Record<CotCat, string> = { mm: "Hedge funds", lev: "Leveraged funds", am: "Asset managers" };
 const usdBased = (a: Asset) => a.cls !== "fx";                 // priced in dollars, so a weaker dollar helps
 const DOLLAR_WHY: Record<Cls, string> = { metals: "making {x} cheaper for buyers outside the US", energy: "which makes {x} cheaper for buyers outside the US", crypto: "and a softer dollar has tended to go with firmer crypto", fx: "" };
@@ -368,7 +376,10 @@ export type Brief = {
   id: string; name: string; sym: string; cls: Cls; asOf: string; title: string; call: Call; px: number | null; pxTxt: string; chg: number | null;
   priceLine: string; forIt: string[]; against: string[]; verdict: string; watch: Ev[]; watchLine: string;
   live: { price: number; at: number; chg: number | null } | null; back: Back | null; notes: string[];
-  cot: { name: string; net: number; chg: number; pct: number; who: string; inv: boolean } | null; recent: { wk: string; dir: number; res: number | null }[];
+  cot: { name: string; net: number; chg: number; pct: number; who: string; inv: boolean; what: string; long: number | null; short: number | null; hist: number[]; lo: number; hi: number } | null;
+  recent: { wk: string; dir: number; res: number | null }[];
+  cells: Record<string, Cell>; drivers: { key: string; name: string; c: number; s: number; text: string }[];
+  chart: { wk: string; px: number; m20: number | null; m50: number | null }[]; pxDate: string;
 };
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"], WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 export const short = (d: string) => { const t = new Date(d + "T12:00:00Z"); return `${t.getUTCDate()} ${MON[t.getUTCMonth()]} ${String(t.getUTCFullYear()).slice(2)}`; };
@@ -438,13 +449,26 @@ export function brief(a: Asset, c: Ctx, nowS = Date.now() / 1000, bt: (a: Asset,
   let cot: Brief["cot"] = null;
   if (a.cot && c.cot[a.id]) {
     const n = c.cot[a.id].net, v = n[i], pv = prevVal(n, i), hist = back(n, i, 156);
-    if (nz(v) && pv !== null && hist.length >= 52) cot = { name: c.cot[a.id].name, net: v, chg: v - pv, pct: pctRank(hist, v), who: WHO[a.cot.cat], inv: !!a.cot.inv };
+    const last = c.cot[a.id].last;
+    if (nz(v) && pv !== null && hist.length >= 52) cot = { name: c.cot[a.id].name, net: v, chg: v - pv, pct: pctRank(hist, v), who: WHO[a.cot.cat], inv: !!a.cot.inv, what: a.cot.what,
+      long: last ? last.l : null, short: last ? last.s : null, hist: back(n, i, 156), lo: Math.min(...hist), hi: Math.max(...hist) };
   }
+  // each factor's share of the score, for the matrix and the "what's driving it" bars
+  const aw = fs.reduce((t, f) => t + f.w, 0) || 1, cells: Record<string, Cell> = {};
+  for (const col of COLS) {
+    const used = col.keys.filter((k) => a.factors.includes(k));
+    if (!used.length) continue;
+    const got = fs.filter((f) => used.includes(f.key));
+    cells[col.id] = got.length ? { s: Math.max(-1, Math.min(1, got.reduce((t, f) => t + f.s * f.w, 0) / got.reduce((t, f) => t + f.w, 0))), c: got.reduce((t, f) => t + (f.s * f.w) / aw, 0), w: got.reduce((t, f) => t + f.w, 0), text: got.map((f) => f.text).filter(Boolean).join(" ") } : null;
+  }
+  const drivers = COLS.filter((col) => cells[col.id]).map((col) => ({ key: col.id, name: col.name, c: cells[col.id]!.c, s: cells[col.id]!.s, text: cells[col.id]!.text })).sort((x, y) => Math.abs(y.c) - Math.abs(x.c));
+  const chart: Brief["chart"] = [];
+  for (let k = Math.max(0, i - 103); k <= i; k++) if (nz(p[k])) chart.push({ wk: c.weeks[k], px: p[k]!, m20: sma(p, k, 20), m50: sma(p, k, 50) });
   return {
     id: a.id, name: a.name, sym: a.sym, cls: a.cls, asOf: c.weeks[i], title: `${a.name.toUpperCase()} WEEKLY, ${short(c.weeks[i])}`, call,
     px: nz(p[i]) ? p[i] : null, pxTxt: nz(p[i]) ? fmtPx(a, p[i]!) : "", chg: pl.chg, priceLine: pl.line,
     forIt: pros.slice(0, 5).map((f) => f.text), against: cons.slice(0, 4).map((f) => f.text), verdict, watch, watchLine,
-    live, back: bk, notes, cot, recent: [],
+    live, back: bk, notes, cot, recent: [], cells, drivers, chart, pxDate: c.pxDate[a.id] || "",
   };
 }
 function spotNow(sym: string) { const s = spot[sym]; if (s && Date.now() - s.at < 6 * 3600_000) return s; const l = lastOf("spot:" + sym); return l ? { price: l.v, at: Date.parse(l.d + "T12:00:00Z") } : null; }

@@ -15,7 +15,7 @@ import { billingPortal, connectStripe, createOrder, listPrice, nowpaymentsWebhoo
 import { mailConfigured, mailExpiring, mailLicence, mailLoginCode, notifyAdmins, outbox, sendMail } from "./mail";
 import { fulfil } from "./licence";
 import { chatAdmin, chatEnabled, chatRoute, initChat, testAnthropicKey } from "./chat";
-import { hubDetail, hubJson, hubPublic, hubRefreshNow, hubStatus, renderHub, startHub } from "./hub";
+import { hubDetail, hubJson, hubLive, hubPublic, hubRefreshNow, hubStatus, hubTeaser, renderHub, startHub } from "./hub";
 
 const PORT = Number(E.PORT) || 3000, DEV = E.DEV === "1";
 const WEB = join(import.meta.dir, "..", "web");
@@ -75,7 +75,7 @@ async function file(req: Request, rel: string, opts: { noindex?: boolean; cache?
 const notFound = (req: Request) => file(req, "404.html").then((r) => new Response(r.body, { status: 404, headers: r.headers }));
 
 // the Markets link appears in the home page menus once the hub is published
-const hubNav = (s: string) => (hubPublic() ? s.replace(/<!--HUB_NAV-->/g, '<a href="/markets">Markets</a>') : s);
+const hubNav = (s: string) => (hubPublic() ? s.replace(/<!--HUB_NAV-->/g, '<a href="/markets">Markets</a>').replace("<!--HUB_TEASER-->", () => hubTeaser()) : s);
 // seller details are filled into the legal pages
 function legalVars(s: string) {
   const v: Record<string, string> = {
@@ -273,6 +273,7 @@ async function handle(req: Request): Promise<Response> {
       refundDays: getN("refund_days"), news: news.events.filter((e) => e.utc > now() / 1000 - 75).slice(0, 8), week: news.events, record: showRec ? rec : null,
       announcement: getS("announcement"), promo: promo(), verifyUrl: /^https:\/\/[\w.-]+\//.test(getS("record_verify_url")) ? getS("record_verify_url") : "" });
   }
+  if (p === "/api/markets/live") { if (limited("mkl:" + ipOf(req), 60, 60_000)) return bad("Slow down", 429); return json(200, hubLive()); }
   if (p === "/api/markets") {
     const id = url.searchParams.get("id");
     if (id) { if (limited("mkd:" + ipOf(req), 30, 60_000)) return bad("Slow down", 429); const d = hubDetail(id); return d ? json(200, d) : bad("Unknown market", 404); }

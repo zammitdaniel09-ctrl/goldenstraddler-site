@@ -104,3 +104,10 @@ We run GoldenStraddler on our own live MT5 account and stream every closed trade
 - Customer account, downloads, dashboard, refunds, help form: /account
 - Terms /terms, refund policy /refunds, privacy /privacy, risk disclosure /risk, imprint /imprint
 - Support email: shown in the live facts.
+
+## The Markets desk (goldenstraddler.com/markets)
+- A free weekly page with a call (bullish, bearish or no clear lean, with a confidence level) for 16 markets: gold, silver, platinum, copper, WTI and Brent crude, natural gas, EUR/USD, GBP/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF, NZD/USD, bitcoin and ether.
+- The calls come from a transparent scoring model on public data: trend, weekly RSI, CFTC positioning (fund flows and crowding), the dollar index, real yields, 2 year Treasury yields (Fed path), the VIX, and crude stocks or oil for CAD. Each point on the page is a number with its source.
+- It also has live prices, a signal matrix showing what pushes each market up or down, a hedge-fund positioning table, the week's high-impact releases with a "Watch on YouTube" search link and the official source, and a "Copy as Telegram post" button.
+- Track record: the weights were picked on 2018 to 2022 and tested on 2023 onwards. Forex has held up best on unseen data; energy and crypto haven't beaten a coin flip since 2023, and the page says so. Don't overstate the accuracy.
+- It's general market information, not advice, and separate from the EA: the EA trades gold news releases on its own rules and doesn't follow these calls. Calls update every weekend.

@@ -1,0 +1,66 @@
+/*
+ * Markets hub, live prices between the weekly calls. Free and keyless:
+ * gold-api.com for metals and crypto, Kraken's public ticker for the forex pairs it lists.
+ * Polled once a minute; a 24 hour buffer of 5 minute samples feeds the small intraday charts.
+ */
+import { E } from "./util";
+import { kvGet, kvSet, putSeries } from "./hubdata";
+
+type Q = { p: number; t: number; src: string };
+const GA: Record<string, string> = { gold: "XAU", silver: "XAG", platinum: "XPT", copper: "HG", btc: "BTC", eth: "ETH" };
+const KR: Record<string, string> = { eurusd: "EURUSD", gbpusd: "GBPUSD", usdjpy: "USDJPY", usdcad: "USDCAD", usdchf: "USDCHF", audusd: "AUDUSD", nzdusd: "NZDUSD" };
+const URL_GA = E.HUB_GA || "https://api.gold-api.com", URL_KR = E.HUB_KR || "https://api.kraken.com";
+export const quotes = new Map<string, Q>();
+const buf = new Map<string, [number, number][]>();
+let saved = 0, lastErr = "";
+try { const o = JSON.parse(kvGet("live_buf") || "{}"); for (const [k, v] of Object.entries(o)) if (Array.isArray(v)) buf.set(k, v as [number, number][]); } catch {}
+
+function keep(id: string, p: number, src: string) {
+  if (!(p > 0)) return;
+  const t = Date.now(); quotes.set(id, { p, t, src });
+  const b = buf.get(id) || [], s = Math.floor(t / 1000), last = b[b.length - 1];
+  if (last && s - last[0] < 290) last[1] = p; else b.push([s, p]);
+  while (b.length && b[0][0] < s - 86400 - 600) b.shift();
+  buf.set(id, b);
+}
+async function get(url: string) {
+  const r = await fetch(url, { headers: { "User-Agent": "GoldenStraddler-Markets/1" }, signal: AbortSignal.timeout(8000) });
+  if (!r.ok) throw new Error(`HTTP ${r.status} from ${new URL(url).host}`);
+  return r.json() as any;
+}
+async function poll() {
+  const errs: string[] = [];
+  for (const [id, sym] of Object.entries(GA)) {
+    try { const j = await get(`${URL_GA}/price/${sym}`); keep(id, Number(j && j.price), "gold-api"); if (Number(j?.price) > 0) putSeries("spot:" + sym, [[new Date().toISOString().slice(0, 10), Number(j.price)]]); }
+    catch (e: any) { errs.push(sym + " " + e.message); }
+    await Bun.sleep(150);
+  }
+  try {
+    const j = await get(`${URL_KR}/0/public/Ticker?pair=${Object.values(KR).join(",")}`);
+    if (j && Array.isArray(j.error) && j.error.length && !j.result) throw new Error(j.error.join(", "));
+    for (const [k, v] of Object.entries<any>(j?.result || {})) {
+      const norm = k.replace(/^[XZ]([A-Z]{3})[XZ]([A-Z]{3})$/, "$1$2");
+      const id = Object.keys(KR).find((x) => KR[x] === norm);
+      if (id && v && Array.isArray(v.c)) keep(id, Number(v.c[0]), "Kraken");
+    }
+  } catch (e: any) { errs.push("kraken " + e.message); }
+  const msg = errs.join("; ");
+  if (msg && msg !== lastErr) console.error("hub live", msg);
+  lastErr = msg;
+  if (Date.now() - saved > 600_000) { saved = Date.now(); kvSet("live_buf", JSON.stringify(Object.fromEntries(buf))); }
+}
+export function startLive() {
+  if (E.HUB_OFF === "1") return;
+  setTimeout(poll, 5000);
+  setInterval(poll, 60_000);
+}
+// the last 24 hours, thinned to about 48 points
+export function intraday(id: string) {
+  const b = buf.get(id) || []; if (b.length < 4) return [];
+  const step = Math.max(1, Math.ceil(b.length / 48));
+  return b.filter((_, i) => i % step === 0 || i === b.length - 1).map((x) => x[1]);
+}
+export function day(id: string) {
+  const b = buf.get(id) || [], s = Date.now() / 1000, old = b.find((x) => x[0] >= s - 86400 - 300);
+  return old && s - old[0] >= 23 * 3600 ? old[1] : null;
+}

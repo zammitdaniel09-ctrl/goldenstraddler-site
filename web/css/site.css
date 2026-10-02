@@ -717,3 +717,25 @@ body.lock{overflow:hidden}
   .hero .cta{order:5}
   .hero .meta{order:6}
 }
+
+/* ---------------------------------------------------------------- this week's market calls (teaser from the Markets desk) */
+.mt{padding:44px 0 50px;border-top:1px solid var(--edge)}
+.mt-h{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 24px;align-items:end}
+.mt-h h2{font:800 clamp(24px,3vw,34px)/1.1 var(--disp);letter-spacing:-.03em}
+.mt-h p{grid-row:2;color:var(--txt2);max-width:60ch}
+.mt-h .btn{grid-row:1/3;grid-column:2;align-self:center}
+.mt-l{list-style:none;margin:22px 0 0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.mt-l a{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:auto auto;gap:6px 12px;align-items:center;padding:14px;border:1px solid var(--edge);border-radius:16px;background:var(--carbon);text-decoration:none;transition:border-color .15s,background .15s}
+.mt-l a:hover{border-color:var(--edge2);background:var(--carbon2)}
+.mt-l .art{grid-row:1/3;width:44px;height:44px;border-radius:11px}
+.mt-n{display:flex;flex-direction:column;min-width:0}
+.mt-n b{font-weight:600}
+.mt-n .num{font-size:12.5px;color:var(--txt2)}
+.mt-n .num.up{color:var(--ice)}.mt-n .num.dn{color:var(--loss)}
+.mt-l .pill{justify-self:end;display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;background:rgba(255,255,255,.07);color:var(--txt2);white-space:nowrap}
+.mt-l .pill.up{background:rgba(var(--ice-rgb),.14);color:var(--ice)}.mt-l .pill.dn{background:rgba(var(--loss-rgb),.14);color:var(--loss)}
+.mt-l .meter{grid-column:2/4;position:relative;display:block;width:100%;height:5px;border-radius:3px;background:linear-gradient(90deg,rgba(var(--loss-rgb),.75),rgba(255,255,255,.1) 42%,rgba(255,255,255,.1) 58%,rgba(var(--ice-rgb),.75))}
+.mt-l .meter::after{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--edge2)}
+.mt-l .meter i{position:absolute;top:-4px;width:4px;height:13px;margin-left:-2px;border-radius:2px;background:var(--white)}
+@media (max-width:900px){.mt-l{grid-template-columns:1fr 1fr}}
+@media (max-width:600px){.mt{padding:30px 0 34px}.mt-h{grid-template-columns:1fr}.mt-h .btn{grid-row:auto;grid-column:auto;justify-self:start}.mt-l{grid-template-columns:1fr;gap:8px}.mt-l li:nth-child(n+5){display:none}}
