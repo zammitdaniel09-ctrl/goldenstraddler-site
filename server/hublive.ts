@@ -1,27 +1,41 @@
 /*
  * Markets hub, live prices between the weekly calls. Free and keyless:
  * gold-api.com for metals and crypto, Kraken's public ticker for the forex pairs it lists.
- * Polled once a minute; a 24 hour buffer of 5 minute samples feeds the small intraday charts.
+ * Polled once a minute. A 24 hour buffer of 5 minute bars feeds the hourly candles, and each market's
+ * running daily candle is saved, so markets without free candle history build their own real highs and lows.
  */
 import { E } from "./util";
-import { kvGet, kvSet, putSeries } from "./hubdata";
+import { kvGet, kvSet, ohlc, putOhlc, putSeries, type Bar } from "./hubdata";
 
 type Q = { p: number; t: number; src: string };
 const GA: Record<string, string> = { gold: "XAU", silver: "XAG", platinum: "XPT", copper: "HG", btc: "BTC", eth: "ETH" };
 const KR: Record<string, string> = { eurusd: "EURUSD", gbpusd: "GBPUSD", usdjpy: "USDJPY", usdcad: "USDCAD", usdchf: "USDCHF", audusd: "AUDUSD", nzdusd: "NZDUSD" };
 const URL_GA = E.HUB_GA || "https://api.gold-api.com", URL_KR = E.HUB_KR || "https://api.kraken.com";
 export const quotes = new Map<string, Q>();
-const buf = new Map<string, [number, number][]>();
+// 5 minute bars: [start (unix s), open, high, low, close]
+type B5 = [number, number, number, number, number];
+const buf = new Map<string, B5[]>();
 let saved = 0, lastErr = "", krOk: string[] | null = null;
-try { const o = JSON.parse(kvGet("live_buf") || "{}"); for (const [k, v] of Object.entries(o)) if (Array.isArray(v)) buf.set(k, v as [number, number][]); } catch {}
+try {
+  const o = JSON.parse(kvGet("live_buf") || "{}");
+  for (const [k, v] of Object.entries(o)) if (Array.isArray(v)) buf.set(k, (v as number[][]).map((x) => (x.length >= 5 ? x : [x[0], x[1], x[1], x[1], x[1]]) as B5));
+} catch {}
+const days = new Map<string, Bar>();                                          // today's candle for each market
+const today = (t: number) => new Date(t).toISOString().slice(0, 10);
 
 function keep(id: string, p: number, src: string) {
   if (!(p > 0)) return;
   const t = Date.now(); quotes.set(id, { p, t, src });
-  const b = buf.get(id) || [], s = Math.floor(t / 1000), last = b[b.length - 1];
-  if (last && s - last[0] < 290) last[1] = p; else b.push([s, p]);
+  const b = buf.get(id) || [], s = Math.floor(t / 1000), slot = s - (s % 300), last = b[b.length - 1];
+  if (last && last[0] === slot) { last[2] = Math.max(last[2], p); last[3] = Math.min(last[3], p); last[4] = p; }
+  else b.push([slot, p, p, p, p]);
   while (b.length && b[0][0] < s - 86400 - 600) b.shift();
   buf.set(id, b);
+  // the daily candle; after a restart it carries on from the saved one
+  const d = today(t); let dc = days.get(id);
+  if (!dc || dc.d !== d) { const was = ohlc("live:" + id, d)[0]; dc = was && was.d === d ? { ...was } : { d, o: p, h: p, l: p, c: p }; days.set(id, dc); }
+  dc.h = Math.max(dc.h, p); dc.l = Math.min(dc.l, p); dc.c = p;
+  putOhlc("live:" + id, [dc]);
 }
 async function get(url: string) {
   const r = await fetch(url, { headers: { "User-Agent": "GoldenStraddler-Markets/1" }, signal: AbortSignal.timeout(8000) });
@@ -61,11 +75,15 @@ export function startLive() {
   setTimeout(poll, 5000);
   setInterval(poll, 60_000);
 }
-// the last 24 hours, thinned to about 48 points
+// the last 24 hours as hourly candles
 export function intraday(id: string) {
-  const b = buf.get(id) || []; if (b.length < 4) return [];
-  const step = Math.max(1, Math.ceil(b.length / 48));
-  return b.filter((_, i) => i % step === 0 || i === b.length - 1).map((x) => x[1]);
+  const b = buf.get(id) || [], out: { t: number; o: number; h: number; l: number; c: number }[] = [];
+  for (const x of b) {
+    const hr = x[0] - (x[0] % 3600), cur = out[out.length - 1];
+    if (cur && cur.t === hr) { cur.h = Math.max(cur.h, x[2]); cur.l = Math.min(cur.l, x[3]); cur.c = x[4]; }
+    else out.push({ t: hr, o: cur ? cur.c : x[1], h: Math.max(x[2], cur ? cur.c : x[1]), l: Math.min(x[3], cur ? cur.c : x[1]), c: x[4] });
+  }
+  return out.slice(-24);
 }
 export function day(id: string) {
   const b = buf.get(id) || [], s = Date.now() / 1000, old = b.find((x) => x[0] >= s - 86400 - 300);

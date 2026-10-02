@@ -8,7 +8,7 @@ import { all, now, one, run } from "./db";
 import { esc, getS, siteUrl } from "./util";
 import { COT, calendar, kvGet, kvSet, refreshAll, series, sources, startHubData } from "./hubdata";
 import { intraday, quotes, startLive } from "./hublive";
-import { ASSETS, CLASSES, COLS, FACTOR_INFO, THRESH, backtest, brief, buildCtx, factorStats, fmtPx, postText, short, sides, type Asset, type Back, type Brief, type Ctx } from "./hubmodel";
+import { ASSETS, CLASSES, COLS, FACTOR_INFO, THRESH, backtest, brief, buildCtx, closeCandles, dxyRows, factorStats, fmtPx, postText, short, sides, weeklyCandles, type Asset, type Back, type Brief, type Candle, type Ctx } from "./hubmodel";
 
 const state = { briefs: [] as Brief[], at: 0, asOf: "", busy: false, err: "", sig: "", statsDone: false, macro: [] as Macro[] };
 const backCache = new Map<string, Back | null>();
@@ -27,7 +27,7 @@ export async function computeHub() {
     for (const a of ASSETS) { out.push(brief(a, c, Date.now() / 1000, cachedBack)); await Bun.sleep(0); }   // let requests through between markets
     if (backCache.size > 200) for (const k of [...backCache.keys()].slice(0, backCache.size - 64)) backCache.delete(k);
     freeze(out, c);
-    state.briefs = out; state.at = now(); state.asOf = c.weeks[c.weeks.length - 1]; state.err = ""; state.macro = macroOf(c);
+    state.briefs = out; state.at = now(); state.asOf = c.weeks[c.weeks.length - 1]; state.err = ""; state.macro = macroOf(out);
     // one line per market in the logs whenever the calls change, so they can be checked against the data
     const sig = out.map((b) => b.id + b.asOf + b.call.score).join();
     if (sig !== state.sig && out.some((b) => b.px !== null)) {
@@ -58,15 +58,17 @@ const liveRecord = (asset?: string) => one<{ n: number; hits: number; since: str
   `SELECT COUNT(*) n, COALESCE(SUM(hit), 0) hits, MIN(wk) since FROM hub_calls WHERE hit IN (0, 1)${asset ? " AND asset = ?" : ""}`, ...(asset ? [asset] : []))!;
 
 // the macro tiles at the top: the inputs most of the calls lean on
-function macroOf(c: Ctx): Macro[] {
-  const tile = (id: string, name: string, arr: (number | null)[], unit: string, dp: number, mode: "pct" | "pts", note: string): Macro | null => {
-    const xs = arr.slice(-53).filter((v): v is number => v != null); if (xs.length < 3) return null;
-    const v = xs[xs.length - 1], p = xs[xs.length - 2], chg = mode === "pct" ? v / p - 1 : v - p;
-    return { id, name, v, unit, dp, chg, chgTxt: mode === "pct" ? pct(chg, 2) : sgn(chg, 2), spark: xs.slice(-52), note, good: 0 };
+function macroOf(bs: Brief[]): Macro[] {
+  const tile = (id: string, name: string, wc: OB[], unit: string, dp: number, mode: "pct" | "pts", note: string): Macro | null => {
+    const xs = wc.slice(-53); if (xs.length < 3) return null;
+    const v = xs[xs.length - 1].c, p = xs[xs.length - 2].c, chg = mode === "pct" ? v / p - 1 : v - p;
+    return { id, name, v, unit, dp, chg, chgTxt: mode === "pct" ? pct(chg, 2) : sgn(chg, 2), bars: xs.slice(-52), note, good: 0 };
   };
-  return [tile("dxy", "Dollar index", c.dxy, "", 2, "pct", "DXY weights, ECB rates"), tile("ry", "US 10y real yield", c.ry, "%", 2, "pts", "FRED DFII10"),
-    tile("y2", "US 2y yield", c.y2, "%", 2, "pts", "FRED DGS2"), tile("vix", "VIX", c.vix, "", 1, "pts", "Cboe, via FRED"),
-    tile("gold", "Gold", c.px.gold, "$", 0, "pct", "Spot, weekly close"), tile("wti", "WTI crude", c.px.wti, "$", 2, "pct", "EIA spot, weekly close")].filter(Boolean) as Macro[];
+  const wk = (rows: { d: string; v: number }[]) => weeklyCandles(closeCandles(rows.filter((r) => Number.isFinite(r.v))));
+  const fromBrief = (id: string) => (bs.find((b) => b.id === id)?.chart || []).map((x) => ({ o: x.o, h: x.h, l: x.l, c: x.px }));
+  return [tile("dxy", "Dollar index", wk(dxyRows()), "", 2, "pct", "DXY weights, ECB rates"), tile("ry", "US 10y real yield", wk(series("fred:DFII10")), "%", 2, "pts", "FRED DFII10"),
+    tile("y2", "US 2y yield", wk(series("fred:DGS2")), "%", 2, "pts", "FRED DGS2"), tile("vix", "VIX", wk(series("fred:VIXCLS")), "", 1, "pts", "Cboe, via FRED"),
+    tile("gold", "Gold", fromBrief("gold"), "$", 0, "pct", "Spot, weekly candles"), tile("wti", "WTI crude", fromBrief("wti"), "$", 2, "pct", "EIA spot, weekly candles")].filter(Boolean) as Macro[];
 }
 
 export function startHub() {
@@ -75,7 +77,7 @@ export function startHub() {
   startHubData(() => computeHub());
 }
 export const hubPublic = () => getS("hub_public") !== "0";   // on for good; Admin can still switch it off
-const SRC_NAMES: Record<string, string> = { ecb: "ECB exchange rates", spot: "Spot prices (gold-api)", calendar: "Release calendar", "eia:WCESTUS1": "EIA crude stocks" };
+const SRC_NAMES: Record<string, string> = { "kraken:fx": "Forex candles (Kraken)", ecb: "ECB exchange rates", spot: "Spot prices (gold-api)", calendar: "Release calendar", "eia:WCESTUS1": "EIA crude stocks" };
 const srcName = (k: string) => SRC_NAMES[k] || (k.startsWith("fred:") ? "FRED " + k.slice(5) : k.startsWith("cot:") ? "CFTC positioning: " + (COT[k.slice(4)]?.name || k.slice(4)) : k.startsWith("coin:") ? "Price history: " + k.slice(5) : k);
 export function hubStatus() {
   return { public: hubPublic(), computedAt: state.at, asOf: state.asOf, err: state.err, sources: sources().map((r) => ({ ...r, name: srcName(r.src) })), markets: state.briefs.length, live: liveRecord() };
@@ -103,6 +105,22 @@ function spark(vals: number[], o: { w?: number; h?: number; area?: boolean; dot?
   const d = xs.map((v, i) => `${i ? "L" : "M"}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join("");
   const up = xs[xs.length - 1] >= xs[0];
   return `<svg class="spark ${o.k || (up ? "up" : "dn")}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${o.area ? `<path class="ar" d="${d}L${W} ${H}L0 ${H}Z"/>` : ""}${o.base != null ? `<path class="bl" d="M0 ${Y(o.base).toFixed(1)}H${W}"/>` : ""}<path class="ln" d="${d}"/>${o.dot ? `<circle cx="${X(xs.length - 1).toFixed(1)}" cy="${Y(xs[xs.length - 1]).toFixed(1)}" r="1.8"/>` : ""}</svg>`;
+}
+// small candlestick charts: one path per colour keeps them light
+type OB = { o: number; h: number; l: number; c: number };
+const toOB = (x: { o: number; h: number; l: number; px: number }): OB => ({ o: x.o, h: x.h, l: x.l, c: x.px });
+function minic(bars: OB[], o: { h?: number } = {}) {
+  const xs = bars.filter((b) => [b.o, b.h, b.l, b.c].every(Number.isFinite));
+  if (xs.length < 3) return `<svg class="cdl empty" viewBox="0 0 100 30" aria-hidden="true"></svg>`;
+  const S = 6, W = xs.length * S, H = o.h || 30, lo = Math.min(...xs.map((b) => b.l)), hi = Math.max(...xs.map((b) => b.h)), r = hi - lo || Math.abs(hi) * 0.01 || 1;
+  const Y = (v: number) => 1.5 + (1 - (v - lo) / r) * (H - 3), f = (v: number) => v.toFixed(1);
+  const P = { wu: "", wd: "", bu: "", bd: "" };
+  xs.forEach((b, i) => {
+    const x = i * S + S / 2, up = b.c >= b.o, y1 = Y(Math.max(b.o, b.c)), y2 = Math.max(Y(Math.min(b.o, b.c)), y1 + 0.8);
+    P[up ? "wu" : "wd"] += `M${x} ${f(Y(b.h))}V${f(Y(b.l))}`;
+    P[up ? "bu" : "bd"] += `M${x - 2.1} ${f(y1)}H${x + 2.1}V${f(y2)}H${x - 2.1}Z`;
+  });
+  return `<svg class="cdl" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><path class="wu" d="${P.wu}"/><path class="wd" d="${P.wd}"/><path class="bu" d="${P.bu}"/><path class="bd" d="${P.bd}"/></svg>`;
 }
 // score as a needle on a −1..+1 track (the visible range is ±0.6, where nearly all scores sit)
 const meter = (sc: number) => `<span class="meter" title="Score ${sgn(sc)}"><i style="left:${(50 + Math.max(-1, Math.min(1, sc / 0.6)) * 50).toFixed(1)}%"></i></span>`;
@@ -173,7 +191,7 @@ function watchHtml(all: Brief["watch"], max: number) {
 function briefHtml(b: Brief) {
   const [h1, h2] = sides(b.call.dir), url = `/markets/${b.id}`;
   const li = (xs: string[], k: string) => xs.map((t) => `<li><svg aria-hidden="true"><use href="#${k}"/></svg><span>${esc(t)}</span></li>`).join("");
-  const wk = b.chart.slice(-52).map((x) => x.px);
+  const wk = b.chart.slice(-52).map(toOB);
   return `<article class="bf" id="${b.id}" data-cls="${b.cls}">
   <header class="bf-h">
     ${art(b.id)}
@@ -184,7 +202,7 @@ function briefHtml(b: Brief) {
     <div class="bf-call ${cls(b.call.dir)}"><b>${esc(b.call.label)}</b>${b.call.dir ? `${confDots(b.call.conf)}<span class="cf">${esc(b.call.conf)} confidence</span>` : ""}</div>
     <div class="bf-score">${meter(b.call.score)}<span class="num">${sgn(b.call.score)}</span></div>
   </div>
-  ${wk.length > 8 ? `<div class="bf-ch">${spark(wk, { area: true, dot: true, h: 40 })}<span class="fine">52 weeks</span></div>` : ""}
+  ${wk.length > 8 ? `<div class="bf-ch">${minic(wk, { h: 46 })}<span class="fine">52 weeks</span></div>` : ""}
   <p class="bf-px">${esc(b.priceLine || "Price data is still coming in.")}</p>
   ${driversHtml(b, 4)}
   <div class="bf-body">
@@ -205,11 +223,11 @@ function briefHtml(b: Brief) {
 // ---------------------------------------------------------------- the desk: board, signal matrix, positioning, track record
 function boardHtml(bs: Brief[]) {
   const rows = bs.map((b) => {
-    const q = livePx(b), wk = b.chart.slice(-26).map((x) => x.px);
+    const q = livePx(b), wk = b.chart.slice(-26).map(toOB);
     return `<tr data-cls="${b.cls}" data-name="${esc(b.name)}" data-score="${b.call.score}" data-week="${b.chg ?? -9}" data-href="#${b.id}">
       <th scope="row"><a href="#${b.id}" class="mkt-n">${art(b.id, "sm")}<span><b>${esc(b.name)}</b><span class="num">${esc(b.sym)}</span></span></a></th>
       <td class="num px-c" data-live="${b.id}"><b class="px">${esc(q.txt)}</b><span class="ch ${q.ch == null ? "" : q.ch >= 0 ? "up" : "dn"}">${q.ch == null ? "" : pct(q.ch, 2)}</span></td>
-      <td class="sp-c">${spark(wk, { dot: true })}</td>
+      <td class="sp-c">${minic(wk, { h: 34 })}</td>
       <td class="num ${b.chg == null ? "" : b.chg >= 0 ? "up" : "dn"}">${b.chg == null ? "–" : pct(b.chg)}</td>
       <td>${pillHtml(b)}${b.call.dir ? confDots(b.call.conf) : ""}</td>
       <td class="sc-c"><span class="sc-w">${meter(b.call.score)}<span class="num">${sgn(b.call.score)}</span></span></td></tr>`;
@@ -281,10 +299,10 @@ function tickerHtml(bs: Brief[]) {
   const items = bs.map((b) => { const q = livePx(b); return `<li data-live="${b.id}"><a href="/markets/${b.id}"><b>${esc(b.sym)}</b><span class="num px">${esc(q.txt)}</span><span class="num ch ${q.ch == null ? "" : q.ch >= 0 ? "up" : "dn"}">${q.ch == null ? "" : pct(q.ch, 2)}</span></a></li>`; }).join("");
   return `<div class="tape" aria-label="Prices"><div class="tape-in"><ul>${items}</ul><ul aria-hidden="true">${items}</ul></div></div>`;
 }
-type Macro = { id: string; name: string; v: number; unit: string; dp: number; chg: number; chgTxt: string; spark: number[]; note: string; good: number };
+type Macro = { id: string; name: string; v: number; unit: string; dp: number; chg: number; chgTxt: string; bars: OB[]; note: string; good: number };
 function macroHtml(ms: Macro[]) {
   return `<div class="pulse">${ms.map((m) => `<div class="pl-t"><span class="pl-n">${esc(m.name)}</span><b class="num">${m.unit === "$" ? "$" : ""}${nf(m.v, m.dp)}${m.unit === "%" ? "%" : ""}</b>
-    <span class="num pl-c ${m.chg === 0 ? "" : m.chg > 0 ? "up" : "dn"}">${esc(m.chgTxt)} <span class="fine">on the week</span></span>${spark(m.spark, { area: true, k: "gold" })}<span class="pl-x fine">${esc(m.note)}</span></div>`).join("")}</div>`;
+    <span class="num pl-c ${m.chg === 0 ? "" : m.chg > 0 ? "up" : "dn"}">${esc(m.chgTxt)} <span class="fine">on the week</span></span>${minic(m.bars, { h: 38 })}<span class="pl-x fine">${esc(m.note)}</span></div>`).join("")}</div>`;
 }
 function nextHtml() {
   const t = Date.now() / 1000, evs = calendar().filter((e) => e.utc > t - 900).slice(0, 12);
@@ -397,7 +415,7 @@ function oneHtml(b: Brief, bs: Brief[]) {
       <div class="bf-call ${cls(b.call.dir)}"><b>${esc(b.call.label)}</b>${b.call.dir ? `${confDots(b.call.conf)}<span class="cf">${esc(b.call.conf)} confidence</span>` : ""}</div>
       <p class="one-v">${esc(b.verdict)}</p>
     </div>
-    <div class="one-q">${quoteHtml(b, true)}${intr.length > 3 ? `<div class="one-i">${spark(intr, { area: true, dot: true, h: 36 })}<span class="fine">Last 24 hours</span></div>` : ""}</div>
+    <div class="one-q">${quoteHtml(b, true)}${intr.length > 3 ? `<div class="one-i">${minic(intr, { h: 40 })}<span class="fine">Last 24 hours, hourly candles</span></div>` : ""}</div>
     <div class="one-g">${gauge(b.call.score)}<p class="num">Score ${sgn(b.call.score)}</p></div>
   </header>
   <div class="one-grid">
@@ -424,30 +442,87 @@ function oneHtml(b: Brief, bs: Brief[]) {
   </div>
 </div></section>`;
 }
-// two years of weekly closes with the 20 and 50 week averages and the model's call each week
+// ---------------------------------------------------------------- the main chart: daily and weekly candles, averages, the model's calls, a crosshair
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function niceTicks(lo: number, hi: number, n: number) {
+  const raw = (hi - lo) / n, p = Math.pow(10, Math.floor(Math.log10(raw))), m = raw / p, st = (m < 1.5 ? 1 : m < 3 ? 2 : m < 7 ? 5 : 10) * p, out: number[] = [];
+  for (let v = Math.ceil(lo / st) * st; v <= hi; v += st) out.push(Number(v.toPrecision(12)));
+  return out;
+}
+type CB = { t: string; o: number; h: number; l: number; c: number; r: boolean; m20: number | null; m50: number | null };
+const dayLabel = (t: string, tf: string) => { const d = new Date(t + "T12:00:00Z"); return `${tf === "w" ? "Week to " : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getUTCDay()] + " "}${d.getUTCDate()} ${MON[d.getUTCMonth()]} ${d.getUTCFullYear()}`; };
+function readout(a: Asset, x: CB, prev: CB | undefined, tf: string) {
+  const ch = prev ? x.c / prev.c - 1 : null;
+  return `<b>${esc(dayLabel(x.t, tf))}</b><span>O <i>${esc(fmtPx(a, x.o))}</i></span><span>H <i>${esc(fmtPx(a, x.h))}</i></span><span>L <i>${esc(fmtPx(a, x.l))}</i></span><span>C <i>${esc(fmtPx(a, x.c))}</i></span>${ch == null ? "" : `<span class="${ch >= 0 ? "up" : "dn"}">${pct(ch, 2)}</span>`}`;
+}
+function candlePanel(a: Asset, bs: CB[], tf: "d" | "w", o: { calls?: Map<string, { dir: number; right: boolean | null }>; live?: string; current: boolean; sm?: boolean }) {
+  const W = o.sm ? 430 : 760, H = o.sm ? 330 : 340, L = 4, R = o.sm ? 82 : 74, T = 12, B = o.sm ? 28 : 24, n = bs.length, f = (v: number) => v.toFixed(1);
+  const vals = bs.flatMap((x) => [x.h, x.l, x.m20 ?? x.c, x.m50 ?? x.c]);
+  const lo = Math.min(...vals), hi = Math.max(...vals), pad = (hi - lo) * 0.08 || Math.abs(hi) * 0.01 || 1, y0 = lo - pad, y1 = hi + pad;
+  const step = (W - L - R) / n, bw = Math.max(1.2, Math.min(15, step * 0.66)), fs = o.sm ? 4.5 : 4;
+  const X = (k: number) => L + step * (k + 0.5), Y = (v: number) => T + (1 - (v - y0) / (y1 - y0)) * (H - T - B);
+  const grid = niceTicks(y0, y1, o.sm ? 5 : 6).map((v) => `<path d="M${L} ${f(Y(v))}H${W - R}" class="gr"/><text x="${W - R + 8}" y="${f(Y(v) + fs)}" class="ax">${esc(fmtPx(a, v))}</text>`).join("");
+  // month lines; a weekly chart marks quarters, and a new year shows the year
+  let xl = "", lastX = -1e9;
+  bs.forEach((x, k) => {
+    if (!k || x.t.slice(5, 7) === bs[k - 1].t.slice(5, 7)) return;
+    const m = Number(x.t.slice(5, 7)), yr = x.t.slice(0, 4) !== bs[k - 1].t.slice(0, 4), xx = X(k);
+    if ((tf === "w" && (m - 1) % 3 !== 0 && !yr) || xx - lastX < (o.sm ? 54 : 50) || xx > W - R - 16) return;
+    lastX = xx;
+    xl += `<path d="M${f(xx)} ${T}V${H - B}" class="gv"/><text x="${f(xx)}" y="${H - (o.sm ? 9 : 7)}" text-anchor="middle" class="ax${yr ? " yr" : ""}">${yr ? x.t.slice(0, 4) : MON[m - 1]}</text>`;
+  });
+  const one = (x: CB, k: number) => {
+    const xx = X(k), up = x.c >= x.o, ya = Y(Math.max(x.o, x.c)), yb = Math.max(Y(Math.min(x.o, x.c)), ya + 1);
+    return { up, w: `M${f(xx)} ${f(Y(x.h))}V${f(Y(x.l))}`, b: `M${f(xx - bw / 2)} ${f(ya)}h${f(bw)}V${f(yb)}h${f(-bw)}Z` };
+  };
+  const P = { wu: "", wd: "", cu: "", cd: "" };
+  bs.slice(0, -1).forEach((x, k) => { const c = one(x, k); P[c.up ? "wu" : "wd"] += c.w; P[c.up ? "cu" : "cd"] += c.b; });
+  const last = bs[n - 1], prev = bs[n - 2], lc = one(last, n - 1);
+  const line = (g: (x: CB) => number | null) => { let d = "", on = false; bs.forEach((x, k) => { const v = g(x); if (v == null) { on = false; return; } d += `${on ? "L" : "M"}${f(X(k))} ${f(Y(v))}`; on = true; }); return d; };
+  // each call sits on the week it was for: a mark under the candle for bullish, over it for bearish
+  let hits = 0, graded = 0, marks = "";
+  if (o.calls) bs.forEach((x, k) => {
+    const made = new Date(Date.parse(x.t + "T00:00:00Z") - 7 * 86_400_000).toISOString().slice(0, 10), cl = o.calls!.get(made);
+    if (!cl || !cl.dir) return;
+    if (cl.right !== null) { graded++; if (cl.right) hits++; }
+    const xx = X(k), sz = Math.max(2.6, Math.min(4.5, step * 0.42));
+    const tri = cl.dir > 0 ? `M${f(xx)} ${f(Y(x.l) + 4)}l${f(sz)} ${f(sz * 1.5)}h${f(-2 * sz)}z` : `M${f(xx)} ${f(Y(x.h) - 4)}l${f(sz)} ${f(-sz * 1.5)}h${f(-2 * sz)}z`;
+    marks += `<path d="${tri}" class="${cl.dir > 0 ? "bu" : "be"}${cl.right === false ? " miss" : ""}${cl.right === null ? " open" : ""}"><title>${esc(dayLabel(x.t, "w"))}: called ${cl.dir > 0 ? "bullish" : "bearish"}${cl.right === null ? ", still open" : cl.right ? ", right" : ", wrong"}</title></path>`;
+  });
+  const yl = Y(last.c), lup = prev ? last.c >= prev.c : last.c >= last.o, th = o.sm ? 20 : 18;
+  const dp = Math.min(6, a.dp + 2), data = { W, H, L, R, T, B, y0, y1, dp: a.dp, pre: a.pre, tf, b: bs.map((x) => [x.t, +x.o.toFixed(dp), +x.h.toFixed(dp), +x.l.toFixed(dp), +x.c.toFixed(dp)]) };
+  const what = tf === "w" ? `${n} weekly candles` : `${n} daily candles`;
+  return { hits, graded, ro: readout(a, last, prev, tf), svg: `<svg class="pc-svg${o.sm ? " sm" : " lg"}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(a.name)}: ${what}, last close ${esc(fmtPx(a, last.c))}" data-c="${esc(JSON.stringify(data))}"${o.live && o.current ? ` data-live-c="${o.live}"` : ""}>
+      ${grid}${xl}<path d="${line((x) => x.m50)}" class="m50"/><path d="${line((x) => x.m20)}" class="m20"/>
+      <path class="wu" d="${P.wu}"/><path class="wd" d="${P.wd}"/><path class="cu" d="${P.cu}"/><path class="cd" d="${P.cd}"/>
+      <g class="lc ${lc.up ? "u" : "d"}"><path class="w" d="${lc.w}"/><path class="b" d="${lc.b}"/></g>${marks}
+      <g class="lpx ${lup ? "u" : "d"}"><path d="M${L} ${f(yl)}H${W - R}" class="lpl"/><rect x="${W - R + 2}" y="${f(yl - th / 2)}" width="${R - 4}" height="${th}" rx="4"/><text x="${W - R + 8}" y="${f(yl + fs)}">${esc(fmtPx(a, last.c))}</text></g>
+      <g class="xh" visibility="hidden"><path class="xv"/><path class="xz"/><rect class="xt" x="${W - R + 2}" width="${R - 4}" height="${th}" rx="4"/><text class="xtt" x="${W - R + 8}"></text><rect class="xd" y="${H - B + 3}" height="${th}" rx="4"/><text class="xdt" y="${H - B + 3 + th / 2 + fs}" text-anchor="middle"></text></g>
+    </svg>` };
+}
 function priceChart(a: Asset, b: Brief) {
-  const ws = b.chart, calls = new Map((b.back?.weeks || []).map((w) => [w.wk, w]));
-  if (ws.length < 8) return `<div class="card2"><p class="fine">The chart appears once this market has a few weeks of price history.</p></div>`;
-  const W = 760, H = 300, L = 8, R = 64, T = 12, B = 26, vals = ws.flatMap((w) => [w.px, w.m20 ?? w.px, w.m50 ?? w.px]);
-  const lo = Math.min(...vals), hi = Math.max(...vals), pad = (hi - lo) * 0.06 || 1, y0 = lo - pad, y1 = hi + pad;
-  const X = (k: number) => L + (k / (ws.length - 1)) * (W - L - R), Y = (v: number) => T + (1 - (v - y0) / (y1 - y0)) * (H - T - B);
-  const line = (f: (w: typeof ws[0]) => number | null) => { let d = "", on = false; ws.forEach((w, k) => { const v = f(w); if (v == null) { on = false; return; } d += `${on ? "L" : "M"}${X(k).toFixed(1)} ${Y(v).toFixed(1)}`; on = true; }); return d; };
-  const grid = [0, 0.25, 0.5, 0.75, 1].map((f) => { const v = y0 + (y1 - y0) * f, y = Y(v); return `<path d="M${L} ${y.toFixed(1)}H${W - R}" class="gr"/><text x="${W - R + 6}" y="${(y + 4).toFixed(1)}" class="ax">${esc(fmtPx(a, v))}</text>`; }).join("");
-  const xl = [0, Math.floor(ws.length / 2), ws.length - 1].map((k) => `<text x="${X(k).toFixed(1)}" y="${H - 6}" text-anchor="${k === 0 ? "start" : k === ws.length - 1 ? "end" : "middle"}" class="ax">${esc(short(ws[k].wk))}</text>`).join("");
-  let hits = 0, n = 0;
-  const marks = ws.map((w, k) => {
-    const c = calls.get(w.wk); if (!c || !c.dir) return "";
-    const right = c.next == null ? null : Math.sign(c.next - c.px) === c.dir; if (right !== null) { n++; if (right) hits++; }
-    const x = X(k), y = Y(w.px) + (c.dir > 0 ? 10 : -10), tri = c.dir > 0 ? `M${x.toFixed(1)} ${(y - 4).toFixed(1)}l4 6h-8z` : `M${x.toFixed(1)} ${(y + 4).toFixed(1)}l4 -6h-8z`;
-    return `<path d="${tri}" class="${c.dir > 0 ? "bu" : "be"}${right === false ? " miss" : ""}${right === null ? " open" : ""}"><title>${esc(short(w.wk))}: ${c.dir > 0 ? "bullish" : "bearish"}${right === null ? "" : right ? ", right" : ", wrong"}</title></path>`;
-  }).join("");
-  const last = ws[ws.length - 1];
-  return `<figure class="card2 pc"><figcaption><b>Weekly closes and the model's calls</b><span class="fine">${n ? `${hits} of ${n} calls right on this chart. ` : ""}Up marks are bullish calls, down marks bearish, hollow ones were wrong.</span>
-    <span class="pc-k"><i class="k1"></i>Price<i class="k2"></i>20 week<i class="k3"></i>50 week</span></figcaption>
-    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(a.name)}: ${ws.length} weekly closes with averages and the model's calls">${grid}
-      <path d="${line((w) => w.px)}L${X(ws.length - 1).toFixed(1)} ${H - B}L${L} ${H - B}Z" class="ar"/>
-      <path d="${line((w) => w.m50)}" class="m50"/><path d="${line((w) => w.m20)}" class="m20"/><path d="${line((w) => w.px)}" class="ln"/>${marks}
-      <circle cx="${X(ws.length - 1).toFixed(1)}" cy="${Y(last.px).toFixed(1)}" r="3.5" class="lp"/>${xl}</svg></figure>`;
+  const today = new Date().toISOString().slice(0, 10), live = quotes.has(b.id) ? b.id : undefined;
+  const wk: CB[] = b.chart.map((x) => ({ t: x.wk, o: x.o, h: x.h, l: x.l, c: x.px, r: x.r, m20: x.m20, m50: x.m50 }));
+  const showD = b.day.length >= 15, showW = wk.length >= 8;
+  if (!showD && !showW) return `<div class="card2"><p class="fine">The chart appears once this market has a few weeks of price history.</p></div>`;
+  const realD = b.day.filter((x) => x.r).length / (b.day.length || 1);
+  const def = showD && (!showW || (b.day.length >= 40 && realD >= 0.6)) ? "d" : "w";
+  const calls = new Map<string, { dir: number; right: boolean | null }>((b.back?.weeks || []).map((w) => [w.wk, { dir: w.dir, right: w.next == null ? null : Math.sign(w.next - w.px) === w.dir }]));
+  const src = realD >= 0.6 ? `Highs and lows: ${b.cndSrc}.` : realD > 0 ? `Highs and lows where we have them (${b.cndSrc}); older candles are built from daily closes, so they open at the previous close and carry no wicks.` : `Built from ${b.cndSrc}: each candle opens at the previous close, so it has no wicks of its own.`;
+  // a wide chart for desktops and a shorter span for phones, so the labels stay readable
+  const both = (bs: CB[], tf: "d" | "w", o: { calls?: typeof calls; current: boolean }) => {
+    const lg = candlePanel(a, bs, tf, { ...o, live }), sm = candlePanel(a, bs.slice(tf === "d" ? -66 : -52), tf, { ...o, live, sm: true });
+    return { ...lg, html: `<div class="pc-ro num" aria-hidden="true">${lg.ro}</div>${lg.svg}${sm.svg}` };
+  };
+  const D = showD ? both(b.day, "d", { current: b.day[b.day.length - 1].t === today }) : null;
+  const Wp = showW ? both(wk, "w", { calls, current: wk[wk.length - 1].t >= today }) : null;
+  const tab = (k: string, lab: string) => `<button type="button" role="tab" data-tf="${k}" aria-selected="${def === k}">${lab}</button>`;
+  return `<figure class="card2 pc" data-pc>
+    <figcaption><div class="pc-top"><b>${esc(a.name)} candles</b>${D && Wp ? `<div class="pc-tf" role="tablist" aria-label="Timeframe">${tab("d", "Daily")}${tab("w", "Weekly")}</div>` : ""}</div>
+      <span class="pc-k"><i class="k1"></i>20 period average<i class="k3"></i>50 period average</span></figcaption>
+    ${D ? `<div class="pc-v" data-tf="d"${def === "d" ? "" : " hidden"}>${D.html}<p class="fine pc-n">Daily candles, about six months (three on a phone). ${esc(src)}</p></div>` : ""}
+    ${Wp ? `<div class="pc-v" data-tf="w"${def === "w" ? "" : " hidden"}>${Wp.html}<p class="fine pc-n">Weekly candles to each Friday, two years (one on a phone); the last one is this week so far. A mark under a candle is a bullish call for that week, over it bearish; hollow marks were wrong${Wp.graded ? `, ${Wp.hits} of ${Wp.graded} right over these two years` : ""}. Calls are graded on Friday closes.</p></div>` : ""}
+  </figure>`;
 }
 function positionChart(b: Brief) {
   const c = b.cot; if (!c || c.hist.length < 20) return "";
@@ -494,8 +569,8 @@ export function hubTeaser() {
 
 // live prices for the page to poll
 export function hubLive() {
-  const out: Record<string, { txt: string; ch: number | null; live: boolean }> = {};
-  for (const b of state.briefs) { const q = livePx(b); out[b.id] = { txt: q.txt, ch: q.ch == null ? null : Math.round(q.ch * 1e5) / 1e5, live: q.live }; }
+  const out: Record<string, { txt: string; ch: number | null; live: boolean; p?: number }> = {};
+  for (const b of state.briefs) { const q = livePx(b), lq = quotes.get(b.id); out[b.id] = { txt: q.txt, ch: q.ch == null ? null : Math.round(q.ch * 1e5) / 1e5, live: q.live, ...(q.live && lq ? { p: lq.p } : {}) }; }
   return { ok: true, t: Date.now(), q: out };
 }
 

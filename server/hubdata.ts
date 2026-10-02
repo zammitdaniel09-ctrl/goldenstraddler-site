@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS hub_cot ( code TEXT NOT NULL, d TEXT NOT NULL, oi REA
 CREATE TABLE IF NOT EXISTS hub_src ( src TEXT PRIMARY KEY, ok_at INTEGER, try_at INTEGER, err TEXT DEFAULT '', rows INTEGER DEFAULT 0, last TEXT DEFAULT '' );
 CREATE TABLE IF NOT EXISTS hub_kv ( k TEXT PRIMARY KEY, v TEXT NOT NULL );
 CREATE TABLE IF NOT EXISTS hub_calls ( wk TEXT NOT NULL, asset TEXT NOT NULL, score REAL NOT NULL, dir INTEGER NOT NULL, conf TEXT NOT NULL, px REAL, next_px REAL, hit INTEGER, at INTEGER NOT NULL, PRIMARY KEY (wk, asset) );
+CREATE TABLE IF NOT EXISTS hub_ohlc ( sid TEXT NOT NULL, d TEXT NOT NULL, o REAL NOT NULL, h REAL NOT NULL, l REAL NOT NULL, c REAL NOT NULL, PRIMARY KEY (sid, d) ) WITHOUT ROWID;
 `);
 
 const UA = { "User-Agent": "GoldenStraddler-Markets/1 (+https://goldenstraddler.com/markets)" };
@@ -51,6 +52,20 @@ export function putSeries(sid: string, rows: [string, number][]) {
   const tx = db.transaction((rs: [string, number][]) => { for (const [d, v] of rs) if (/^\d{4}-\d\d-\d\d$/.test(d) && Number.isFinite(v)) upsert.run(sid, d, v); });
   tx(rows);
 }
+// daily candles, where a free source has real highs and lows (exchange candles, or our own minute polls)
+export type Bar = { d: string; o: number; h: number; l: number; c: number };
+const upO = db.query("INSERT INTO hub_ohlc (sid, d, o, h, l, c) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(sid, d) DO UPDATE SET o = excluded.o, h = excluded.h, l = excluded.l, c = excluded.c");
+export function putOhlc(sid: string, rows: Bar[]) {
+  const tx = db.transaction((rs: Bar[]) => {
+    for (const b of rs) {
+      if (!/^\d{4}-\d\d-\d\d$/.test(b.d) || ![b.o, b.h, b.l, b.c].every((x) => Number.isFinite(x) && x > 0)) continue;
+      upO.run(sid, b.d, b.o, Math.max(b.h, b.o, b.c), Math.min(b.l, b.o, b.c), b.c);
+    }
+  });
+  tx(rows);
+}
+export const ohlc = (sid: string, from = HISTORY_FROM) => all<Bar>("SELECT d, o, h, l, c FROM hub_ohlc WHERE sid = ? AND d >= ? ORDER BY d", sid, from);
+const ohlcCount = (sid: string) => one<{ n: number }>("SELECT COUNT(*) AS n FROM hub_ohlc WHERE sid = ?", sid)?.n || 0;
 export const series = (sid: string, from = HISTORY_FROM) => all<{ d: string; v: number }>("SELECT d, v FROM hub_series WHERE sid = ? AND d >= ? ORDER BY d", sid, from);
 export const lastOf = (sid: string) => one<{ d: string; v: number }>("SELECT d, v FROM hub_series WHERE sid = ? ORDER BY d DESC LIMIT 1", sid);
 export const cotRows = (code: string) => all<any>("SELECT * FROM hub_cot WHERE code = ? ORDER BY d", code);
@@ -134,32 +149,61 @@ async function ecb() {
 async function coin(sym: string) {
   const s = "coin:" + sym, sid = "px:" + sym;
   if (!due(s, 6 * HOUR, 2 * HOUR)) return;
-  const have = lastOf(sid);
+  const have = lastOf(sid), full = !have || ohlcCount(sid) < 200;              // the first run with candles reads the whole history once
   try {
-    const rows: [string, number][] = [];
-    let end = Date.now(), start0 = Date.parse(have ? ago(20) : HISTORY_FROM);
-    for (let page = 0; page < 12 && end > start0; page++) {                   // 300 candles per request
+    const rows: [string, number][] = [], bars: Bar[] = [];
+    let end = Date.now(), start0 = Date.parse(full ? HISTORY_FROM : ago(20));
+    for (let page = 0; page < 12 && end > start0; page++) {                   // 300 candles per request: [time, low, high, open, close, volume]
       const st = Math.max(start0, end - 299 * 86_400_000);
       const j: any = await (await get(`${URLS.cb}/products/${COINS[sym].cb}/candles?granularity=86400&start=${new Date(st).toISOString()}&end=${new Date(end).toISOString()}`)).json();
       if (!Array.isArray(j) || !j.length) break;
-      for (const c of j) if (Array.isArray(c) && c.length >= 5) rows.push([isoDay(c[0] * 1000), Number(c[4])]);
+      for (const c of j) if (Array.isArray(c) && c.length >= 5) {
+        const d = isoDay(c[0] * 1000);
+        rows.push([d, Number(c[4])]); bars.push({ d, o: Number(c[3]), h: Number(c[2]), l: Number(c[1]), c: Number(c[4]) });
+      }
       end = st - 86_400_000;
       await Bun.sleep(400);
     }
     if (!rows.length) throw new Error("no candles");
-    rows.sort((a, b) => (a[0] < b[0] ? -1 : 1)); putSeries(sid, rows);
+    rows.sort((a, b) => (a[0] < b[0] ? -1 : 1)); putSeries(sid, rows); putOhlc(sid, bars);
     mark(s, true, rows.length, rows[rows.length - 1][0] + " " + rows[rows.length - 1][1] + " (coinbase)");
   } catch (e: any) {
-    try {                                                                        // Kraken keeps the last 720 days
+    try {                                                                        // Kraken keeps the last 720 days: [time, open, high, low, close, vwap, volume, count]
       const j: any = await (await get(`${URLS.kr}/0/public/OHLC?pair=${COINS[sym].kr}&interval=1440`)).json();
       const key = j && j.result ? Object.keys(j.result).find((k) => k !== "last") : "";
       const list: any[] = key ? j.result[key] : [];
       const rows: [string, number][] = list.map((c) => [isoDay(Number(c[0]) * 1000), Number(c[4])] as [string, number]);
       if (!rows.length) throw new Error((j && j.error && j.error.join(", ")) || "no candles");
       putSeries(sid, rows);
+      putOhlc(sid, list.map((c) => ({ d: isoDay(Number(c[0]) * 1000), o: Number(c[1]), h: Number(c[2]), l: Number(c[3]), c: Number(c[4]) })));
       mark(s, true, rows.length, rows[rows.length - 1][0] + " " + rows[rows.length - 1][1] + " (kraken)");
     } catch (e2: any) { mark(s, false, 0, "", e.message + " / " + e2.message); console.error("hub coin", sym, e.message, e2.message); }
   }
+}
+
+// ---------------------------------------------------------------- forex daily candles from Kraken's public OHLC (its last 720 days), for real highs and lows
+export const KR_FX = ["EURUSD", "GBPUSD", "USDJPY", "USDCAD", "USDCHF", "AUDUSD", "NZDUSD"];
+const krSkip = new Set<string>();                                                // pairs Kraken doesn't list
+async function krfx() {
+  const s = "kraken:fx";
+  if (!due(s, 6 * HOUR, 2 * HOUR)) return;
+  let n = 0; const got: string[] = [], errs: string[] = [];
+  for (const pair of KR_FX) {
+    if (krSkip.has(pair)) continue;
+    try {
+      const j: any = await (await get(`${URLS.kr}/0/public/OHLC?pair=${pair}&interval=1440`)).json();
+      if (j && Array.isArray(j.error) && j.error.length) { if (/Unknown asset pair/i.test(j.error.join())) krSkip.add(pair); throw new Error(j.error.join(", ")); }
+      const key = j && j.result ? Object.keys(j.result).find((k) => k !== "last") : "";
+      const list: any[] = key ? j.result[key] : [];
+      // days without a single trade come back flat; leave those to the ECB closes
+      const bars = list.filter((c) => Array.isArray(c) && Number(c[7]) > 0).map((c) => ({ d: isoDay(Number(c[0]) * 1000), o: Number(c[1]), h: Number(c[2]), l: Number(c[3]), c: Number(c[4]) }));
+      if (!bars.length) throw new Error("no candles");
+      putOhlc("kr:" + pair, bars); n += bars.length; got.push(pair);
+    } catch (e: any) { errs.push(pair + ": " + e.message); }
+    await Bun.sleep(1200);                                                       // well inside Kraken's public rate limit
+  }
+  mark(s, n > 0, n, got.join(", "), errs.join("; "));
+  if (errs.length && !n) console.error("hub kraken fx", errs.join("; "));
 }
 
 // ---------------------------------------------------------------- spot prices (metals, crypto); one value per UTC day builds our own daily history
@@ -251,6 +295,7 @@ export async function refreshAll(onDone?: () => void, forceAll = false) {
     for (const id of FRED_IDS) { await fred(id); await Bun.sleep(700); }
     await eiaStocks();
     for (const sym of Object.keys(COINS)) { await coin(sym); await Bun.sleep(500); }
+    await krfx();
     for (const code of Object.keys(COT)) { await cot(code); await Bun.sleep(600); }
   } catch (e: any) { console.error("hub refresh", e.message); }
   finally { busy = false; force = false; }

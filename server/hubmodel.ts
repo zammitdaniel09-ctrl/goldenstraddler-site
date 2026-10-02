@@ -4,7 +4,7 @@
  * for that market, with a fixed weight. The call is the weighted average. The same rules run over past weeks
  * to give an honest backtest. Text is written from the numbers, so every bullet can be checked.
  */
-import { calendar, cotRows, lastOf, series, spot, type Ev } from "./hubdata";
+import { calendar, cotRows, lastOf, ohlc, series, spot, type Bar, type Ev } from "./hubdata";
 
 // ================================================================ markets
 export type Cls = "metals" | "energy" | "fx" | "crypto";
@@ -75,7 +75,7 @@ export function fridays(from: string, to: string) {
   for (const end = Date.parse(to + "T00:00:00Z"); t <= end; t += 7 * DAYMS) out.push(iso(t));
   return out;
 }
-type Row = { d: string; v: number };
+export type Row = { d: string; v: number };
 export function weekly(rows: Row[], weeks: string[], stale = 9) {
   const out: (number | null)[] = []; let j = 0, last: Row | null = null;
   for (const w of weeks) {
@@ -87,7 +87,7 @@ export function weekly(rows: Row[], weeks: string[], stale = 9) {
 const nz = (x: number | null | undefined): x is number => typeof x === "number" && Number.isFinite(x);
 
 // the dollar index, DXY weights on ECB reference rates (rates are units of currency per US dollar)
-function dxyRows(): Row[] {
+export function dxyRows(): Row[] {
   const ccy: [string, number][] = [["EUR", 0.576], ["JPY", 0.136], ["GBP", 0.119], ["CAD", 0.091], ["SEK", 0.042], ["CHF", 0.036]];
   const maps = ccy.map(([c]) => new Map(series("ecb:" + c).map((r) => [r.d, r.v])));
   return series("ecb:EUR").map((r) => {
@@ -110,13 +110,78 @@ function priceRows(a: Asset): Row[] {
   }
   let rows = series(a.hist);
   if (a.hist.startsWith("fred:")) rows = despike(rows);
-  if (a.scaleTo) {                                           // PAX Gold history, rescaled so the latest close matches spot gold
-    const sp = lastOf("spot:" + a.scaleTo), pr = rows.length ? rows[rows.length - 1].v : 0;
-    const k = sp && pr ? sp.v / pr : 1;
-    if (k > 0.9 && k < 1.1) rows = rows.map((r) => ({ d: r.d, v: r.v * k }));
-  }
+  const k = scaleK(a, rows);
+  if (k !== 1) rows = rows.map((r) => ({ d: r.d, v: r.v * k }));
   return rows;
 }
+// PAX Gold history, rescaled so the latest close matches spot gold
+function scaleK(a: Asset, rows: Row[]) {
+  if (!a.scaleTo) return 1;
+  const sp = lastOf("spot:" + a.scaleTo), pr = rows.length ? rows[rows.length - 1].v : 0;
+  const k = sp && pr ? sp.v / pr : 1;
+  return k > 0.9 && k < 1.1 ? k : 1;
+}
+
+// ================================================================ candles
+// Real highs and lows where a free source has them: exchange candles (Coinbase for crypto and PAX Gold, Kraken for forex)
+// and the candles our own minute polls build. Elsewhere a candle is built from daily closes: it opens at the previous close
+// and has no wicks of its own, and a weekly candle's high and low are its highest and lowest daily close.
+export type Candle = { t: string; o: number; h: number; l: number; c: number; r: boolean };
+export function candleSource(a: Asset) {
+  if (a.cls === "crypto") return "Coinbase daily candles";
+  if (a.scaleTo) return "PAX Gold candles from Coinbase, scaled to spot gold";
+  if (a.cls === "fx") return a.id === "nzdusd" ? "ECB daily rates" : "Kraken candles, ECB rates before them";
+  if (a.hist.startsWith("spot:")) return "gold-api spot, sampled every minute";
+  return "EIA daily closes, via FRED";
+}
+export function dailyCandles(a: Asset): Candle[] {
+  const raw = series(a.hist), closes = priceRows(a), k = scaleK(a, raw.length && a.hist.startsWith("fred:") ? despike(raw) : raw);
+  const sids = a.hist.startsWith("px:") ? [a.hist, "live:" + a.id] : a.cls === "fx" ? ["kr:" + a.sym, "live:" + a.id] : a.live ? ["live:" + a.id] : [];
+  const maps = sids.map((sid, n) => new Map(ohlc(sid).map((b) => [b.d, n === 0 && k !== 1 ? { d: b.d, o: b.o * k, h: b.h * k, l: b.l * k, c: b.c * k } : b])));
+  const cm = new Map(closes.map((r) => [r.d, r.v])), lastD = closes.length ? closes[closes.length - 1].d : "";
+  const extra = new Set<string>();                                            // today's candle, before today's close is in the history
+  for (const m of maps) for (const d of m.keys()) if (d > lastD) extra.add(d);
+  const days = [...closes.map((r) => r.d), ...[...extra].sort()], tol = a.cls === "fx" ? 0.012 : 0.05, weekend = a.cls !== "crypto", today = iso(Date.now());
+  const out: Candle[] = []; let prev: number | null = null;
+  for (const d of days) {
+    const wd = new Date(d + "T12:00:00Z").getUTCDay(), cv = cm.get(d);
+    if (weekend && (wd === 0 || wd === 6)) continue;                          // markets that close at the weekend
+    const ok = (b: Bar | undefined) => !!b && (cv == null ? prev == null || Math.abs(b.c / prev - 1) < tol * 2 : Math.abs(b.c / cv - 1) <= tol);
+    let real: Bar | undefined;
+    for (const m of maps) { const b = m.get(d); if (ok(b)) { real = b; break; } }
+    // today: the exchange candle is fetched every few hours, our own polls run every minute, so take the widest range and the latest price
+    const lv = maps.length > 1 ? maps[maps.length - 1].get(d) : undefined;
+    if (real && lv && lv !== real && d === today && ok(lv)) real = { d, o: real.o, h: Math.max(real.h, lv.h), l: Math.min(real.l, lv.l), c: lv.c };
+    if (real) out.push({ t: d, o: real.o, h: Math.max(real.h, real.o, real.c), l: Math.min(real.l, real.o, real.c), c: real.c, r: true });
+    else if (cv != null) { const o = prev ?? cv; out.push({ t: d, o, h: Math.max(o, cv), l: Math.min(o, cv), c: cv, r: false }); }
+    else continue;
+    prev = out[out.length - 1].c;
+  }
+  // thinly traded days can print a stray high or low: cap each wick at four times the typical daily range
+  const rng = out.filter((x) => x.r).map((x) => (x.h - x.l) / x.c).sort((x, y) => x - y);
+  if (rng.length >= 20) {
+    const cap = Math.max(4 * rng[Math.floor(rng.length / 2)], 0.002);
+    for (const x of out) if (x.r) { const top = Math.max(x.o, x.c), bot = Math.min(x.o, x.c); x.h = Math.min(x.h, top * (1 + cap)); x.l = Math.max(x.l, bot * (1 - cap)); }
+  }
+  return out;
+}
+// candles from a plain daily series (yields, the VIX, the dollar index)
+export function closeCandles(rows: Row[]): Candle[] {
+  const out: Candle[] = []; let prev: number | null = null;
+  for (const r of rows) { const o = prev ?? r.v; out.push({ t: r.d, o, h: Math.max(o, r.v), l: Math.min(o, r.v), c: r.v, r: false }); prev = r.v; }
+  return out;
+}
+// weeks end on Friday, like the calls; a week still in progress is the last candle
+export function weeklyCandles(days: Candle[]): Candle[] {
+  const out: Candle[] = [];
+  for (const x of days) {
+    const t = Date.parse(x.t + "T00:00:00Z"), fri = iso(t + ((5 - new Date(t).getUTCDay() + 7) % 7) * DAYMS), cur = out[out.length - 1];
+    if (cur && cur.t === fri) { cur.h = Math.max(cur.h, x.h); cur.l = Math.min(cur.l, x.l); cur.c = x.c; cur.r = cur.r || x.r; }
+    else out.push({ t: fri, o: x.o, h: x.h, l: x.l, c: x.c, r: x.r });
+  }
+  return out;
+}
+const smaOf = (xs: number[], i: number, n: number) => (i + 1 >= n ? mean(xs.slice(i + 1 - n, i + 1)) : null);
 
 // ================================================================ small statistics
 const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / (xs.length || 1);
@@ -379,7 +444,8 @@ export type Brief = {
   cot: { name: string; net: number; chg: number; pct: number; who: string; inv: boolean; what: string; long: number | null; short: number | null; hist: number[]; lo: number; hi: number } | null;
   recent: { wk: string; dir: number; res: number | null }[];
   cells: Record<string, Cell>; drivers: { key: string; name: string; c: number; s: number; text: string }[];
-  chart: { wk: string; px: number; m20: number | null; m50: number | null }[]; pxDate: string;
+  chart: { wk: string; px: number; o: number; h: number; l: number; r: boolean; m20: number | null; m50: number | null }[]; pxDate: string;
+  day: { t: string; o: number; h: number; l: number; c: number; r: boolean; m20: number | null; m50: number | null }[]; cndSrc: string;
 };
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"], WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 export const short = (d: string) => { const t = new Date(d + "T12:00:00Z"); return `${t.getUTCDate()} ${MON[t.getUTCMonth()]} ${String(t.getUTCFullYear()).slice(2)}`; };
@@ -462,13 +528,15 @@ export function brief(a: Asset, c: Ctx, nowS = Date.now() / 1000, bt: (a: Asset,
     cells[col.id] = got.length ? { s: Math.max(-1, Math.min(1, got.reduce((t, f) => t + f.s * f.w, 0) / got.reduce((t, f) => t + f.w, 0))), c: got.reduce((t, f) => t + (f.s * f.w) / aw, 0), w: got.reduce((t, f) => t + f.w, 0), text: got.map((f) => f.text).filter(Boolean).join(" ") } : null;
   }
   const drivers = COLS.filter((col) => cells[col.id]).map((col) => ({ key: col.id, name: col.name, c: cells[col.id]!.c, s: cells[col.id]!.s, text: cells[col.id]!.text })).sort((x, y) => Math.abs(y.c) - Math.abs(x.c));
-  const chart: Brief["chart"] = [];
-  for (let k = Math.max(0, i - 103); k <= i; k++) if (nz(p[k])) chart.push({ wk: c.weeks[k], px: p[k]!, m20: sma(p, k, 20), m50: sma(p, k, 50) });
+  // candles: two years of weeks (the week in progress is the last one) and six months of days, with their moving averages
+  const dc = dailyCandles(a), wc = weeklyCandles(dc), wcl = wc.map((x) => x.c), dcl = dc.map((x) => x.c);
+  const chart: Brief["chart"] = wc.map((x, k) => ({ wk: x.t, px: x.c, o: x.o, h: x.h, l: x.l, r: x.r, m20: smaOf(wcl, k, 20), m50: smaOf(wcl, k, 50) })).slice(-104);
+  const day: Brief["day"] = dc.map((x, k) => ({ ...x, m20: smaOf(dcl, k, 20), m50: smaOf(dcl, k, 50) })).slice(-130);
   return {
     id: a.id, name: a.name, sym: a.sym, cls: a.cls, asOf: c.weeks[i], title: `${a.name.toUpperCase()} WEEKLY, ${short(c.weeks[i])}`, call,
     px: nz(p[i]) ? p[i] : null, pxTxt: nz(p[i]) ? fmtPx(a, p[i]!) : "", chg: pl.chg, priceLine: pl.line,
     forIt: pros.slice(0, 5).map((f) => f.text), against: cons.slice(0, 4).map((f) => f.text), verdict, watch, watchLine,
-    live, back: bk, notes, cot, recent: [], cells, drivers, chart, pxDate: c.pxDate[a.id] || "",
+    live, back: bk, notes, cot, recent: [], cells, drivers, chart, day, cndSrc: candleSource(a), pxDate: c.pxDate[a.id] || "",
   };
 }
 function spotNow(sym: string) { const s = spot[sym]; if (s && Date.now() - s.at < 6 * 3600_000) return s; const l = lastOf("spot:" + sym); return l ? { price: l.v, at: Date.parse(l.d + "T12:00:00Z") } : null; }

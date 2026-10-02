@@ -112,12 +112,63 @@ $$("[data-copy]").forEach((btn) => btn.addEventListener("click", async () => {
   }
 }));
 
+// ---------------------------------------------------------------- candlestick charts: timeframe, a crosshair with the candle's numbers, the live candle
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"], WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+$$("[data-pc]").forEach((fig) => {
+  const tfs = $$(".pc-tf [data-tf]", fig);
+  tabset(tfs, (b) => { tfs.forEach((x) => x.setAttribute("aria-selected", String(x === b))); $$(".pc-v", fig).forEach((v) => (v.hidden = v.dataset.tf !== b.dataset.tf)); });
+});
+const charts = [];
+$$("svg.pc-svg").forEach((svg) => {
+  let D; try { D = JSON.parse(svg.dataset.c); } catch { return; }
+  const ro = svg.closest(".pc-v").querySelector(".pc-ro"), q = (s) => svg.querySelector(s);
+  const xh = q(".xh"), xv = q(".xv"), xz = q(".xz"), xt = q(".xt"), xtt = q(".xtt"), xd = q(".xd"), xdt = q(".xdt");
+  const n = D.b.length, step = (D.W - D.L - D.R) / n, bw = Math.max(1.2, Math.min(15, step * 0.66));
+  const X = (k) => D.L + step * (k + 0.5), Y = (v) => Math.max(D.T, Math.min(D.H - D.B, D.T + (1 - (v - D.y0) / (D.y1 - D.y0)) * (D.H - D.T - D.B)));
+  const V = (y) => D.y0 + (1 - (y - D.T) / (D.H - D.T - D.B)) * (D.y1 - D.y0);
+  const nf = (v) => D.pre + v.toLocaleString("en-US", { minimumFractionDigits: D.dp, maximumFractionDigits: D.dp });
+  const day = (t) => { const d = new Date(t + "T12:00:00Z"); return `${d.getUTCDate()} ${MON[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(2)}`; };
+  const label = (t) => { const d = new Date(t + "T12:00:00Z"); return `${D.tf === "w" ? "Week to " : WD[d.getUTCDay()] + " "}${d.getUTCDate()} ${MON[d.getUTCMonth()]} ${d.getUTCFullYear()}`; };
+  const read = (k) => {
+    const c = D.b[k], p = D.b[k - 1], ch = p ? c[4] / p[4] - 1 : null;
+    return `<b>${label(c[0])}</b><span>O <i>${nf(c[1])}</i></span><span>H <i>${nf(c[2])}</i></span><span>L <i>${nf(c[3])}</i></span><span>C <i>${nf(c[4])}</i></span>` +
+      (ch == null ? "" : `<span class="${ch >= 0 ? "up" : "dn"}">${ch >= 0 ? "+" : "−"}${Math.abs(ch * 100).toFixed(2)}%</span>`);
+  };
+  let over = false;
+  function show(e) {
+    const r = svg.getBoundingClientRect(), x = (e.clientX - r.left) * (D.W / r.width), y = (e.clientY - r.top) * (D.H / r.height);
+    if (x < D.L || x > D.W - D.R || y < D.T || y > D.H - D.B) return hide();
+    over = true;
+    const k = Math.max(0, Math.min(n - 1, Math.floor((x - D.L) / step))), xx = X(k), tw = D.W < 600 ? 84 : 74, tx = Math.max(D.L, Math.min(D.W - D.R - tw, xx - tw / 2));
+    xv.setAttribute("d", `M${xx} ${D.T}V${D.H - D.B}`); xz.setAttribute("d", `M${D.L} ${y}H${D.W - D.R}`);
+    const th = +xt.getAttribute("height"); xt.setAttribute("y", y - th / 2); xtt.setAttribute("y", y + th / 2 - 5); xtt.textContent = nf(V(y));
+    xd.setAttribute("x", tx); xd.setAttribute("width", tw); xdt.setAttribute("x", tx + tw / 2); xdt.textContent = day(D.b[k][0]);
+    xh.setAttribute("visibility", "visible"); ro.innerHTML = read(k);
+  }
+  function hide() { over = false; xh.setAttribute("visibility", "hidden"); ro.innerHTML = read(n - 1); }
+  svg.addEventListener("pointermove", show); svg.addEventListener("pointerdown", show); svg.addEventListener("pointerleave", hide);
+  // the last candle follows the live price while it's still forming
+  const lc = q(".lc"), lw = q(".lc .w"), lb = q(".lc .b"), lp = q(".lpx"), lpl = q(".lpl"), lpr = q(".lpx rect"), lpt = q(".lpx text");
+  function live(p) {
+    const c = D.b[n - 1]; if (!(p > 0) || !lc || Math.abs(p / c[4] - 1) > 0.15) return;
+    c[4] = p; c[2] = Math.max(c[2], p); c[3] = Math.min(c[3], p);
+    const xx = X(n - 1), up = c[4] >= c[1], ya = Y(Math.max(c[1], c[4])), yb = Math.max(Y(Math.min(c[1], c[4])), ya + 1), yl = Y(p), prev = D.b[n - 2];
+    lc.setAttribute("class", "lc " + (up ? "u" : "d"));
+    lw.setAttribute("d", `M${xx.toFixed(1)} ${Y(c[2]).toFixed(1)}V${Y(c[3]).toFixed(1)}`);
+    lb.setAttribute("d", `M${(xx - bw / 2).toFixed(1)} ${ya.toFixed(1)}h${bw.toFixed(1)}V${yb.toFixed(1)}h${(-bw).toFixed(1)}Z`);
+    lp.setAttribute("class", "lpx " + ((prev ? p >= prev[4] : up) ? "u" : "d"));
+    const th = +lpr.getAttribute("height"); lpl.setAttribute("d", `M${D.L} ${yl.toFixed(1)}H${D.W - D.R}`); lpr.setAttribute("y", (yl - th / 2).toFixed(1)); lpt.setAttribute("y", (yl + th / 2 - 5).toFixed(1)); lpt.textContent = nf(p);
+    if (!over) ro.innerHTML = read(n - 1);
+  }
+  if (svg.dataset.liveC) charts.push({ id: svg.dataset.liveC, live });
+});
+
 // ---------------------------------------------------------------- live prices, once every 20 seconds while the page is visible
 const nodes = $$("[data-live]");
 const pct = (x) => (x > 0 ? "+" : x < 0 ? "−" : "") + Math.abs(x * 100).toFixed(2) + "%";
 let last = {};
 async function poll() {
-  if (document.hidden || !nodes.length) return;
+  if (document.hidden || (!nodes.length && !charts.length)) return;
   try {
     const r = await fetch("/api/markets/live", { cache: "no-store" }); if (!r.ok) return;
     const j = await r.json(); if (!j || !j.q) return;
@@ -131,9 +182,10 @@ async function poll() {
       }
       if (ch && q.ch != null) { ch.textContent = pct(q.ch); ch.className = ch.className.replace(/\b(up|dn)\b/g, "").trim() + " " + (q.ch >= 0 ? "up" : "dn"); }
     }
+    for (const c of charts) { const v = j.q[c.id]; if (v && v.live && v.p) c.live(v.p); }
     for (const [k, v] of Object.entries(j.q)) last[k] = v.txt;
   } catch { /* try again next time */ }
 }
 $$("[data-live] .px").forEach((p) => { const id = p.closest("[data-live]").dataset.live; last[id] = last[id] || p.textContent; });
-if (nodes.length) { setInterval(poll, 20000); setTimeout(poll, 3000); document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); }); }
+if (nodes.length || charts.length) { setInterval(poll, 20000); setTimeout(poll, 3000); document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); }); }
 })();

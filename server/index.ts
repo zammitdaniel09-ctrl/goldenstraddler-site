@@ -494,8 +494,8 @@ async function handle(req: Request): Promise<Response> {
   if (p === "/markets" || /^\/markets\/[a-z]{2,12}$/.test(p)) {
     const r = renderHub(p);
     if (!r) return notFound(req);
-    return file(req, "markets.html", { noindex: !hubPublic(), replace: (s) => legalVars(s.replace("<!--HUB_MAIN-->", r.html)
-      .replace(/\{\{HUB_TITLE\}\}/g, esc(r.title)).replace(/\{\{HUB_DESC\}\}/g, esc(r.desc)).replace(/\{\{HUB_PATH\}\}/g, p)) });
+    return file(req, "markets.html", { noindex: !hubPublic(), replace: (s) => legalVars(s.replace("<!--HUB_MAIN-->", () => r.html)            // a function, so "$&" in the page isn't read as a pattern
+      .replace(/\{\{HUB_TITLE\}\}/g, () => esc(r.title)).replace(/\{\{HUB_DESC\}\}/g, () => esc(r.desc)).replace(/\{\{HUB_PATH\}\}/g, () => p)) });
   }
   if (/^\/order\/[A-Z0-9-]{6,12}$/i.test(p)) return file(req, "order.html", { noindex: true });
   if (["/terms", "/refunds", "/privacy", "/risk", "/imprint"].includes(p)) return file(req, "legal" + p + ".html", { replace: legalVars });
