@@ -56,7 +56,7 @@ export const FACTOR_INFO: [string, string][] = [
   ["Real yields", "10 year inflation-protected Treasury yield (FRED DFII10): the change over 4 weeks, and the level against 10 years."],
   ["Fed path", "The 4 week change in 2 year Treasury yields (FRED DGS2), the market's read of where the Fed is heading."],
   ["Fear gauge", "The VIX (Cboe, via FRED). Fear supports gold, the yen and the franc, and weighs on oil, copper, crypto and the Aussie and kiwi."],
-  ["Oil stocks", "Weekly US crude inventories (EIA, via FRED WCESTUS1)."],
+  ["Oil stocks", "Weekly US crude inventories excluding the strategic reserve (EIA, WCESTUS1)."],
   ["Oil and CAD", "The 4 week change in WTI, which tends to move the Canadian dollar."],
 ];
 export const THRESH = { lean: 0.1, firm: 0.3 };

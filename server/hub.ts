@@ -146,10 +146,10 @@ function methodHtml(asOfTxt: string) {
   <h2>How the calls work</h2>
   <div class="mk-cols">
     <div>
-      <p>Each market gets a score between −1 and +1 from a handful of measured factors. Every factor turns one fact into a small score for that market, with a fixed weight, and the call is the weighted average: above +${THRESH.lean} leans bullish, below −${THRESH.lean} leans bearish, beyond ${THRESH.firm} either way drops the word "leaning". Confidence rises when more of the factors agree and all of them have data.</p>
+      <p>Each market gets a score between −1 and +1 from a handful of measured factors. Every factor turns one fact into a small score for that market, with a fixed weight, and the call is the weighted average: above +${THRESH.lean} leans bullish, below −${THRESH.lean} leans bearish, beyond ${THRESH.firm} either way drops the word "leaning".</p>
       <p>The same rules run over every past week to give the backtest. A call counts as right when the next week's close moves the way it said. The weights were chosen by looking at 2018 to 2022 only. From 2023 on, the model runs on data it never saw, so that's the honest test. Next to each hit rate we show how often the market simply went up, because always saying "bullish" would score that much.</p>
       ${classTable(state.briefs)}
-      <p>What the test says: weekly direction is hard. The edge is clearest in forex, where the Fed path and crowded positioning have worked in both periods. In energy and crypto the model hasn't beaten a coin flip since 2023, so read those calls as a summary of the data, not a forecast. Confidence on each call comes from that market's own record since 2023, lowered when today's factors disagree.</p>
+      <p>${esc(verdictOnTest(state.briefs))} Confidence on each call comes from that market's own record since 2023, lowered when today's factors disagree or some have no data.</p>
       <dl class="mk-f">${FACTOR_INFO.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>
     </div>
     <div class="mk-disc">
@@ -159,7 +159,8 @@ function methodHtml(asOfTxt: string) {
       <p><b>Conflicts of interest.</b> We sell the GoldenStraddler EA, and we earn commission from partner brokers when people we refer trade with them. Our own trading account runs the EA on gold news releases and doesn't follow these calls.</p>
       <h3>Sources</h3>
       <ul class="mk-src">
-        <li>Federal Reserve Bank of St. Louis, FRED: 10 year real yield (DFII10), 2 year Treasury (DGS2), VIX (VIXCLS, © Cboe), WTI and Brent spot, Henry Hub gas and US crude stocks (U.S. Energy Information Administration).</li>
+        <li>Federal Reserve Bank of St. Louis, FRED: 10 year real yield (DFII10), 2 year Treasury (DGS2), VIX (VIXCLS, © Cboe), and WTI, Brent and Henry Hub spot prices from the U.S. Energy Information Administration.</li>
+        <li>U.S. Energy Information Administration: weekly US crude oil stocks excluding the strategic reserve (WCESTUS1).</li>
         <li>European Central Bank reference rates, via Frankfurter. Our dollar index applies the DXY weights to these rates.</li>
         <li>U.S. Commodity Futures Trading Commission, Commitments of Traders.</li>
         <li>Coinbase and Kraken public market data (bitcoin, ether, PAX Gold), gold-api.com spot prices, the ForexFactory calendar.</li>
@@ -185,6 +186,20 @@ function summaryHtml(bs: Brief[]) {
   const fx = classStats(bs).get("fx"), fxr = fx && fx.l[0] >= 50 ? ` and <b>${nf((fx.l[1] / fx.l[0]) * 100)}%</b> in forex` : "";
   return { back: n ? `Since 2023, on data the model never saw: <b>${nf((hits / n) * 100)}%</b> of ${nf(n)} weekly calls right overall${fxr}, against a ${nf((up / tot) * 100)}% up-week rate` : "",
     live: lr.n ? `Live since ${short(lr.since!)}: <b>${lr.hits}</b> of ${lr.n} right` : "Live record: starts with this week's calls" };
+}
+// written from the numbers in the table, so it stays true as weeks are added
+function verdictOnTest(bs: Brief[]) {
+  const by = classStats(bs), good: string[] = [], flat: string[] = [];
+  for (const c of CLASSES) {
+    const x = by.get(c.id); if (!x || x.l[0] < 60) continue;
+    const late = x.l[1] / x.l[0], base = Math.max(x.l[2], x.l[3] - x.l[2]) / (x.l[3] || 1), early = x.e[0] ? x.e[1] / x.e[0] : 0;
+    if (late >= base + 0.02 && early >= 0.53) good.push(c.name.toLowerCase()); else if (late <= base + 0.005) flat.push(c.name.toLowerCase());
+  }
+  const j = (xs: string[]) => (xs.length <= 1 ? xs.join("") : xs.slice(0, -1).join(", ") + " and " + xs[xs.length - 1]);
+  let t = "What the test says: weekly direction is hard.";
+  if (good.length) t += ` The model has held up on unseen data in ${j(good)}, where it beat both a coin flip and simply following the market's usual direction.`;
+  if (flat.length) t += ` In ${j(flat)} it hasn't beaten ${good.length ? "that bar" : "a coin flip or the market's usual direction"} since 2023, so read those calls as a summary of the data, not a forecast.`;
+  return t;
 }
 function classTable(bs: Brief[]) {
   const by = classStats(bs), pc = (h: number, n: number) => (n ? nf((h / n) * 100) + "%" : "–");
