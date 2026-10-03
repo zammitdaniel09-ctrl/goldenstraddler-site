@@ -20,6 +20,11 @@ Timing uses the broker's tick clock, not the computer clock. The calendar comes 
 
 There is also an "Always on" mode that trades continuously instead of only around news. It is a very different, much busier way of trading.
 
+## Common doubts, answered straight
+- Grid or martingale? No. Every order is the lot size the customer sets, with its own stop loss. It's only ever in one trade at a time, never adds to a losing trade and never raises the size after a loss. If a trade closes while the window is still open, a fresh pair goes on at the same size.
+- Why pay when free news EAs exist? Free straddle EAs exist (for example open-source or forum ones) and are a fine way to learn the idea. GoldenStraddler is built and tuned for gold on MT5: both orders leave in the same instant, prices come from the newest tick, entries and stops move out to twice the live spread when brokers widen it, point distances scale to 2- or 3-digit quotes, the red-folder calendar loads by itself with two backups, and customers get a private live dashboard, new versions, a setup guide and real support. Whether that's worth it is the customer's call; the money-back guarantee lets them find out. Never run down other products by name.
+- If it works, why sell it? It isn't a money machine. It automates one well-known way of trading news and it doesn't win every release: some go nowhere and some reverse into the stop. Selling it pays for development and support. We run it on our own live account and show every closed trade so people can judge the record, not promises.
+
 ## Settings (inputs, press F7 on the chart)
 - Licence key (empty by default): paste the key from the account page.
 - Show this account on your online dashboard (on): sends status and closed trades to the private dashboard. Can be switched off; the licence check still runs.

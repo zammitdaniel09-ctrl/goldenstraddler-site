@@ -108,7 +108,7 @@ html{scroll-padding-top:128px}
 
 /* ---------------------------------------------------------------- live desk under the hero */
 .desk{margin-top:64px}
-.desk .wrap{display:grid;grid-template-columns:minmax(0,1.22fr) minmax(0,1fr);grid-template-areas:var(--areas,"next gold" "week acct");gap:16px}
+.desk .wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:var(--areas,"gold acct" "week week");gap:16px}
 .dk{position:relative;overflow:hidden;min-width:0;background:var(--carbon);border:1px solid var(--edge);border-radius:20px;padding:24px;transition:border-color .4s,box-shadow .4s}
 .dk-next{grid-area:next}.dk-gold{grid-area:gold}.dk-acct{grid-area:acct}.dk-week{grid-area:week}
 .dk-h{display:flex;align-items:center;justify-content:space-between;gap:12px}
@@ -169,7 +169,7 @@ html{scroll-padding-top:128px}
 .wk li.next em{background:rgba(var(--ice-rgb),.14);color:var(--ice)}
 .wk li.live em{background:var(--ice);color:var(--on-ice)}
 .wk li.next time b{color:var(--ice)}
-@media (max-width:980px){.desk .wrap{grid-template-columns:1fr;grid-template-areas:var(--areas-m,"next" "gold" "acct" "week")}}
+@media (max-width:980px){.desk .wrap{grid-template-columns:1fr;grid-template-areas:var(--areas-m,"gold" "acct" "week")}}
 @media (max-width:560px){.desk{margin-top:44px}.dk{padding:20px;border-radius:18px}
   .wk li{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"tm em" "ttl ttl";gap:8px 12px}
   .wk time{grid-area:tm;display:flex;gap:8px;flex-wrap:wrap}.wk time b{display:inline}.wk .ttl{grid-area:ttl}.wk em{grid-area:em;align-self:start}}
@@ -715,26 +715,66 @@ body.lock{overflow:hidden}
 @media (max-width:1060px){.brk{grid-template-columns:1fr 1fr}.bk.pick{grid-column:1/-1}}
 @media (max-width:760px){.brk{grid-template-columns:1fr;gap:12px;margin-top:28px}.bk{padding:20px;gap:10px}.bk.pick{margin-top:8px}.bk h3{font-size:19px}.bk-sub{font-size:14px}.bk-l li{font-size:13px}.bk-note{font-size:11.5px}}
 
-/* hero: the headline and the pitch sit in one row above the full-width terminal; on phones the terminal comes right after the headline */
-@media (min-width:981px){
-  .hero{padding-top:40px}
-  .hero h1{font-size:clamp(38px,4.35vw,58px);max-width:none;white-space:nowrap}
-  .hero-head{margin-bottom:30px}
-  .hero-side{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 56px;align-items:center;margin-top:20px}
-  .hero-side .sub{grid-row:1/3;margin-top:0;max-width:64ch;font-size:17px}
-  .hero-side .cta{margin-top:0;justify-content:flex-end}
-  .hero-side .meta{margin-top:0;max-width:34ch;font-size:13px;text-align:right;justify-self:end}
-  .hero .proof{flex-direction:row;flex-wrap:wrap;justify-content:center;gap:10px 30px;margin-top:22px}
-}
+/* hero: the pitch on the left; on the right one release drawn as it happens, and the countdown to the next real one */
+.hero-grid{display:grid;grid-template-columns:minmax(0,1.14fr) minmax(0,.86fr);gap:clamp(36px,4.5vw,64px);align-items:center}
+.hero-copy{min-width:0}
+.hero h1{font-size:clamp(38px,3.75vw,56px);max-width:none}
+.hero .sub{max-width:52ch}
+.hero .meta{max-width:none}
+.hero .proof{margin-top:28px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 22px}
+.hero .proof li{align-items:flex-start;font-size:14.5px;line-height:1.45}
+.hero .proof li svg,.hero .proof .live-dot{margin-top:1px}
+.hero .proof .live-dot{margin:5px 5px 0}
+.hcard{min-width:0;background:linear-gradient(180deg,var(--term1),var(--term2) 70%);border:1px solid var(--edge2);border-radius:24px;overflow:hidden;box-shadow:0 60px 140px -70px rgba(var(--ice-rgb),.5);transition:border-color .4s,box-shadow .4s}
+.hcard:has(.hc-next.soon){border-color:rgba(var(--gold-rgb),.55);box-shadow:0 60px 140px -70px rgba(var(--gold-rgb),.6)}
+.hcard:has(.hc-next.armed){border-color:var(--ice)}
+.brk-art{margin:0;padding:20px 20px 14px}
+.brk-art svg{display:block;width:100%;height:auto;overflow:visible}
+.brk-art figcaption{margin-top:8px;font-size:12px;line-height:1.45;color:var(--muted)}
+.hc-next{position:relative;padding:20px 22px 22px;border-top:1px solid var(--edge)}
+.hc-next .ev{margin-top:12px;font:600 clamp(18px,1.6vw,21px)/1.3 var(--body);letter-spacing:-.01em;max-width:34ch}
+.hc-next .when{margin-top:4px;color:var(--txt2);font-size:14px}
+.hc-next .count{margin-top:14px;font-size:clamp(40px,4.2vw,56px)}
+.hc-next .arm{margin-top:16px;display:flex;flex-direction:column;gap:8px}
+.hc-next.soon .track i{background:linear-gradient(90deg,#b8862f,var(--gold))}
+.hc-next.armed .count{color:var(--ice)}
+.ba-grid{stroke:rgba(var(--fg-rgb),.05);stroke-width:1}
+.ba-mark{stroke:var(--edge2);stroke-width:1;stroke-dasharray:3 4}
+.ba-mark.hot{stroke:rgba(var(--gold-rgb),.6)}
+.ba-t{font:500 12px var(--mono);fill:var(--muted)}
+.ba-t.hot{fill:var(--gold)}
+.ba-buy,.ba-sell{fill:none;stroke-width:1.6;stroke-dasharray:6 5;opacity:0;transition:opacity .35s}
+.ba-buy{stroke:var(--ice)}
+.ba-sell{stroke:var(--txt2)}
+.ba-buy.on,.ba-sell.on{opacity:1}
+.ba-sell.gone{opacity:.16}
+.ba-l{font:600 12.5px var(--body);fill:var(--txt2);opacity:0;transition:opacity .3s}
+.ba-l.on{opacity:1}
+.ba-l.buy{fill:var(--ice)}
+.ba-l.del{fill:var(--loss)}
+.ba-l.trail{fill:var(--white)}
+.ba-trail{fill:none;stroke:var(--up);stroke-width:2;stroke-linejoin:round;opacity:0;transition:opacity .3s}
+.ba-trail.on{opacity:.95}
+.ba-px{fill:none;stroke:var(--gold);stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round}
+.ba-dot{opacity:0;stroke:var(--term2);stroke-width:2.5;transition:opacity .25s}
+.ba-dot.fill{fill:var(--ice)}
+.ba-dot.exit{fill:var(--white)}
+.ba-dot.on{opacity:1}
+.ba-head{fill:var(--gold);opacity:0}
+.ba-head.on{opacity:1}
+#replay .term{margin-top:34px}
 @media (max-width:980px){
-  .hero-head,.hero-side{display:contents}
-  .hero>.wrap:not(.annc){display:flex;flex-direction:column}
-  .hero h1{order:1;max-width:13ch}
-  .hero .term{order:2;margin-top:24px}
-  .hero .sub{order:3;margin-top:24px}
-  .hero .proof{order:4;flex-direction:column;justify-content:flex-start}
-  .hero .cta{order:5}
-  .hero .meta{order:6}
+  .hero-grid{grid-template-columns:minmax(0,1fr);gap:36px}
+  .hero .proof{grid-template-columns:minmax(0,1fr);gap:10px}
+  .hero h1{font-size:clamp(38px,8.6vw,64px)}
+  .hero h1{max-width:13ch}
+  .hcard{max-width:620px}
+}
+@media (max-width:560px){
+  .brk-art{padding:14px 12px 10px}
+  .hc-next{padding:18px 16px 18px}
+  .hcard{border-radius:20px}
+  #replay .term{margin-top:24px}
 }
 
 /* ---------------------------------------------------------------- this week's market calls (teaser from the Markets desk) */

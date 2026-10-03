@@ -76,9 +76,6 @@ function tickNext(now) {
   roll($("nxCount"), live ? [{ v: "+", c: "sep" }, ...tokens(-left)] : tokens(left));
   $("nxBar").style.width = (live ? 100 : Math.max(0, Math.min(1, 1 - left / 86400000)) * 100).toFixed(2) + "%";
   $("nxArm").textContent = live ? "The EA trails whichever side filled. Leftover orders go 30 seconds after the release." : armed ? "Buy stop and sell stop are 60 points either side of price." : `The EA arms at ${hhmmss(g.utc * 1000 - ARM_MS)}, your time.`;
-  // card payments deliver the licence straight away and setup takes about five minutes, so offer it while the release is over an hour away
-  const nb = $("nxBuy"); nb.hidden = left < 3600000;
-  if (!nb.hidden) $("nxBuyT").textContent = `Pay by card and set it up in about five minutes, and it can be armed for ${shortName(g)}.`;
   // same data on the example licence card
   $("licNext").textContent = `${names(g)}, ${when(g.utc, false)}`;
   $("licArm").textContent = `Arms at ${hhmmss(g.utc * 1000 - ARM_MS)}, your time`;
@@ -177,12 +174,11 @@ $("pmCode").addEventListener("click", async () => {
 // ================================================================ the desk layout follows whichever cards have data
 function layoutDesk() {
   const on = (id) => !$(id).hidden, row = (a, b) => { const x = [a, b].filter(on); return x.length === 2 ? `"${x[0]} ${x[1]}"` : x.length ? `"${x[0]} ${x[0]}"` : ""; };
-  const ids = { next: "next", gold: "gold", week: "week", acct: "acct" };
-  const top = row("next", "gold"), bot = row("week", "acct");
-  const desk = $("desk"), any = ["next", "gold", "week", "acct"].some(on);
+  const top = row("gold", "acct"), bot = row("week", "week");
+  const desk = $("desk"), any = ["gold", "week", "acct"].some(on);
   desk.hidden = !any;
-  desk.style.setProperty("--areas", [top, bot].filter(Boolean).join(" ") || '"next"');
-  desk.style.setProperty("--areas-m", ["next", "gold", "acct", "week"].filter(on).map((k) => `"${ids[k]}"`).join(" ") || '"next"');
+  desk.style.setProperty("--areas", [top, bot].filter(Boolean).join(" ") || '"gold"');
+  desk.style.setProperty("--areas-m", ["gold", "acct", "week"].filter(on).map((k) => `"${k}"`).join(" ") || '"gold"');
   // phone tabs: hide tabs for cards without data, and keep a visible card selected
   const tabs = [...desk.querySelectorAll(".desk-tabs [data-tab]")];
   tabs.forEach((b) => (b.hidden = !on(b.dataset.tab)));
@@ -261,6 +257,70 @@ async function pollLive() {
     const r = await fetch("/api/live", { cache: "no-store" }); if (!r.ok) throw new Error();
     liveFails = 0; applyLive(await r.json());
   } catch { if (++liveFails > 5 && !$("gold").hidden) $("gLive").lastChild.textContent = "Paused"; }
+}
+
+// ================================================================ the hero illustration: one release, drawn as it happens
+// Price runs quiet, both stops arm at T-5s, the number pushes price through the buy stop, the sell stop is deleted,
+// a trailing stop follows from +50 points and closes the trade when price turns. 1 point = 0.5 px; stops sit 60 points out.
+function bracketArt() {
+  const svg = $("brkArt"); if (!svg) return;
+  const el = (tag, a = {}, kids) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); if (kids) e.textContent = kids; svg.appendChild(e); return e; };
+  const Y0 = 132, BUY = Y0 - 30, SELL = Y0 + 30, XA = 132, X0 = 212, XE = 452;
+  // a fixed path so the drawing is the same for everyone
+  const P = [[16, 133], [30, 130], [44, 134], [58, 131], [72, 135], [86, 131], [100, 134], [114, 130], [128, 133], [142, 131], [156, 135], [170, 131], [184, 134], [198, 131], [208, 132],
+    [214, 112], [219, 96], [225, 78], [232, 66], [240, 58], [249, 62], [258, 48], [267, 41], [276, 46], [286, 34], [296, 29], [306, 37], [316, 31], [328, 42], [338, 52], [348, 60], [360, 64], [374, 70], [390, 66], [406, 73], [422, 69], [438, 75], [452, 72]];
+  // the trailing stop: starts once price is 50 points (25 px) above the fill, then sits 50 points behind the best price, in 10-point steps
+  const fillY = BUY, trail = []; let best = Infinity, on = false, exitAt = null;
+  for (const [x, y] of P) {
+    if (x < X0) continue;
+    if (!on && fillY - y >= 25) on = true;
+    if (!on) continue;
+    best = Math.min(best, y);
+    const st = Math.round((best + 25) / 5) * 5;
+    if (exitAt === null && y >= st && trail.length) { exitAt = [x, st]; trail.push([x, st]); break; }
+    trail.push([x, st]);
+  }
+  const step = trail.map((p, i) => (i ? `H${p[0]}V${p[1]}` : `M${p[0]} ${p[1]}`)).join("");
+  const pts = P.filter((p) => !exitAt || p[0] <= exitAt[0] + 60);
+  const line = (y) => `M${XA} ${y}H${XE}`;
+  for (let i = 0; i < 4; i++) el("line", { x1: 16, x2: XE, y1: 32 + i * 50, y2: 32 + i * 50, class: "ba-grid" });
+  el("line", { x1: XA, x2: XA, y1: 18, y2: 206, class: "ba-mark" }); el("line", { x1: X0, x2: X0, y1: 18, y2: 206, class: "ba-mark hot" });
+  el("text", { x: XA, y: 226, class: "ba-t", "text-anchor": "middle" }, "T−5s"); el("text", { x: X0, y: 226, class: "ba-t hot", "text-anchor": "middle" }, "Release"); el("text", { x: XE, y: 226, class: "ba-t", "text-anchor": "end" }, "+30s");
+  const buy = el("path", { d: line(BUY), class: "ba-buy" }), sell = el("path", { d: line(SELL), class: "ba-sell" });
+  const lb = el("text", { x: XA + 5, y: BUY - 7, class: "ba-l buy" }, "Buy stop"), ls = el("text", { x: XA + 5, y: SELL + 17, class: "ba-l" }, "Sell stop");
+  const tr = el("path", { d: step, class: "ba-trail" });
+  const clip = document.createElementNS(NS, "clipPath"); clip.id = "baClip"; const cr = document.createElementNS(NS, "rect"); cr.setAttribute("x", 0); cr.setAttribute("y", 0); cr.setAttribute("height", 236); clip.appendChild(cr);
+  const defs = document.createElementNS(NS, "defs"); defs.appendChild(clip); svg.prepend(defs);
+  const price = el("path", { d: pts.map((p, i) => (i ? "L" : "M") + p[0] + " " + p[1]).join(""), class: "ba-px", "clip-path": "url(#baClip)" });
+  tr.setAttribute("clip-path", "url(#baClip)");
+  const fill = el("circle", { cx: 218, cy: BUY, r: 5, class: "ba-dot fill" }), fillT = el("text", { x: 226, y: BUY + 18, class: "ba-l buy" }, "Filled");
+  const del = el("text", { x: X0 + 14, y: SELL + 17, class: "ba-l del" }, "Deleted");
+  const ex = exitAt ? el("circle", { cx: exitAt[0], cy: exitAt[1], r: 5, class: "ba-dot exit" }) : null, exT = exitAt ? el("text", { x: XE, y: exitAt[1] + 24, class: "ba-l trail", "text-anchor": "end" }, "Trailing stop closes it") : null;
+  const head = el("circle", { r: 3.5, class: "ba-head" });
+  const lastX = pts[pts.length - 1][0];
+  const at = (x) => { let y = pts[0][1]; for (let i = 1; i < pts.length; i++) if (pts[i][0] >= x) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i]; y = y0 + (y1 - y0) * ((x - x0) / (x1 - x0 || 1)); return y; } return pts[pts.length - 1][1]; };
+  const show = (x) => {
+    cr.setAttribute("width", x);
+    const armed = x >= XA, past = x >= 218;
+    buy.classList.toggle("on", armed); lb.classList.toggle("on", armed); sell.classList.toggle("on", armed && !past); ls.classList.toggle("on", armed && !past);
+    sell.classList.toggle("gone", past); fill.classList.toggle("on", past); fillT.classList.toggle("on", past && x < 300); del.classList.toggle("on", past && x < 330);
+    tr.classList.toggle("on", trail.length && x >= trail[0][0]);
+    if (ex) { const done = x >= exitAt[0]; ex.classList.toggle("on", done); exT.classList.toggle("on", done); }
+    head.setAttribute("cx", Math.min(x, lastX)); head.setAttribute("cy", at(Math.min(x, lastX))); head.classList.toggle("on", x < lastX);
+  };
+  if (reduce) { show(lastX + 1); return; }
+  // one pass when it comes into view, then again every so often while it stays in view
+  const DUR = 5200, HOLD = 4200; let t0 = 0, raf = 0, visible = false;
+  const frame = (t) => {
+    if (!t0) t0 = t;
+    const k = (t - t0) / DUR;
+    if (k < 1) { const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2; show(16 + (lastX + 1 - 16) * (0.25 * k + 0.75 * e)); raf = requestAnimationFrame(frame); }
+    else if (k < 1 + HOLD / DUR) { show(lastX + 1); raf = requestAnimationFrame(frame); }
+    else { t0 = 0; raf = visible && !document.hidden ? requestAnimationFrame(frame) : 0; }
+  };
+  show(16);
+  new IntersectionObserver((es) => { visible = es[0].isIntersecting; if (visible && !raf) raf = requestAnimationFrame(frame); }, { threshold: 0.35 }).observe(svg);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && visible && !raf) raf = requestAnimationFrame(frame); });
 }
 
 // ================================================================ the one-release timeline lights up step by step
@@ -457,6 +517,7 @@ setupTabs();
 setupMenu();
 setupBuyBar();
 setupCalc();
+bracketArt();
 stepLine();
 load();
 pollLive();

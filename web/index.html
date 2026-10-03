@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#000000">
 <script>try{var s=localStorage,d=document.documentElement,t=s.getItem("gs-theme"),v=s.getItem("gs-vars");if(s.getItem("gs-mode")==="light"){d.dataset.mode="light";var m=document.querySelector("meta[name=theme-color]");if(m)m.content="#F2F4F7"}if(t&&/^[a-z]+$/.test(t)){d.dataset.theme=t;if(t==="custom"&&v)d.style.cssText=v}}catch(e){}</script>
 <title>GoldenStraddler | The news straddle EA for gold on MT5</title>
-<meta name="description" content="An Expert Advisor for MetaTrader 5. Fifteen seconds before every high-impact US release it places a buy stop and a sell stop around gold, lets the number pick the side and trails the winner.">
+<meta name="description" content="An Expert Advisor for MetaTrader 5 that trades gold on high-impact US news. Five seconds before each release it places a buy stop and a sell stop, lets the number pick the side and trails the winner.">
 <link rel="canonical" href="{{SITE_URL}}/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="GoldenStraddler">
@@ -57,7 +57,7 @@
 
 <div class="sheet" id="sheet" hidden>
   <nav aria-label="Menu">
-    <a href="#how">How it works</a><a href="#desk">Next release and live gold</a><a href="#record">Results</a><a href="#need">What you need</a><a href="#brokers">Brokers</a><!--HUB_NAV--><a href="#pricing">Pricing</a><a href="#faq">FAQ</a><a href="/account">Sign in</a>
+    <a href="#how">How it works</a><a href="#replay">Watch a release</a><a href="#desk">Live gold and this week</a><a href="#record">Results</a><a href="#need">What you need</a><a href="#brokers">Brokers</a><!--HUB_NAV--><a href="#pricing">Pricing</a><a href="#faq">FAQ</a><a href="/account">Sign in</a>
   </nav>
   <div class="sheet-thm" data-thm-host></div>
   <div class="sheet-cta"><a class="btn pri" id="sheetBuy" href="#pricing">Get GoldenStraddler</a><button class="btn" type="button" data-chat-open>Ask a question</button></div>
@@ -65,14 +65,64 @@
 
 <main id="main">
 <section class="hero"><div class="wrap">
-  <div class="hero-head">
-    <h1>Ready before the number drops.</h1>
-    <div class="hero-side">
-      <p class="sub">GoldenStraddler is an Expert Advisor for MetaTrader&nbsp;5 that trades gold around high-impact US news. Five seconds before each release it brackets price with a buy stop and a sell stop. The number picks the side and a trailing stop follows the move.</p>
-      <div class="cta"><a class="btn pri" id="heroBuy" href="#pricing">Get GoldenStraddler</a><a class="btn" href="#how">How it works</a></div>
+  <div class="hero-grid">
+    <div class="hero-copy">
+      <h1>Ready before the number drops.</h1>
+      <p class="sub">GoldenStraddler is a MetaTrader&nbsp;5 Expert Advisor that trades gold on high-impact US news. Five seconds before each release it places a buy stop and a sell stop around price. The number picks the side and a trailing stop follows the move.</p>
+      <div class="cta"><a class="btn pri" id="heroBuy" href="#pricing">Get GoldenStraddler</a><a class="btn" href="#replay"><span class="lg">Watch it trade a release</span><span class="sh">Watch a release</span></a></div>
       <p class="meta" id="heroPay">{{PRICE_LIFETIME}} once or {{PRICE_MONTHLY}} a month, with a {{REFUND_DAYS}}-day money-back guarantee.</p>
+      <ul class="proof" aria-label="Why people trust it">
+        <li id="pfLive" hidden><i class="live-dot"></i><span id="pfLiveT">Our own live account is running it right now</span></li>
+        <li><svg aria-hidden="true"><use href="#i-check"/></svg><span>Only red-folder USD releases, by default</span></li>
+        <li><svg aria-hidden="true"><use href="#i-check"/></svg><span>A stop loss on every order. <b>No grid, no martingale</b>.</span></li>
+        <li><svg aria-hidden="true"><use href="#i-bolt"/></svg><span>Licence in seconds, set up in <b>about 5 minutes</b></span></li>
+      </ul>
     </div>
+    <aside class="hcard dark-ui" aria-label="The next release and what the EA does">
+      <figure class="brk-art">
+        <svg id="brkArt" viewBox="0 0 480 236" role="img" aria-label="Illustration: five seconds before a release a buy stop is placed above gold and a sell stop below. The release pushes price up through the buy stop, the sell stop is deleted, a trailing stop follows price up and closes the trade when price turns."></svg>
+        <figcaption>One release with the default settings, as an illustration. Real fills, slippage and results vary.</figcaption>
+      </figure>
+      <div class="hc-next" id="next" hidden>
+        <span class="chip pulse" id="nxChip"><i></i><span id="nxChipT">Next high-impact USD release</span></span>
+        <p class="ev" id="nxTitle"></p>
+        <p class="when" id="nxWhen"></p>
+        <div class="count" id="nxCount" role="timer" aria-live="off"></div>
+        <div class="arm"><div class="track" aria-hidden="true"><i id="nxBar"></i></div><span class="fine" id="nxArm"></span></div>
+      </div>
+    </aside>
   </div>
+</div>
+
+<div class="desk" id="desk"><div class="wrap">
+  <div class="tabs desk-tabs" role="tablist" aria-label="Live">
+    <button role="tab" type="button" data-tab="gold" aria-selected="true">Gold</button>
+    <button role="tab" type="button" data-tab="acct" aria-selected="false">Our account</button>
+    <button role="tab" type="button" data-tab="week" aria-selected="false">This week</button>
+  </div>
+  <article class="dk dk-gold on" id="gold" data-panel="gold" hidden>
+    <div class="dk-h"><span class="lab">Gold spot, XAU/USD</span><span class="chip gold pulse" id="gLive"><i></i>Live</span></div>
+    <div class="px"><b class="num" id="gPx"></b><span class="num chg" id="gChg"></span></div>
+    <svg class="spark" id="gSpark" viewBox="0 0 300 90" preserveAspectRatio="none" aria-hidden="true"></svg>
+    <span class="fine" id="gNote"></span>
+  </article>
+  <article class="dk dk-acct" id="acct" data-panel="acct" hidden>
+    <div class="dk-h"><span class="lab">Our own account, running GoldenStraddler</span><span class="chip pulse" id="acChip"><i></i><span id="acChipT">Online now</span></span></div>
+    <div class="acn" id="acNums"></div>
+    <svg class="mini" id="acCurve" viewBox="0 0 300 70" preserveAspectRatio="none" aria-hidden="true" hidden></svg>
+    <p class="fine" id="acCap" hidden>Points after each closed trade since we started streaming it.</p>
+    <a class="dk-link" href="#record">See the full record</a>
+  </article>
+  <article class="dk dk-week" id="week" data-panel="week" hidden>
+    <div class="dk-h"><span class="lab">This week's red-folder USD releases</span><span class="fine">Your time</span></div>
+    <ol class="wk" id="wkList"></ol>
+  </article>
+</div></div>
+</section>
+
+<section class="sec rule" id="replay"><div class="wrap">
+  <h2>Watch it trade a release</h2>
+  <p class="lede">Five kinds of release, replayed tick by tick with the EA's default settings. Pick one, slow it down or drag through it to see exactly what the EA does and when.</p>
   <figure class="term dark-ui" id="term">
     <div class="tm-bar">
       <b class="tm-sym">XAUUSD</b><span class="tm-tf">Ticks</span><span class="tm-ev">US news release</span>
@@ -115,49 +165,8 @@
     </div>
     <figcaption class="tm-cap"><span class="tm-live sr" aria-live="off"></span><span class="lg">Simulated ticks traded with the EA's default settings: a buy stop and a sell stop 60 points either side at T&minus;5s (further out while the spread is wide), a 100-point stop loss, a trailing stop from +50, a fresh pair after every exit, and nothing left pending after T+30s. Fills, slippage and results are illustrative. One of these five releases loses, and real results vary.</span><span class="sh">Simulated ticks with the EA's default settings. Results are illustrative, one of these five releases loses, and real results vary.</span></figcaption>
   </figure>
-  <ul class="proof" aria-label="Why people trust it">
-    <li id="pfLive" hidden><i class="live-dot"></i><span id="pfLiveT">Our own live account is running it right now</span></li>
-    <li><svg aria-hidden="true"><use href="#i-shield"/></svg><span><b>{{REFUND_DAYS}}-day</b> money-back guarantee</span></li>
-    <li><svg aria-hidden="true"><use href="#i-bolt"/></svg><span>Licence in seconds, set up in <b>about 5 minutes</b></span></li>
-  </ul>
-</div>
+</div></section>
 
-<div class="desk" id="desk"><div class="wrap">
-  <div class="tabs desk-tabs" role="tablist" aria-label="Live">
-    <button role="tab" type="button" data-tab="next" aria-selected="true">Next release</button>
-    <button role="tab" type="button" data-tab="gold" aria-selected="false">Gold</button>
-    <button role="tab" type="button" data-tab="acct" aria-selected="false">Our account</button>
-    <button role="tab" type="button" data-tab="week" aria-selected="false">This week</button>
-  </div>
-  <article class="dk dk-next on" id="next" data-panel="next" hidden>
-    <span class="chip pulse" id="nxChip"><i></i><span id="nxChipT">Next high-impact USD release</span></span>
-    <p class="ev" id="nxTitle"></p>
-    <p class="when" id="nxWhen"></p>
-    <div class="count" id="nxCount" role="timer" aria-live="off"></div>
-    <div class="arm"><div class="track" aria-hidden="true"><i id="nxBar"></i></div><span class="fine" id="nxArm"></span></div>
-    <p class="nx-buy" id="nxBuy" hidden><span id="nxBuyT">Setup takes about five minutes, so it can be armed for this one.</span><a class="btn pri sm" href="#pricing">Get it armed</a></p>
-  </article>
-  <article class="dk dk-gold" id="gold" data-panel="gold" hidden>
-    <div class="dk-h"><span class="lab">Gold spot, XAU/USD</span><span class="chip gold pulse" id="gLive"><i></i>Live</span></div>
-    <div class="px"><b class="num" id="gPx"></b><span class="num chg" id="gChg"></span></div>
-    <svg class="spark" id="gSpark" viewBox="0 0 300 90" preserveAspectRatio="none" aria-hidden="true"></svg>
-    <span class="fine" id="gNote"></span>
-  </article>
-  <article class="dk dk-acct" id="acct" data-panel="acct" hidden>
-    <div class="dk-h"><span class="lab">Our own account, running GoldenStraddler</span><span class="chip pulse" id="acChip"><i></i><span id="acChipT">Online now</span></span></div>
-    <div class="acn" id="acNums"></div>
-    <svg class="mini" id="acCurve" viewBox="0 0 300 70" preserveAspectRatio="none" aria-hidden="true" hidden></svg>
-    <p class="fine" id="acCap" hidden>Points after each closed trade since we started streaming it.</p>
-    <a class="dk-link" href="#record">See the full record</a>
-  </article>
-  <article class="dk dk-week" id="week" data-panel="week" hidden>
-    <div class="dk-h"><span class="lab">This week's red-folder USD releases</span><span class="fine">Your time</span></div>
-    <ol class="wk" id="wkList"></ol>
-  </article>
-</div></div>
-</section>
-
-<!--HUB_TEASER-->
 <section class="sec rule band" id="vs"><div class="wrap">
   <h2>By hand, the spike is gone before you click</h2>
   <p class="lede">Gold can move several dollars in the first seconds after a big US number. This is what changes when the orders are already waiting.</p>
@@ -206,6 +215,7 @@
   <div class="go"><a class="btn pri" href="#pricing">Run it on your account</a><span class="fine">One account on one broker: your fills and results will differ.</span></div>
 </div></section>
 
+<!--HUB_TEASER-->
 <section class="sec rule" id="need"><div class="wrap need">
   <div>
     <h2>What you need, and what's at stake</h2>
@@ -337,6 +347,9 @@
     <details><summary>Can I try it on a demo account first?</summary><div class="a"><p>Yes, and we recommend it. The licence locks to the first account it runs on, and you can move it to your live account straight away from your account page.</p></div></details>
     <details><summary>Can I use it on a prop firm account?</summary><div class="a"><p>Check your firm's rules first. Many funded-account programmes don't allow trading around news, and breaking that rule can cost you the account or your payouts.</p></div></details>
     <details><summary>How often does it trade?</summary><div class="a"><p>Only around high-impact USD releases, the red-folder events such as Non-Farm Payrolls, CPI and FOMC. Most weeks have a handful. Between releases it does nothing, by design. If you want it trading all the time there's an always-on mode, but that's a much busier way to trade.</p></div></details>
+    <details><summary>Does it use a grid or martingale?</summary><div class="a"><p>No. Every order is the lot size you set, with its own stop loss. It never adds to a losing trade and never raises the size after a loss. When a trade closes while the window is still open, a fresh pair goes on at the same size.</p></div></details>
+    <details><summary>Why pay for it when free news EAs exist?</summary><div class="a"><p>Free straddle EAs exist, and some are a fine way to learn the idea. GoldenStraddler is built and tuned for gold on MT5: both orders leave in the same instant, every price comes from the newest tick, entries and stops move out to twice the live spread when brokers widen it, and point distances scale to your broker's quote. The red-folder calendar loads by itself with two backups, you get a private live dashboard of every trade, new versions, a setup guide and people to help. Whether that's worth it to you is your call, and the {{REFUND_DAYS}}-day money-back guarantee lets you find out.</p></div></details>
+    <details><summary>If it works, why sell it?</summary><div class="a"><p>Fair question. It isn't a money machine: it automates one well-known way of trading the news, and it doesn't win every release. Some releases go nowhere and some reverse into the stop. Selling it pays for development and support. We run it on our own live account and show every closed trade, so you can judge it on the record rather than on promises.</p></div></details>
     <details><summary>Do I need a VPS?</summary><div class="a"><p>MT5 has to be open and connected at release time. If your computer isn't always on, a Windows VPS close to your broker's servers is the reliable way. Many cost a few euros a month and some brokers offer one free. The guide has a section on setting one up.</p></div></details>
     <details><summary>Can I use it on more than one account?</summary><div class="a"><p>One licence runs on one MT5 account at a time. For a second account at the same time, buy a second licence. You can move a licence to a different account from your account page once every {{MOVE_DAYS}} days.</p></div></details>
     <details><summary>Does it work on a Mac or on MetaTrader 4?</summary><div class="a"><p>It's built for MetaTrader 5 on Windows. It doesn't run on MT4. On a Mac, use a Windows VPS.</p></div></details>
