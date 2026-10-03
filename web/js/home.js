@@ -61,23 +61,24 @@ const when = (utc, long) => new Date(utc * 1000).toLocaleString(undefined, long 
 const hhmmss = (ms) => new Date(ms).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
 let WEEK = [], PROMO = null, weekKey = "", REC = null;
-function upcoming(now) { return GROUPS.filter((g) => g.utc * 1000 > now - 60000); }
+const ARM_MS = 5000, WIN_MS = 30000;   // the EA's default window: on 5 s before a release, off 30 s after
+function upcoming(now) { return GROUPS.filter((g) => g.utc * 1000 > now - WIN_MS); }
 
 function tickNext(now) {
   const list = upcoming(now), card = $("next");
   if (!list.length) { card.hidden = true; return null; }
   card.hidden = false;
-  const g = list[0], left = g.utc * 1000 - now, live = left <= 0, armed = left <= 15000, soon = left <= 3600000;
+  const g = list[0], left = g.utc * 1000 - now, live = left <= 0, armed = left <= ARM_MS, soon = left <= 3600000;
   $("nxTitle").textContent = names(g);
   $("nxWhen").textContent = when(g.utc, true) + ", your time";
   $("nxChipT").textContent = live ? "Out now: the window is open" : armed ? "Armed: both orders are in" : soon ? "Less than an hour to go" : "Next high-impact USD release";
   card.classList.toggle("armed", armed); card.classList.toggle("soon", soon && !armed);
   roll($("nxCount"), live ? [{ v: "+", c: "sep" }, ...tokens(-left)] : tokens(left));
   $("nxBar").style.width = (live ? 100 : Math.max(0, Math.min(1, 1 - left / 86400000)) * 100).toFixed(2) + "%";
-  $("nxArm").textContent = live ? "The EA trails whichever side filled. Leftover orders go 60 seconds after the release." : armed ? "Buy stop and sell stop are 60 points either side of price." : `The EA arms at ${hhmmss(g.utc * 1000 - 15000)}, your time.`;
+  $("nxArm").textContent = live ? "The EA trails whichever side filled. Leftover orders go 30 seconds after the release." : armed ? "Buy stop and sell stop are 60 points either side of price." : `The EA arms at ${hhmmss(g.utc * 1000 - ARM_MS)}, your time.`;
   // same data on the example licence card
   $("licNext").textContent = `${names(g)}, ${when(g.utc, false)}`;
-  $("licArm").textContent = `Arms at ${hhmmss(g.utc * 1000 - 15000)}, your time`;
+  $("licArm").textContent = `Arms at ${hhmmss(g.utc * 1000 - ARM_MS)}, your time`;
   if (window.GSTerm) GSTerm.event(shortName(g) === g.titles[0] ? g.titles[0] : shortName(g));
   return { g, left };
 }
@@ -85,8 +86,8 @@ function tickNext(now) {
 function renderWeek(now) {
   const groups = groupEvents(WEEK), card = $("week");
   if (!groups.length) { card.hidden = true; return; }
-  const nextIdx = groups.findIndex((g) => g.utc * 1000 > now - 60000);
-  const st = groups.map((g, i) => (g.utc * 1000 <= now - 60000 ? "done" : g.utc * 1000 - 15000 <= now ? "live" : i === nextIdx ? "next" : ""));
+  const nextIdx = groups.findIndex((g) => g.utc * 1000 > now - WIN_MS);
+  const st = groups.map((g, i) => (g.utc * 1000 <= now - WIN_MS ? "done" : g.utc * 1000 - ARM_MS <= now ? "live" : i === nextIdx ? "next" : ""));
   const key = st.join();
   card.hidden = false;
   if (key === weekKey) return;
@@ -120,7 +121,7 @@ function tickPromo(now, nx) {
   } else if (nx) {
     const sn = shortName(nx.g);
     t.hidden = false;
-    if (nx.left <= 0) setLab(sn, " is out"); else setLab(sn, "", nx.left <= 15000 ? "Armed for " : "Be armed for ");
+    if (nx.left <= 0) setLab(sn, " is out"); else setLab(sn, "", nx.left <= ARM_MS ? "Armed for " : "Be armed for ");
     $("pmCount").textContent = nx.left <= 0 ? "now" : fmtLeft(nx.left);
   } else t.hidden = true;
 }

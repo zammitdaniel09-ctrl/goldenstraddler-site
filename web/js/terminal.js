@@ -1,5 +1,5 @@
 // Hero terminal: plays simulated releases from sim.js (window.GSSim), traded tick by tick with the
-// EA's default rules. Only the news window is shown: armed at T−15s, everything closed by T+60s.
+// EA's default rules. Only the news window is shown: armed at T−5s, everything closed by T+30s.
 // A rotation of five kinds of release, four that win and one that loses, so it never shows only wins.
 (() => {
 "use strict";
@@ -19,7 +19,7 @@ function palette() {                                   // the chart follows the 
 const rgba = (rgb, a) => `rgba(${rgb},${a})`;
 const MONO = '"JetBrains Mono", ui-monospace, Consolas, monospace';
 const DISP = 'Unbounded, "Arial Black", sans-serif';
-const V0 = -16.5, V1 = P.POST + 1, VW = V1 - V0;       // the part of the minute the chart shows
+const V0 = -P.PRE - 1.5, V1 = P.POST + 1, VW = V1 - V0; // the part of the window the chart shows
 const HOLD = 6.5;                                       // seconds the result stays up before the next release
 const NAMES = { whipsaw: "Whipsaw", breakout: "Breakout", chop: "Choppy", fakeout: "Fake-out", grind: "Slow grind" };
 
@@ -74,9 +74,9 @@ const stopOf = (x, t) => { let s = x.sl0, tr = false; for (const p of x.trail) {
 
 // ---------------------------------------------------------------- replay speed: fast while waiting, slow motion for the burst
 function autoRate(t) {
-  if (t < -15.3) return 2.5;
-  if (t < -13.6) return 1;
-  if (t < -3) return 5;
+  if (t < -P.PRE - 0.3) return 1.5;
+  if (t < -P.PRE + 1.4) return 1;
+  if (t < -1.5) return 2.5;
   if (t < 0) return 1.2;
   if (t < 5) return 0.4;
   if (t < 10) return 0.9;
@@ -90,7 +90,7 @@ function speedText(r) {
 // ---------------------------------------------------------------- camera
 function wTarget(t) {
   if (ending) return VW;
-  if (t < 0) return 22;
+  if (t < 0) return 9;
   if (t < 6) return 8;
   return Math.min(VW, 8 + (t - 6) * 1.5);
 }
@@ -327,14 +327,14 @@ function sync() {
   ui.spr.classList.toggle("wide", q.ask - q.bid > 30);
   // what the EA is doing
   let title, rows, pl = "", plc = "";
-  if (st === "wait") { title = "Waiting for the release"; rows = [["Arms at", "T" + MINUS + "15s"], ["Orders", "60 pts either side"]]; }
+  if (st === "wait") { title = "Waiting for the release"; rows = [["Arms at", "T" + MINUS + P.PRE + "s"], ["Orders", "60+ pts either side"]]; }
   else if (open) {
     const s = stopOf(open, t), now = ((open.side > 0 ? q.bid : q.ask) - open.entry) * open.side;
     title = `${open.side > 0 ? "Buy" : "Sell"} #${open.n} open`; rows = [["Entry", px(open.entry)], [s.trail ? "Trailing stop" : "Stop loss", px(s.v)]];
     pl = sg(now) + " pts"; plc = now >= 0 ? "up" : "dn";
-  } else if (st === "done") { title = "Window closed"; rows = [["Pending", "removed at T+60s"], ["Positions", "all closed"]]; }
+  } else if (st === "done") { title = "Window closed"; rows = [["Pending", "removed at T+" + P.POST + "s"], ["Positions", "all closed"]]; }
   else if (pend) { title = "Pending pair placed"; rows = [["Buy stop", px(pend.buy)], ["Sell stop", px(pend.sell)]]; }
-  else { title = "Armed"; rows = [["Orders", "60 pts either side"], ["Stop loss", "100 pts"]]; }
+  else { title = "Armed"; rows = [["Orders", "60+ pts either side"], ["Stop loss", "100+ pts"]]; }
   set(ui.posT, title); ui.pos.dataset.s = open ? (open.side > 0 ? "buy" : "sell") : st;
   rows.forEach((r, i) => { set(ui.posK[i], r[0]); set(ui.posV[i], r[1]); });
   set(ui.posPL, pl); ui.posPL.className = "pl num " + plc; ui.posPL.hidden = !pl;

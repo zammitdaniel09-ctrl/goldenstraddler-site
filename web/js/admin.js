@@ -527,7 +527,7 @@ VIEWS.settings = async () => {
 
   if (owner) {
     const ea = await api("/api/admin/ea"), f = el("input", "field"), v = el("input", "field");
-    f.type = "file"; f.accept = ".ex5"; v.placeholder = "Version, e.g. 3.01"; v.value = ea.version || "";
+    f.type = "file"; f.accept = ".ex5"; v.placeholder = "Version, e.g. 3.10"; v.value = ea.version || "";
     const st = el("p", "fine", ea.present ? `Customers download version ${ea.version}, ${Math.round(ea.size / 1024)} KB${ea.at ? ", uploaded " + dateFmt(ea.at) : ""}.` : "No EA uploaded yet. Customers see \"being prepared\" instead of a download.");
     const up = act(btn("Upload EA", "btn sm pri"), async () => {
       const file = f.files[0]; if (!file) throw new Error("Choose the compiled GoldenStraddler.ex5 first.");

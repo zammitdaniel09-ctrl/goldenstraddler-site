@@ -11,7 +11,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="GoldenStraddler">
 <meta property="og:title" content="GoldenStraddler: ready before the number drops">
-<meta property="og:description" content="The news straddle EA for gold on MetaTrader 5. Armed 15 seconds before every high-impact US release.">
+<meta property="og:description" content="The news straddle EA for gold on MetaTrader 5. Armed 5 seconds before every high-impact US release.">
 <meta property="og:url" content="{{SITE_URL}}/">
 <meta property="og:image" content="{{SITE_URL}}/og.png">
 <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
@@ -67,7 +67,7 @@
   <div class="hero-head">
     <h1>Ready before the number drops.</h1>
     <div class="hero-side">
-      <p class="sub">GoldenStraddler is an Expert Advisor for MetaTrader&nbsp;5 that trades gold around high-impact US news. Fifteen seconds before each release it brackets price with a buy stop and a sell stop. The number picks the side and a trailing stop follows the move.</p>
+      <p class="sub">GoldenStraddler is an Expert Advisor for MetaTrader&nbsp;5 that trades gold around high-impact US news. Five seconds before each release it brackets price with a buy stop and a sell stop. The number picks the side and a trailing stop follows the move.</p>
       <div class="cta"><a class="btn pri" id="heroBuy" href="#pricing">See pricing</a><a class="btn" href="#how">How it works</a></div>
       <p class="meta" id="heroPay">Card, Apple Pay, Google Pay or crypto. Card checkout is handled by Stripe.</p>
     </div>
@@ -103,16 +103,16 @@
     <div class="tm-ctl">
       <button class="tm-btn tm-play" type="button" data-s="pause" aria-label="Pause"><svg viewBox="0 0 20 20" aria-hidden="true"><path class="ic-pause" d="M6 4.5h2.6v11H6zM11.4 4.5H14v11h-2.6z"/><path class="ic-play" d="M6.5 4.2l9 5.8-9 5.8z"/></svg></button>
       <button class="tm-btn tm-replay" type="button" aria-label="Replay this release"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.6 10a5.6 5.6 0 1 0 1.7-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M5.6 2.8v3.6h3.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-      <div class="tm-line" role="slider" tabindex="0" aria-label="Replay position, seconds from the release" aria-valuemin="-16.5" aria-valuemax="61" aria-valuenow="-9.5">
+      <div class="tm-line" role="slider" tabindex="0" aria-label="Replay position, seconds from the release" aria-valuemin="-6.5" aria-valuemax="31" aria-valuenow="-6.5">
         <div class="tr"><i class="wd"></i><i class="fl"></i></div><div class="mk"></div><i class="hd"></i>
-        <span class="lb" data-t="-15">Armed</span><span class="lb" data-t="0">News</span><span class="lb" data-t="60">+60s</span>
+        <span class="lb" data-t="-5">Armed</span><span class="lb" data-t="0">News</span><span class="lb" data-t="30">+30s</span>
       </div>
       <button class="tm-slow" type="button" aria-pressed="false">Slow-mo</button>
     </div>
     <div class="tm-chips" role="group" aria-label="Pick a release">
       <button type="button" data-k="whipsaw" aria-pressed="true">Whipsaw <span></span></button><button type="button" data-k="breakout" aria-pressed="false">Breakout <span></span></button><button type="button" data-k="chop" aria-pressed="false">Choppy <span></span></button><button type="button" data-k="fakeout" aria-pressed="false">Fake-out <span></span></button><button type="button" data-k="grind" aria-pressed="false">Slow grind <span></span></button>
     </div>
-    <figcaption class="tm-cap"><span class="tm-live sr" aria-live="off"></span><span class="lg">Simulated ticks traded with the EA's default settings: a buy stop and a sell stop 60 points either side at T&minus;15s, a 100-point stop loss, a trailing stop from +50, a fresh pair after every exit, and nothing left pending after T+60s. Fills, slippage and results are illustrative. One of these five releases loses, and real results vary.</span><span class="sh">Simulated ticks with the EA's default settings. Results are illustrative, one of these five releases loses, and real results vary.</span></figcaption>
+    <figcaption class="tm-cap"><span class="tm-live sr" aria-live="off"></span><span class="lg">Simulated ticks traded with the EA's default settings: a buy stop and a sell stop 60 points either side at T&minus;5s (further out while the spread is wide), a 100-point stop loss, a trailing stop from +50, a fresh pair after every exit, and nothing left pending after T+30s. Fills, slippage and results are illustrative. One of these five releases loses, and real results vary.</span><span class="sh">Simulated ticks with the EA's default settings. Results are illustrative, one of these five releases loses, and real results vary.</span></figcaption>
   </figure>
   <ul class="proof" aria-label="Why people trust it">
     <li id="pfLive" hidden><i class="live-dot"></i><span id="pfLiveT">Our own live account is running it right now</span></li>
@@ -165,21 +165,21 @@
     <div class="vs-r" role="row"><b role="rowheader">Speed</b><span role="cell"><svg aria-hidden="true"><use href="#i-x"/></svg>By the time you click, the first move has happened.</span><span role="cell" class="us"><svg aria-hidden="true"><use href="#i-check"/></svg>Both orders are already resting 60 points either side of price.</span></div>
     <div class="vs-r" role="row"><b role="rowheader">Direction</b><span role="cell"><svg aria-hidden="true"><use href="#i-x"/></svg>You guess, or wait and chase.</span><span role="cell" class="us"><svg aria-hidden="true"><use href="#i-check"/></svg>No guess. The number fills one side and the other is deleted.</span></div>
     <div class="vs-r" role="row"><b role="rowheader">The exit</b><span role="cell"><svg aria-hidden="true"><use href="#i-x"/></svg>Fear and hope decide when to close.</span><span role="cell" class="us"><svg aria-hidden="true"><use href="#i-check"/></svg>The stop trails 50 points behind price and only ever tightens.</span></div>
-    <div class="vs-r" role="row"><b role="rowheader">Afterwards</b><span role="cell"><svg aria-hidden="true"><use href="#i-x"/></svg>Leftover orders are easy to forget.</span><span role="cell" class="us"><svg aria-hidden="true"><use href="#i-check"/></svg>Anything unfilled is removed 60 seconds after the release.</span></div>
+    <div class="vs-r" role="row"><b role="rowheader">Afterwards</b><span role="cell"><svg aria-hidden="true"><use href="#i-x"/></svg>Leftover orders are easy to forget.</span><span role="cell" class="us"><svg aria-hidden="true"><use href="#i-check"/></svg>Anything unfilled is removed 30 seconds after the release.</span></div>
     <div class="vs-r" role="row"><b role="rowheader">The calendar</b><span role="cell"><svg aria-hidden="true"><use href="#i-x"/></svg>You check it yourself and set alarms.</span><span role="cell" class="us"><svg aria-hidden="true"><use href="#i-check"/></svg>The week's releases load on their own, with two backups.</span></div>
   </div>
 </div></section>
 
 <section class="sec rule" id="how"><div class="wrap">
   <h2>One release, second by second</h2>
-  <p class="lede">The EA reads the week's red-folder USD events from ForexFactory, with MT5's own economic calendar as a backup. Timing comes from your broker's tick clock, so fifteen seconds before means fifteen seconds on the trade server.</p>
+  <p class="lede">The EA reads the week's red-folder USD events from ForexFactory, with MT5's own economic calendar as a backup. Timing comes from your broker's tick clock, so five seconds before means five seconds on the trade server.</p>
   <div class="tabs how-tabs" role="tablist" aria-label="Steps"></div>
   <ol class="line">
-    <li><span class="t">&minus;15 s</span><h3>Arms</h3><p>A buy stop goes 60 points above the ask and a sell stop 60 points below the bid. Each carries a 100-point stop loss.</p></li>
+    <li><span class="t">&minus;5 s</span><h3>Arms</h3><p>A buy stop goes 60 points above the ask and a sell stop 60 points below the bid, both sent at the same moment. Each carries a 100-point stop loss. If the spread has widened, both sit at least twice the spread away.</p></li>
     <li class="hot"><span class="t">0 s</span><h3>The number drops</h3><p>Price breaks one way and fills one order. The other order is deleted the same instant.</p></li>
     <li><span class="t">+50 pts</span><h3>Trailing starts</h3><p>Once the trade is 50 points in profit, the stop follows 50 points behind price and only ever tightens.</p></li>
     <li><span class="t">Exit</span><h3>The stop takes it out</h3><p>When price turns, the trailing stop closes the trade. If the window is still open, a fresh pair goes on around the new price.</p></li>
-    <li><span class="t">+60 s</span><h3>Disarms</h3><p>Leftover pending orders are removed. A trade that's still open keeps trailing until its stop closes it.</p></li>
+    <li><span class="t">+30 s</span><h3>Disarms</h3><p>Leftover pending orders are removed. A trade that's still open keeps trailing until its stop closes it.</p></li>
   </ol>
   <p class="defaults">These are the defaults. Lot size, distances, stop loss, trailing, the window around each release and the currency are all inputs you can change, and there's an always-on mode if you want it trading between releases too.</p>
 </div></section>

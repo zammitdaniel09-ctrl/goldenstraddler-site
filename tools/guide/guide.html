@@ -84,15 +84,15 @@ table.wrap td:nth-child(2){width:28%}
     <svg viewBox="0 0 640 170" width="88%" style="display:block;margin:0 auto" xmlns="http://www.w3.org/2000/svg" font-family="Space Grotesk" font-size="12">
       <line x1="30" x2="610" y1="40" y2="40" stroke="#1E9FE3" stroke-width="2"/>
       <g font-family="JetBrains Mono" font-size="12" font-weight="600" fill="#1E9FE3">
-        <circle cx="40" cy="40" r="7" fill="#fff" stroke="#1E9FE3" stroke-width="2.5"/><text x="40" y="20" text-anchor="middle">−15 s</text>
+        <circle cx="40" cy="40" r="7" fill="#fff" stroke="#1E9FE3" stroke-width="2.5"/><text x="40" y="20" text-anchor="middle">−5 s</text>
         <circle cx="175" cy="40" r="7" fill="#1E9FE3"/><text x="175" y="20" text-anchor="middle">0 s</text>
         <circle cx="315" cy="40" r="7" fill="#fff" stroke="#1E9FE3" stroke-width="2.5"/><text x="315" y="20" text-anchor="middle">+50 pts</text>
         <circle cx="455" cy="40" r="7" fill="#fff" stroke="#1E9FE3" stroke-width="2.5"/><text x="455" y="20" text-anchor="middle">exit</text>
-        <circle cx="595" cy="40" r="7" fill="#fff" stroke="#1E9FE3" stroke-width="2.5"/><text x="595" y="20" text-anchor="middle">+60 s</text>
+        <circle cx="595" cy="40" r="7" fill="#fff" stroke="#1E9FE3" stroke-width="2.5"/><text x="595" y="20" text-anchor="middle">+30 s</text>
       </g>
       <g fill="#0b0f15" font-weight="600" font-size="13"><text x="40" y="74" text-anchor="middle">Arms</text><text x="175" y="74" text-anchor="middle">Release</text><text x="315" y="74" text-anchor="middle">Trailing starts</text><text x="455" y="74" text-anchor="middle">Stop closes it</text><text x="595" y="74" text-anchor="middle">Disarms</text></g>
       <g fill="#3b4452" font-size="11">
-        <text x="40" y="94" text-anchor="middle">buy stop +60</text><text x="40" y="110" text-anchor="middle">sell stop −60</text>
+        <text x="40" y="94" text-anchor="middle">buy stop +60</text><text x="40" y="110" text-anchor="middle">sell stop −60</text><text x="40" y="126" text-anchor="middle">sent together</text>
         <text x="175" y="94" text-anchor="middle">one side fills,</text><text x="175" y="110" text-anchor="middle">the other is deleted</text>
         <text x="315" y="94" text-anchor="middle">stop follows 50 pts</text><text x="315" y="110" text-anchor="middle">behind price</text>
         <text x="455" y="94" text-anchor="middle">new pair placed if</text><text x="455" y="110" text-anchor="middle">the window is open</text>
@@ -103,14 +103,14 @@ table.wrap td:nth-child(2){width:28%}
   </div>
   <h2>Step by step, with the default settings</h2>
   <ol>
-    <li><b>15 seconds before the release</b> it places a <b>buy stop 60 points above the ask</b> and a <b>sell stop 60 points below the bid</b>, 0.10 lots each. Each order carries a <b>100-point stop loss</b> and no take profit.</li>
-    <li><b>The release hits.</b> Price breaks one way and fills one of the orders. The moment that happens, the other order is deleted, so you're only ever in one trade.</li>
+    <li><b>5 seconds before the release</b> it sends a <b>buy stop 60 points above the ask</b> and a <b>sell stop 60 points below the bid</b> at the same moment, 0.10 lots each, priced from the latest tick. Each order carries a <b>100-point stop loss</b> and no take profit. If the spread has already widened, both go further out: entry and stop are never closer than <b>twice the live spread</b>.</li>
+    <li><b>The release hits.</b> Price breaks one way and fills one of the orders. The moment that happens, the other order is deleted, so you're only ever in one trade. If a spike fills both before the delete lands, the older trade is closed straight away.</li>
     <li><b>Nothing moves until the trade is 50 points in profit.</b> From then on the stop loss follows <b>50 points behind price</b> and only ever tightens. It never moves back.</li>
     <li><b>The trailing stop closes the trade</b> when price turns. If the news window is still open, a fresh buy stop and sell stop go on around the new price straight away.</li>
-    <li><b>60 seconds after the release</b> the window closes. Any pending orders are removed. A trade that's still open keeps trailing until its stop closes it.</li>
+    <li><b>30 seconds after the release</b> the window closes. Any pending orders are removed. A trade that's still open keeps trailing until its stop closes it.</li>
   </ol>
   <h2>Where the news comes from</h2>
-  <p>The EA downloads the week's red-folder USD events from ForexFactory's public calendar feed. If that's unavailable, it falls back to MetaTrader&nbsp;5's own economic calendar, and it keeps a saved copy on disk, so a restart doesn't lose the week. Timing uses your broker's tick clock rather than your computer's clock, so "15 seconds before" means 15 seconds on the trade server.</p>
+  <p>The EA downloads the week's red-folder USD events from ForexFactory's public calendar feed. If that's unavailable, it falls back to MetaTrader&nbsp;5's own economic calendar, and it keeps a saved copy on disk, so a restart doesn't lose the week. Timing uses your broker's tick clock rather than your computer's clock, so "5 seconds before" means 5 seconds on the trade server.</p>
   <div class="note warn"><p><b>Between releases it does nothing.</b> That's by design. Most weeks have a handful of red-folder USD events, and the EA only trades around them. If you want it trading all the time, there's an "Always on" mode (section 5), but that's a very different, much busier way of trading.</p></div>
 </section>
 
@@ -145,7 +145,7 @@ table.wrap td:nth-child(2){width:28%}
       <div class="shot"><img src="img/g5_inputs.jpg" style="width:100%"></div></li>
     <li><b>Turn on Algo Trading.</b>Click <b>Algo Trading</b> in the MT5 toolbar so its icon turns green.
       <div class="shot"><img src="img/g6_algo.jpg" style="width:62%"></div>
-      Within a few seconds the GoldenStraddler panel appears on the chart. It shows <b>WAITING</b> with the next red-folder release and a countdown, and your licence at the bottom. <b>That's it.</b> Leave MT5 running: the EA arms itself 15 seconds before the next release.</li>
+      Within a few seconds the GoldenStraddler panel appears on the chart. It shows <b>WAITING</b> with the next red-folder release and a countdown, and your licence at the bottom. <b>That's it.</b> Leave MT5 running: the EA arms itself 5 seconds before the next release.</li>
   </ol>
   <div class="two" style="grid-template-columns:42% 1fr;align-items:start;margin-top:2mm;break-inside:avoid">
     <div class="shot" style="margin:0"><img src="img/g7_panel.jpg" style="width:100%"></div>
@@ -169,7 +169,7 @@ table.wrap td:nth-child(2){width:28%}
   <table>
     <tr><th>Button</th><th>What it does</th></tr>
     <tr><td><b>PAUSE / RESUME</b></td><td>Stops the EA placing new orders, or starts it again. An open trade keeps its stop and keeps trailing while paused.</td></tr>
-    <tr><td><b>ARM NOW</b></td><td>Opens a manual window straight away, as if a release were due: 75 seconds with the default settings. Handy for a release that isn't on the calendar. Use it with care.</td></tr>
+    <tr><td><b>ARM NOW</b></td><td>Opens a manual window straight away, as if a release were due: 35 seconds with the default settings. Handy for a release that isn't on the calendar. Use it with care.</td></tr>
     <tr><td><b>CLOSE ALL</b></td><td>Asks you to confirm, then closes GoldenStraddler's positions and deletes its pending orders on this chart's symbol, and pauses the EA. Press RESUME when you want it trading again.</td></tr>
   </table>
   <p>The footer of the panel shows your licence: <b>LIFETIME LICENCE</b>, <b>LICENCE TO</b> a date for monthly plans, or a warning if something's wrong.</p>
@@ -178,6 +178,7 @@ table.wrap td:nth-child(2){width:28%}
 <section>
   <h1>5. Every setting explained</h1>
   <p class="lede">Press <span class="kbd">F7</span> on the chart to open the inputs at any time. Distances are in points for a 2-digit gold quote, where 1 point = 0.01. On a 3-digit quote they're multiplied by 10 for you.</p>
+  <div class="note"><p><b>Updating from an older version?</b> MT5 keeps the inputs saved on the chart, so new defaults don't replace them. After updating, press <span class="kbd">F7</span> and check the values below, or click <b>Reset</b> and paste your licence key again.</p></div>
   <h2>Licence</h2>
   <table>
     <tr><th>Input</th><th>Default</th><th>What it does</th></tr>
@@ -191,15 +192,16 @@ table.wrap td:nth-child(2){width:28%}
     <tr><td>Stop loss from entry</td><td class="mono">100</td><td>Initial stop loss on each order. 0 means none, which isn't recommended.</td></tr>
     <tr><td>Trailing starts at a profit of</td><td class="mono">50</td><td>The trade must be this far in profit before the stop starts to move.</td></tr>
     <tr><td>Trailing distance behind price</td><td class="mono">50</td><td>How far behind price the stop follows.</td></tr>
-    <tr><td>Stop moves in steps of</td><td class="mono">1</td><td>Minimum change before the stop is moved, to avoid flooding the broker.</td></tr>
+    <tr><td>Stop moves in steps of</td><td class="mono">10</td><td>Minimum change before the stop is moved, so the broker isn't flooded with tiny changes in fast markets.</td></tr>
     <tr><td>Lot size per order</td><td class="mono">0.10</td><td>Volume of each pending order.</td></tr>
+    <tr><td>Entry and stop at least N x the live spread</td><td class="mono">2.0</td><td>When the spread widens, the pending distance and stop loss grow to at least this many times the spread, so the orders aren't triggered by the spread alone. 0 switches it off.</td></tr>
   </table>
   <h2>News automation</h2>
   <table>
     <tr><th>Input</th><th>Default</th><th>What it does</th></tr>
     <tr><td>When to trade</td><td class="mono">News only</td><td><b>Red-folder USD news windows only</b>, or <b>Always on</b> to trade continuously.</td></tr>
-    <tr><td>Turn on N seconds before</td><td class="mono">15</td><td>When the window opens before each release.</td></tr>
-    <tr><td>Keep running N seconds after</td><td class="mono">60</td><td>When the window closes after each release.</td></tr>
+    <tr><td>Turn on N seconds before</td><td class="mono">5</td><td>When the window opens before each release.</td></tr>
+    <tr><td>Keep running N seconds after</td><td class="mono">30</td><td>When the window closes after each release.</td></tr>
     <tr><td>Where events come from</td><td class="mono">FF + MT5</td><td>ForexFactory with MT5's calendar as backup, either one alone, or both combined.</td></tr>
     <tr><td>Currency</td><td class="mono">USD</td><td>Which currency's high-impact events to trade.</td></tr>
     <tr><td>News calendar feed</td><td class="mono">goldenstraddler.com</td><td>Leave as it is. It's ForexFactory's weekly calendar, served from our site.</td></tr>
@@ -256,7 +258,7 @@ table.wrap td:nth-child(2){width:28%}
   <h2>What to look for</h2>
   <ul>
     <li><b>Windows</b> with at least 2 GB of RAM. One MT5 terminal with a couple of charts runs comfortably on that.</li>
-    <li><b>Close to your broker's servers.</b> Many brokers' MT5 servers are in London, New York or Equinix data centres. Lower latency means better fills around news. Some brokers offer a free or discounted VPS.</li>
+    <li><b>Close to your broker's servers.</b> Many brokers' MT5 servers are in London, New York or Equinix data centres. Every order and every stop change makes a round trip to that server, so lower latency means better fills around news. MT5 shows the ping in the bottom-right corner; for news trading, a few milliseconds is ideal. Some brokers offer a free or discounted VPS.</li>
   </ul>
   <h2>Setting it up</h2>
   <ol>
@@ -282,10 +284,11 @@ table.wrap td:nth-child(2){width:28%}
     <tr><td>Turn on Algo Trading</td><td>The toolbar button is off, or <b>Allow Algo Trading</b> isn't ticked on the EA's Common tab.</td><td>Switch both on.</td></tr>
     <tr><td>Order rejected: invalid stops</td><td>Your broker's minimum stop distance is bigger than the settings.</td><td>Increase the pending distance or stop loss, or ask your broker about its stop level.</td></tr>
     <tr><td>Order rejected: not enough money</td><td>The lot size is too big for your free margin.</td><td>Lower the lot size.</td></tr>
+    <tr><td>Orders placed further out than the pending distance</td><td>The spread was wide when they went in.</td><td>Nothing to fix: entry and stop are kept at least 2&times; the spread away. Set <b>Entry and stop at least N x the live spread</b> to 0 to turn that off.</td></tr>
     <tr><td>No upcoming releases shown</td><td>The calendar couldn't load.</td><td>Check that https://goldenstraddler.com is in the WebRequest list. MT5's calendar is used as a backup.</td></tr>
   </table>
   <h2>Still stuck?</h2>
-  <p>Use the help form on your account page. A screenshot of the chart panel and the <b>Experts</b> tab at the bottom of MT5 (<span class="kbd">Ctrl</span> + <span class="kbd">T</span> opens it) helps us answer quickly.</p>
+  <p>Use the help form on your account page. A screenshot of the chart panel and the <b>Experts</b> tab at the bottom of MT5 (<span class="kbd">Ctrl</span> + <span class="kbd">T</span> opens it) helps us answer quickly. After each release the EA also prints a timing summary to the Experts tab and adds it to <code>GoldenStraddler_timing_&lt;magic&gt;.csv</code> in MT5's <b>Common\Files</b> folder (<b>File &gt; Open Data Folder</b>, then up one level and into <b>Common</b>). Attach that file if fills seemed slow.</p>
 </section>
 
 <section>

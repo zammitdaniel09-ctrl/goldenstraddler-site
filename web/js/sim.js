@@ -3,7 +3,8 @@
 // EA: GoldenStraddler's default rules, applied tick by tick.
 (function (G) {
 "use strict";
-const P = { PEND: 60, SL: 100, TSTART: 50, TDIST: 50, PRE: 15, POST: 60, T0: -18, TMAX: 61, DT: 0.04 };
+// PEND/SL never closer than SPX x the spread at the moment the pair is placed (the EA's spread rule)
+const P = { PEND: 60, SL: 100, TSTART: 50, TDIST: 50, SPX: 2, PRE: 5, POST: 30, T0: -7, TMAX: 31, DT: 0.04 };
 
 function rng(seed) { return () => { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 
@@ -25,7 +26,7 @@ function legsFor(kind, r) {
     const n = 6 + Math.floor(r() * 3);
     for (let i = 0; i < n; i++) { L.push([U(0.45, 1.1), d * U(110, 175)]); d = -d; }
   }
-  // then the market calms down for the rest of the minute
+  // then the market calms down for the rest of the window
   let used = L.reduce((a, l) => a + l[0], 0);
   while (used < P.TMAX + 2) { const l = [U(3, 7), sgn() * U(20, used > 20 ? 55 : 85)]; L.push(l); used += l[0]; }
   return L;
@@ -40,7 +41,7 @@ function makeTicks(r, kind) {
   for (let i = 0; i < pre; i++) {
     const t = Math.round((P.T0 + i * P.DT) * 1000) / 1000;
     if (r() < 0.3) mid += N() * 2.2 - mid * 0.04;
-    const spread = 14 + (t > -2 ? (t + 2) * 5 : 0) + r() * 3;
+    const spread = 14 + (t > -4 ? (t + 4) * 7 : 0) + r() * 3;            // brokers widen the spread in the last seconds
     ticks.push({ t, bid: mid - spread / 2, ask: mid + spread / 2, mid });
   }
   // after: each leg is a Brownian bridge from where price is to its target, so it's jagged but lands
@@ -68,14 +69,17 @@ function makeTicks(r, kind) {
 function trade(ticks, r) {
   const orders = [], trades = [];
   let pend = null, pos = null, armed = false, n = 0, end = P.TMAX;
-  const place = (tk) => { pend = { buy: tk.ask + P.PEND, sell: tk.bid - P.PEND, t: tk.t, end: null }; orders.push(pend); };
+  const place = (tk) => {
+    const sp = tk.ask - tk.bid, d = Math.max(P.PEND, sp * P.SPX), sl = Math.max(P.SL, sp * P.SPX);
+    pend = { buy: tk.ask + d, sell: tk.bid - d, sl, t: tk.t, end: null }; orders.push(pend);
+  };
   for (const tk of ticks) {
     const t = tk.t, burst = t >= 0 && t < 6;
     if (!armed && t >= -P.PRE) { armed = true; place(tk); }
     if (pend && !pos) {
       const slip = burst ? r() * 10 : r() * 2;
-      if (tk.ask >= pend.buy) { pos = { side: 1, level: pend.buy, entry: Math.max(pend.buy, tk.ask) + slip, t, best: -1e9, trail: [], n: ++n }; pos.sl0 = pos.sl = pos.entry - P.SL; pend.end = t; pend.fill = "buy"; pend = null; }
-      else if (tk.bid <= pend.sell) { pos = { side: -1, level: pend.sell, entry: Math.min(pend.sell, tk.bid) - slip, t, best: -1e9, trail: [], n: ++n }; pos.sl0 = pos.sl = pos.entry + P.SL; pend.end = t; pend.fill = "sell"; pend = null; }
+      if (tk.ask >= pend.buy) { pos = { side: 1, level: pend.buy, entry: Math.max(pend.buy, tk.ask) + slip, t, best: -1e9, trail: [], n: ++n }; pos.sl0 = pos.sl = pos.entry - pend.sl; pend.end = t; pend.fill = "buy"; pend = null; }
+      else if (tk.bid <= pend.sell) { pos = { side: -1, level: pend.sell, entry: Math.min(pend.sell, tk.bid) - slip, t, best: -1e9, trail: [], n: ++n }; pos.sl0 = pos.sl = pos.entry + pend.sl; pend.end = t; pend.fill = "sell"; pend = null; }
     }
     if (pos && pos.t < t) {
       const px = pos.side > 0 ? tk.bid : tk.ask;

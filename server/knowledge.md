@@ -6,11 +6,13 @@ GoldenStraddler is an Expert Advisor (EA), a trading program, for MetaTrader 5 (
 It runs inside the customer's own MT5 terminal, on their own trading account, with the settings they choose. GoldenStraddler (the company) never has access to the trading account, the MT5 password or the money. It is software, not a signal service, managed account or investment advice.
 
 ## How it trades (default settings)
-1. 15 seconds before the release it places a buy stop 60 points above the ask and a sell stop 60 points below the bid, 0.10 lots each. Each order has a 100-point stop loss and no take profit.
+1. 5 seconds before the release it places a buy stop 60 points above the ask and a sell stop 60 points below the bid, 0.10 lots each, both sent at the same moment. Each order has a 100-point stop loss and no take profit. If the spread has widened (brokers widen it in the seconds before big news), each order and its stop sit at least twice the live spread away instead.
 2. The release hits. Price breaks one way and fills one order. The moment that happens the other order is deleted, so it's only ever in one trade.
 3. Nothing moves until the trade is 50 points in profit. From then on the stop loss follows 50 points behind price and only ever tightens.
 4. The trailing stop closes the trade when price turns. If the news window is still open, a fresh buy stop and sell stop go on around the new price straight away.
-5. 60 seconds after the release the window closes and pending orders are removed. A trade that's still open keeps trailing until its stop closes it.
+5. 30 seconds after the release the window closes and pending orders are removed. A trade that's still open keeps trailing until its stop closes it.
+
+Speed (version 3.10): every order, cancel and stop move is sent without waiting for the broker's answer, so both sides of the straddle leave together, a stop move never holds anything else up, and every order is priced from the newest tick. If the broker refuses one side because price moved, only that side is sent again straight away. If both sides ever fill, the older position is closed at once. Around each release the EA keeps the computer quiet (no statistics, file or calendar work until the window ends) and writes a timing log to Common\Files\GoldenStraddler_timing_<magic>.csv showing how fast the broker answered each request. A Windows VPS close to the broker's trade server is the biggest single speed gain.
 
 Points: 1 point = 0.01 in the gold price on a 2-digit quote. On 3-digit quotes the EA scales its point inputs by 10 automatically. With the usual 100-ounce contract, each point is worth about $0.10 at 0.10 lots ($1 per point per 1.00 lot), so the default 100-point stop risks about $10 at 0.10 lots, plus slippage and costs. The home page has a calculator for this.
 
@@ -21,13 +23,13 @@ There is also an "Always on" mode that trades continuously instead of only aroun
 ## Settings (inputs, press F7 on the chart)
 - Licence key (empty by default): paste the key from the account page.
 - Show this account on your online dashboard (on): sends status and closed trades to the private dashboard. Can be switched off; the licence check still runs.
-- Pending distance from price: 60. Stop loss from entry: 100 (0 means none, not recommended). Trailing starts at a profit of: 50. Trailing distance behind price: 50. Stop moves in steps of: 1. Lot size per order: 0.10.
-- When to trade: News only (default) or Always on. Turn on N seconds before: 15. Keep running N seconds after: 60. Where events come from: ForexFactory plus MT5 (default), either alone, or both combined. Currency: USD.
+- Pending distance from price: 60. Stop loss from entry: 100 (0 means none, not recommended). Trailing starts at a profit of: 50. Trailing distance behind price: 50. Stop moves in steps of: 10. Lot size per order: 0.10. Entry and stop at least N x the live spread: 2 (0 switches this off).
+- When to trade: News only (default) or Always on. Turn on N seconds before: 5. Keep running N seconds after: 30. Where events come from: ForexFactory plus MT5 (default), either alone, or both combined. Currency: USD.
 - Magic number 20260930 (use a different number on each chart if running more than one), order comment, x10 point inputs on 3-digit gold (leave on), dashboard position and size, chart colours, statistics look-back days, export closed trades to CSV.
 
 ## The chart panel
 States: WAITING (outside a window; shows next release and a countdown; normal most of the time), ARMED (inside a window; orders placed or about to be), IN TRADE (one side filled), PAUSED (no new orders; open trades keep trailing), ALGO OFF (Algo Trading switched off in MT5), REJECTED (broker rejected an order; panel shows the reason), LICENCE (licence not active on this account; panel says why).
-Buttons: PAUSE/RESUME; ARM NOW (opens a manual window straight away, 75 seconds with defaults; use with care); CLOSE ALL (asks to confirm, closes GoldenStraddler's positions and pending orders on that symbol and pauses the EA).
+Buttons: PAUSE/RESUME; ARM NOW (opens a manual window straight away, 35 seconds with defaults; use with care); CLOSE ALL (asks to confirm, closes GoldenStraddler's positions and pending orders on that symbol and pauses the EA).
 
 ## What you need
 - MetaTrader 5 for Windows, logged in to a trading account. It does NOT run on MetaTrader 4. On a Mac, use a Windows VPS.

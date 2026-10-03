@@ -60,7 +60,7 @@ export const DEFAULTS: Record<string, string> = {
   record_url: E.RECORD_URL || "https://goldenstraddler.up.railway.app/api/public",
   record_public: "0", record_min_trades: "20",
   stripe_tax: "0", methods_card: "1", methods_crypto: "1", methods_bank: "1",
-  refund_days: "7", move_days: "30", ea_version: "3.00", announcement: "",
+  refund_days: "7", move_days: "30", ea_version: "3.10", announcement: "",
   promo_code: "GOLD999", record_verify_url: "", hub_public: "1",
   chat_enabled: "1", chat_ai: "1", chat_model: "claude-haiku-4-5-20251001", chat_daily_cap: "500", chat_greeting: "",
 };
