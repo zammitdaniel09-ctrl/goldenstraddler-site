@@ -258,22 +258,25 @@ async function cot(code: string) {
 }
 
 // ---------------------------------------------------------------- calendar: this week and next week, every currency, high impact only
-export type Ev = { utc: number; ccy: string; title: string; fc: string; prev: string };
+export type Ev = { utc: number; ccy: string; title: string; fc: string; prev: string; imp?: "H" | "M" };
 export function calendar(): Ev[] { try { return JSON.parse(kvGet("cal") || "[]"); } catch { return []; } }
+// high and medium impact, for the full calendar on the Markets page (the calls and their briefs only use high impact)
+export function calendarAll(): Ev[] { try { const x = JSON.parse(kvGet("cal_all") || "[]"); return x.length ? x : calendar().map((e) => ({ ...e, imp: "H" })); } catch { return []; } }
 async function cal() {
   const s = "calendar";
   if (!due(s, 4 * HOUR, HOUR)) return;
   try {
-    const out = new Map<string, Ev>();
+    const out = new Map<string, Ev>(), med = new Map<string, Ev>();
     for (const wk of ["thisweek", "nextweek"]) {
       try {
         const j: any = await (await get(`${URLS.ff}/ff_calendar_${wk}.json`, 10000)).json();
         for (const e of Array.isArray(j) ? j : []) {
-          if (!e || e.impact !== "High" || typeof e.date !== "string") continue;
+          if (!e || (e.impact !== "High" && e.impact !== "Medium") || typeof e.date !== "string") continue;
           const utc = Math.round(Date.parse(e.date) / 1000);
           if (!Number.isFinite(utc)) continue;
           const ev = { utc, ccy: String(e.country || "").slice(0, 3), title: String(e.title || "").slice(0, 100), fc: String(e.forecast || "").slice(0, 20), prev: String(e.previous || "").slice(0, 20) };
-          out.set(ev.ccy + ev.utc + ev.title, ev);
+          if (!/^[A-Z]{3}$/.test(ev.ccy)) continue;                       // a currency code, nothing else
+          if (e.impact === "High") out.set(ev.ccy + ev.utc + ev.title, ev); else med.set(ev.ccy + ev.utc + ev.title, { ...ev, imp: "M" });
         }
       } catch (e: any) { if (wk === "thisweek") throw e; }               // next week's file only appears late in the week
       await Bun.sleep(500);
@@ -283,6 +286,8 @@ async function cal() {
     const old = calendar().filter((e) => e.utc > now() / 1000 - 8 * 86400 && !out.has(e.ccy + e.utc + e.title));
     const merged = [...old, ...list].sort((a, b) => a.utc - b.utc);
     kvSet("cal", JSON.stringify(merged));
+    const oldM = calendarAll().filter((e) => e.imp === "M" && e.utc > now() / 1000 - 8 * 86400 && !med.has(e.ccy + e.utc + e.title));
+    kvSet("cal_all", JSON.stringify([...merged.map((e) => ({ ...e, imp: "H" })), ...oldM, ...med.values()].sort((a, b) => a.utc - b.utc)));
     mark(s, true, list.length, list.length ? new Date(list[list.length - 1].utc * 1000).toISOString().slice(0, 16) : "");
   } catch (e: any) { mark(s, false, 0, "", e.message); console.error("hub calendar", e.message); }
 }

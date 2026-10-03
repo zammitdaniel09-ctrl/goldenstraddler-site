@@ -15,7 +15,7 @@
 
 /* teaser */
 .gsc-tease{position:absolute;right:0;bottom:66px;width:min(290px,calc(100vw - 32px));display:flex;gap:6px;align-items:flex-start;padding:14px 10px 14px 16px;border-radius:16px 16px 4px 16px;
-  background:var(--carbon2);border:1px solid var(--edge2);box-shadow:0 18px 40px -14px #000;cursor:pointer;animation:gscIn .35s cubic-bezier(.2,.8,.2,1)}
+  background:var(--carbon2);border:1px solid var(--edge2);box-shadow:0 18px 40px -14px var(--shadow);cursor:pointer;animation:gscIn .35s cubic-bezier(.2,.8,.2,1)}
 .gsc-tease p{margin:0;font-size:14px;color:var(--txt2)}
 .gsc-tx{flex:none;width:26px;height:26px;border:0;background:none;color:var(--muted);border-radius:8px;cursor:pointer;padding:3px}
 .gsc-tx:hover{color:var(--white);background:var(--carbon2)}

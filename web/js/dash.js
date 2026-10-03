@@ -42,7 +42,7 @@ function lineChart(box, vals, opt = {}) {
   const nt = niceTicks(Math.min(0, ...vals), Math.max(0, ...vals), 4);
   const Y = (v) => T + (nt.hi - v) / (nt.hi - nt.lo) * (H - T - B), X = (i) => L + i * (W - L - R) / (vals.length - 1);
   axis(svg, nt.ticks, Y, L, W - R, opt.fmt || ((v) => signed(v)));
-  const col = vals[vals.length - 1] >= 0 ? css("--ice") : css("--loss"), id = "g" + Math.random().toString(36).slice(2, 7);
+  const col = vals[vals.length - 1] >= 0 ? css("--up") : css("--loss"), id = "g" + Math.random().toString(36).slice(2, 7);
   const defs = svgEl("defs", {}), lg = svgEl("linearGradient", { id, x1: 0, x2: 0, y1: 0, y2: 1 });
   lg.append(svgEl("stop", { offset: 0, "stop-color": col, "stop-opacity": ".28" }), svgEl("stop", { offset: 1, "stop-color": col, "stop-opacity": 0 }));
   defs.appendChild(lg); svg.appendChild(defs);
@@ -133,7 +133,7 @@ function bars(id, items, opt) {
   const vals = items.map((d) => d.v), nt = niceTicks(Math.min(0, ...vals), Math.max(0, ...vals), 4);
   const Y = (v) => T + (nt.hi - v) / (nt.hi - nt.lo) * (H - T - B);
   axis(svg, nt.ticks, Y, L, W - R, opt.fmt || tickMoney);
-  const band = (W - L - R) / items.length, bw = Math.max(2, Math.min(24, band - 2)), y0 = Y(0), up = css("--ice"), dn = css("--loss"), mid = css("--deep"), hits = [];
+  const band = (W - L - R) / items.length, bw = Math.max(2, Math.min(24, band - 2)), y0 = Y(0), up = css("--up"), dn = css("--loss"), mid = css("--deep"), hits = [];
   items.forEach((d, i) => {
     const p = svgEl("path", { d: barPath(L + i * band + (band - bw) / 2, bw, y0, Y(d.v), 4), fill: d.color || (d.v > 0 ? up : d.v < 0 ? dn : mid) });
     svg.appendChild(p);
@@ -177,20 +177,20 @@ function render() {
     kpi("Hold time", isNaN(s.ad) ? DASH : dur(s.ad), "", isNaN(s.ad) ? "" : `longest winning run ${s.mw}`));
   lineChart($("eqChart"), s.curve, { fmt: tickMoney, tip: (i) => {
     const r = [{ big: true, text: money(s.curve[i]), cls: tcls(s.curve[i]) }];
-    if (i) { const t = tr[i - 1]; r.push({ key: t.side === "BUY" ? css("--ice") : "#fff", text: `#${i} ${t.side}, ${money(t.net)}` }, { text: (t.ct || t.ot)?.txt || "" }); } else r.push({ text: "Start of range" });
+    if (i) { const t = tr[i - 1]; r.push({ key: t.side === "BUY" ? css("--ice") : css("--white"), text: `#${i} ${t.side}, ${money(t.net)}` }, { text: (t.ct || t.ot)?.txt || "" }); } else r.push({ text: "Start of range" });
     return r;
   } });
   const cap = 120, sl = tr.slice(-cap), off = tr.length - sl.length;
   $("barsNote").textContent = tr.length > cap ? `last ${cap} of ${tr.length}` : has ? `${tr.length} trades` : "";
   bars("barChart", sl.map((t, i) => ({ v: t.net, t, i: off + i + 1 })), { tip: (d) => [{ big: true, text: money(d.v), cls: tcls(d.v) },
-    { key: d.t.side === "BUY" ? css("--ice") : "#fff", text: `#${d.i} ${d.t.side} ${isNaN(d.t.vol) ? "" : d.t.vol.toFixed(2) + " lot"}` }, { text: `${isNaN(d.t.pts) ? "" : signed(d.t.pts) + " pts, "}${d.t.ot?.txt || ""}` }] });
+    { key: d.t.side === "BUY" ? css("--ice") : css("--white"), text: `#${d.i} ${d.t.side} ${isNaN(d.t.vol) ? "" : d.t.vol.toFixed(2) + " lot"}` }, { text: `${isNaN(d.t.pts) ? "" : signed(d.t.pts) + " pts, "}${d.t.ot?.txt || ""}` }] });
   const pa = tr.map((t) => t.pts).filter((v) => !isNaN(v));
   if (pa.length) {
     const mn = Math.min(...pa), mx = Math.max(...pa), st = [5, 10, 20, 25, 50, 100, 200, 250, 500, 1000].find((x) => Math.max(1, mx - mn) / x <= 10) || 1000;
     const lo = Math.floor(mn / st) * st, bins = [];
     for (let b = lo; b <= Math.floor(mx / st) * st; b += st) bins.push({ f: b, t: b + st, c: 0 });
     pa.forEach((p) => bins[Math.min(bins.length - 1, Math.floor((p - lo) / st))].c++);
-    bars("histChart", bins.map((b) => ({ v: b.c, b, color: b.t <= 0 ? css("--loss") : b.f >= 0 ? css("--ice") : css("--deep"), label: (b.f < 0 ? MINUS : "") + Math.abs(b.f) })),
+    bars("histChart", bins.map((b) => ({ v: b.c, b, color: b.t <= 0 ? css("--loss") : b.f >= 0 ? css("--up") : css("--deep"), label: (b.f < 0 ? MINUS : "") + Math.abs(b.f) })),
       { fmt: (v) => (Number.isInteger(v) ? String(v) : ""), every: bins.length > 8 ? 2 : 1, tip: (d) => [{ big: true, text: `${d.v} trade${d.v === 1 ? "" : "s"}` }, { text: `${signed(d.b.f)} to ${signed(d.b.t)} pts` }] });
   } else bars("histChart", [], {});
   if (has) {
@@ -201,8 +201,8 @@ function render() {
   const sd = $("sides"); sd.replaceChildren();
   const all = rangeTr(), per = ["BUY", "SELL"].map((x) => ({ x, s: stats(all.filter((t) => t.side === x)) })), mx = Math.max(1e-9, ...per.map((p) => Math.abs(p.s.net)));
   per.forEach(({ x, s: q }) => {
-    const row = el("div", "sideb"), nm = el("div", "nm"), i = el("i"); i.style.background = x === "BUY" ? css("--ice") : "#fff"; nm.append(i, x);
-    const tk = el("div", "track"), b = el("b"); b.style.width = Math.abs(q.net) / mx * 100 + "%"; b.style.background = q.net < 0 ? css("--loss") : css("--ice"); tk.appendChild(b);
+    const row = el("div", "sideb"), nm = el("div", "nm"), i = el("i"); i.style.background = x === "BUY" ? css("--ice") : css("--white"); nm.append(i, x);
+    const tk = el("div", "track"), b = el("b"); b.style.width = Math.abs(q.net) / mx * 100 + "%"; b.style.background = q.net < 0 ? css("--loss") : css("--up"); tk.appendChild(b);
     const f = el("div", "facts");
     [["Net", q.n ? money(q.net) : DASH, q.n ? tcls(q.net) : ""], ["Trades", String(q.n)], ["Win rate", q.n ? pct(q.wr) : DASH], ["Avg pts", isNaN(q.ap) ? DASH : signed(q.ap)]]
       .forEach(([a, v, c]) => { const sp = el("span", "", a + " "); sp.appendChild(el("strong", c || "", v)); f.appendChild(sp); });

@@ -409,7 +409,7 @@ function setupMenu() {
     document.body.classList.toggle("lock", open);
   };
   btn.addEventListener("click", () => set(sheet.hidden));
-  sheet.addEventListener("click", (e) => { if (e.target.closest("a,button") && !e.target.closest("[data-set-theme]")) set(false); });   // trying colours keeps the menu open
+  sheet.addEventListener("click", (e) => { if (e.target.closest("a,button") && !e.target.closest(".tp")) set(false); });   // trying colours keeps the menu open
   addEventListener("keydown", (e) => { if (e.key === "Escape" && !sheet.hidden) { set(false); btn.focus(); } });
   addEventListener("resize", () => { if (!phone() && innerWidth > 940 && !sheet.hidden) set(false); });
 }

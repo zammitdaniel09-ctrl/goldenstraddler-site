@@ -6,11 +6,13 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { all, now, one, run } from "./db";
 import { esc, getS, siteUrl } from "./util";
-import { COT, calendar, kvGet, kvSet, refreshAll, series, sources, startHubData } from "./hubdata";
+import { COT, calendar, calendarAll, kvGet, kvSet, refreshAll, series, sources, startHubData } from "./hubdata";
 import { intraday, quotes, startLive } from "./hublive";
-import { ASSETS, CLASSES, COLS, FACTOR_INFO, THRESH, backtest, brief, buildCtx, closeCandles, dxyRows, factorStats, fmtPx, postText, short, sides, weeklyCandles, type Asset, type Back, type Brief, type Candle, type Ctx } from "./hubmodel";
+import { ASSETS, CLASSES, COLS, FACTOR_INFO, PERIODS, THRESH, backtest, brief, buildCtx, closeCandles, corrOver, dxyRows, factorStats, fmtPx, postText, short, sides, weeklyCandles, weeklyReturns, type Asset, type Back, type Brief, type Candle, type Ctx, type Period } from "./hubmodel";
 
-const state = { briefs: [] as Brief[], at: 0, asOf: "", busy: false, err: "", sig: "", statsDone: false, macro: [] as Macro[] };
+type Corr = { ids: string[]; w13: (number | null)[][]; w52: (number | null)[][] };
+const state = { briefs: [] as Brief[], at: 0, asOf: "", busy: false, err: "", sig: "", statsDone: false, macro: [] as Macro[],
+  corr: { ids: [], w13: [], w52: [] } as Corr, mc: {} as Record<string, { dxy: number | null; ry: number | null; vix: number | null; y2: number | null }> };
 const backCache = new Map<string, Back | null>();
 const cachedBack = (a: Asset, c: Ctx, i: number) => {
   // keyed on the data too, so a backtest is redone when history arrives or changes, but not on every refresh
@@ -28,6 +30,12 @@ export async function computeHub() {
     if (backCache.size > 200) for (const k of [...backCache.keys()].slice(0, backCache.size - 64)) backCache.delete(k);
     freeze(out, c);
     state.briefs = out; state.at = now(); state.asOf = c.weeks[c.weeks.length - 1]; state.err = ""; state.macro = macroOf(out);
+    // what moves together: weekly returns over the last 13 and 52 weeks, between markets and against the macro inputs
+    const rets: Record<string, (number | null)[]> = {}; for (const b of out) rets[b.id] = weeklyReturns(c.px[b.id]);
+    const ids = out.map((b) => b.id), mat = (w: number) => ids.map((i) => ids.map((j) => (i === j ? 1 : corrOver(rets[i], rets[j], w))));
+    state.corr = { ids, w13: mat(13), w52: mat(52) };
+    const dx = weeklyReturns(c.dxy), ry = weeklyReturns(c.ry, false), vx = weeklyReturns(c.vix, false), y2 = weeklyReturns(c.y2, false);
+    state.mc = Object.fromEntries(ids.map((i) => [i, { dxy: corrOver(rets[i], dx, 52), ry: corrOver(rets[i], ry, 52), vix: corrOver(rets[i], vx, 52), y2: corrOver(rets[i], y2, 52) }]));
     // one line per market in the logs whenever the calls change, so they can be checked against the data
     const sig = out.map((b) => b.id + b.asOf + b.call.score).join();
     if (sig !== state.sig && out.some((b) => b.px !== null)) {
@@ -288,9 +296,9 @@ function deskHtml(bs: Brief[]) {
   const t = (id: string, name: string, on = false) => `<button role="tab" type="button" id="dt-${id}" aria-controls="dp-${id}" aria-selected="${on}" data-desk="${id}">${name}</button>`;
   const p = (id: string, html: string, on = false) => `<div role="tabpanel" id="dp-${id}" aria-labelledby="dt-${id}" class="dp"${on ? "" : " hidden"}>${html}</div>`;
   return `<section class="mk-desk" id="desk"><div class="wrap">
-  <div class="desk-h"><h2>The desk</h2><div class="tabs desk-t" role="tablist" aria-label="Views">${t("board", "Board", true)}${t("matrix", "Signal matrix")}${t("pos", "Positioning")}${t("rec", "Track record")}</div></div>
+  <div class="desk-h"><h2>The desk</h2><div class="tabs desk-t" role="tablist" aria-label="Views">${t("board", "Board", true)}${t("matrix", "Signal matrix")}${t("rng", "Ranges")}${t("cor", "Correlation")}${t("pos", "Positioning")}${t("rec", "Track record")}</div></div>
   <div class="tabs mk-tabs" role="tablist" aria-label="Asset class"><button role="tab" type="button" data-f="all" aria-selected="true">All markets</button>${CLASSES.map((c) => `<button role="tab" type="button" data-f="${c.id}" aria-selected="false">${c.name}</button>`).join("")}</div>
-  ${p("board", boardHtml(bs), true)}${p("matrix", matrixHtml(bs))}${p("pos", positioningHtml(bs))}${p("rec", recordHtml(bs))}
+  ${p("board", boardHtml(bs), true)}${p("matrix", matrixHtml(bs))}${p("rng", rangesHtml(bs))}${p("cor", corrHtml(bs))}${p("pos", positioningHtml(bs))}${p("rec", recordHtml(bs))}
 </div></section>`;
 }
 
@@ -306,11 +314,12 @@ function macroHtml(ms: Macro[]) {
 }
 function nextHtml() {
   const t = Date.now() / 1000, evs = calendar().filter((e) => e.utc > t - 900).slice(0, 12);
-  if (!evs.length) return "";
   const days = new Map<string, typeof evs>();
   for (const e of evs) { const k = new Date(e.utc * 1000).toISOString().slice(0, 10); days.set(k, [...(days.get(k) || []), e]); }
-  return `<section class="mk-next" aria-labelledby="nx-h"><div class="wrap"><div class="nx-h"><h2 id="nx-h">Releases ahead</h2><span class="fine">High impact only. Times in your time zone.</span></div><ol class="nx-l">${evs.map((e) =>
-    `<li class="nx-i"><div class="nx-t"><time class="num" data-utc="${e.utc}" datetime="${new Date(e.utc * 1000).toISOString()}">${esc(dayTime(e.utc))}</time><span class="cd num" data-cd="${e.utc}"></span></div><div class="nx-m"><b class="ccy">${esc(e.ccy)}</b><span class="nx-n">${esc(e.title)}</span></div>${e.fc || e.prev ? `<div class="nx-f num">${e.fc ? `<span>Forecast <b>${esc(e.fc)}</b></span>` : ""}${e.prev ? `<span>Previous <b>${esc(e.prev)}</b></span>` : ""}</div>` : ""}${evLinks(e)}</li>`).join("")}</ol></div></section>`;
+  return `<section class="mk-next" id="next" aria-labelledby="nx-h"><div class="wrap"><div class="sec-h nx-h"><div><h2 id="nx-h">Releases ahead</h2><p class="fine">Times in your time zone.</p></div><div class="pc-tf nx-v" role="tablist" aria-label="View"><button type="button" role="tab" data-nv="cards" aria-selected="true">Next up</button><button type="button" role="tab" data-nv="cal" aria-selected="false">Full week</button></div></div>
+  <div data-nv-p="cards">${evs.length ? "" : `<p class="fine nx-none">No high-impact releases on the calendar for the next few days. The full week shows the rest.</p>`}<ol class="nx-l"${evs.length ? "" : " hidden"}>${evs.map((e) =>
+    `<li class="nx-i"><div class="nx-t"><time class="num" data-utc="${e.utc}" datetime="${new Date(e.utc * 1000).toISOString()}">${esc(dayTime(e.utc))}</time><span class="cd num" data-cd="${e.utc}"></span></div><div class="nx-m"><b class="ccy">${esc(e.ccy)}</b><span class="nx-n">${esc(e.title)}</span></div>${e.fc || e.prev ? `<div class="nx-f num">${e.fc ? `<span>Forecast <b>${esc(e.fc)}</b></span>` : ""}${e.prev ? `<span>Previous <b>${esc(e.prev)}</b></span>` : ""}</div>` : ""}${evLinks(e)}</li>`).join("")}</ol><p class="fine nx-note">High impact only. The full week adds medium impact releases and a filter by currency.</p></div>
+  <div data-nv-p="cal" hidden>${calHtml()}</div></div></section>`;
 }
 function summary(bs: Brief[]) {
   let n = 0, hits = 0, up = 0, tot = 0;
@@ -362,6 +371,162 @@ function methodHtml() {
 </div></section>`;
 }
 
+// ---------------------------------------------------------------- market hours: the four sessions in the visitor's own time, with the week's releases on the same line
+const SESSIONS: [string, string, number, number][] = [["Sydney", "Australia/Sydney", 7, 16], ["Tokyo", "Asia/Tokyo", 9, 18], ["London", "Europe/London", 8, 17], ["New York", "America/New_York", 8, 17]];
+function clockHtml() {
+  const t = Date.now() / 1000, evs = calendar().filter((e) => e.utc > t - 86400 && e.utc < t + 8 * 86400).map((e) => [e.utc, e.ccy, e.title]);
+  return `<section class="mk-clock" id="hours" aria-labelledby="ck-h"><div class="wrap"><div class="ck" data-ck="${esc(JSON.stringify({ s: SESSIONS, e: evs }))}">
+  <div class="ck-top"><div class="ck-tt"><h2 id="ck-h">Market hours</h2><p class="ck-st" data-ck-st>Forex and gold trade around the clock on weekdays, passing from Sydney to Tokyo, London and New York.</p></div>
+    <div class="ck-now"><b class="num" data-ck-time></b><span data-ck-tz>Your time</span></div></div>
+  <div class="ck-rail" data-ck-rail aria-hidden="true"></div>
+  <ul class="ck-list">${SESSIONS.map(([n, , a, b]) => `<li data-ck-s="${esc(n)}"><i></i><b>${esc(n)}</b><span class="num" data-ck-h>${String(a).padStart(2, "0")}:00 to ${b}:00 local</span><em data-ck-c></em></li>`).join("")}</ul>
+</div></div></section>`;
+}
+
+// ---------------------------------------------------------------- how markets moved: a heatmap over six periods
+const SCALE: Record<Period, number> = { d1: 0.006, w1: 0.015, m1: 0.03, m3: 0.06, ytd: 0.1, y1: 0.15 };
+function hmSpark(path: Record<Period, number[]>) {
+  return `<svg class="hm-sp" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true">${PERIODS.map(([p]) => {
+    const xs = path[p]; if (xs.length < 3) return "";
+    const lo = Math.min(...xs), hi = Math.max(...xs), r = hi - lo || 1;
+    return `<path data-p="${p}" d="${xs.map((v, k) => `${k ? "L" : "M"}${((k / (xs.length - 1)) * 100).toFixed(1)} ${(2 + (1 - (v - lo) / r) * 20).toFixed(1)}`).join("")}"/>`;
+  }).join("")}</svg>`;
+}
+function heatHtml(bs: Brief[]) {
+  const ks = {} as Record<Period, number>;
+  for (const [p] of PERIODS) { const xs = bs.map((b) => Math.abs(b.stats.ret[p] ?? 0)).sort((a, b) => a - b); ks[p] = Math.max(SCALE[p], xs[Math.floor(xs.length * 0.85)] || 0); }
+  const k = (r: number | null, p: Period) => (r == null ? 0 : Math.sign(r) * Math.min(1, Math.sqrt(Math.abs(r) / ks[p])));
+  const tile = (b: Brief) => `<a class="hm-tl" href="/markets/${b.id}" title="${esc(b.name)}, latest close ${esc(b.stats.lastD ? short(b.stats.lastD) : "not in yet")}" style="${PERIODS.map(([p]) => `--${p}:${k(b.stats.ret[p], p).toFixed(2)}`).join(";")}">
+      <span class="hm-n"><b>${esc(b.name)}</b><span class="num">${esc(b.sym)}</span></span>
+      ${PERIODS.map(([p, , long]) => `<span class="hm-v num" data-p="${p}" title="${esc(long)}">${b.stats.ret[p] == null ? "–" : pct(b.stats.ret[p]!, Math.abs(b.stats.ret[p]!) >= 0.1 ? 0 : 1)}</span>`).join("")}${hmSpark(b.stats.path)}</a>`;
+  const best = (p: Period) => { const xs = bs.filter((b) => b.stats.ret[p] != null).sort((a, b) => b.stats.ret[p]! - a.stats.ret[p]!); return xs.length ? [xs[0], xs[xs.length - 1]] : null; };
+  const lead = PERIODS.map(([p, , long]) => { const x = best(p); return x ? `<p class="hm-lead fine" data-p="${p}">${esc(long)}: ${esc(x[0].name)} led at ${pct(x[0].stats.ret[p]!)}, ${esc(x[1].name)} lagged at ${pct(x[1].stats.ret[p]!)}.</p>` : ""; }).join("");
+  const t = (p: Period, lab: string) => `<button role="tab" type="button" data-hm="${p}" aria-selected="${p === "w1"}">${lab}</button>`;
+  return `<section class="mk-heat" id="moves" aria-labelledby="hm-h"><div class="wrap">
+  <div class="sec-h"><h2 id="hm-h">How markets moved</h2><div class="tabs hm-t" role="tablist" aria-label="Period">${PERIODS.map(([p, lab]) => t(p, lab)).join("")}</div></div>
+  <div class="hm" data-p="w1">${CLASSES.map((c) => { const xs = bs.filter((b) => b.cls === c.id); return xs.length ? `<div class="hm-g" data-cls="${c.id}"><h3>${esc(c.name)}</h3><div class="hm-row">${xs.map(tile).join("")}</div></div>` : ""; }).join("")}</div>
+  <div class="hm-f">${lead}<p class="fine">Change to each market's latest close, on daily closes (live prices for today where we have them). Oil and gas closes come from the EIA a few days late, so their last session is left out. Deeper colour means a bigger move.</p></div>
+</div></section>`;
+}
+
+// ---------------------------------------------------------------- the full week's calendar: every currency, high and medium impact
+function calHtml() {
+  const t = Date.now() / 1000, evs = calendarAll().filter((e) => e.utc > t - 30 * 3600 && e.utc < t + 8 * 86400);
+  if (!evs.length) return `<p class="fine">The calendar is loading.</p>`;
+  const ccys = [...new Set(evs.map((e) => e.ccy))].sort((a, b) => (a === "USD" ? -1 : b === "USD" ? 1 : a.localeCompare(b)));
+  return `<div class="cal" data-cal>
+    <div class="cal-f"><div class="cal-c" role="group" aria-label="Currency"><button type="button" aria-pressed="true" data-ccy="all">All</button>${ccys.map((c) => `<button type="button" aria-pressed="false" data-ccy="${esc(c)}">${esc(c)}</button>`).join("")}</div>
+      <label class="check cal-m"><input type="checkbox" data-med checked>Medium impact too</label></div>
+    <ol class="cal-l">${evs.map((e) => `<li class="cal-i" data-utc="${e.utc}" data-ccy="${esc(e.ccy)}" data-imp="${e.imp || "H"}"><time class="num" datetime="${new Date(e.utc * 1000).toISOString()}" data-utc="${e.utc}" data-fmt="t">${esc(dayTime(e.utc))}</time><span class="imp" title="${e.imp === "M" ? "Medium" : "High"} impact"><i></i><i></i><i></i></span><b class="ccy">${esc(e.ccy)}</b><span class="cal-n">${esc(e.title)}</span><span class="cal-x num">${e.fc ? `<span>Forecast <b>${esc(e.fc)}</b></span>` : ""}${e.prev ? `<span>Previous <b>${esc(e.prev)}</b></span>` : ""}</span><span class="cd num" data-cd="${e.utc}"></span></li>`).join("")}</ol>
+  </div>`;
+}
+
+// ---------------------------------------------------------------- ranges: how far each market usually moves, and where it sits in its year
+function rangesHtml(bs: Brief[]) {
+  const rows = bs.map((b) => {
+    const a = ASSET.get(b.id)!, st = b.stats, q = livePx(b), last = st.last;
+    const day = st.adr != null ? `<b>${pct(st.adr, 2).replace("+", "")}</b><span class="fine">${last ? "≈ " + esc(fmtPx(a, st.adr * last)) : ""} a day</span>` : st.move != null ? `<b>${pct(st.move, 2).replace("+", "")}</b><span class="fine">average close-to-close move</span>` : "–";
+    const wkr = st.wkNow != null && st.wkAvg ? st.wkNow / st.wkAvg : null;
+    const wk = wkr == null ? "–" : `<span class="rg-b" title="This week's range is ${nf(wkr * 100)}% of the usual weekly range"><i style="width:${Math.min(100, wkr * 50).toFixed(1)}%" class="${wkr > 1.3 ? "hot" : ""}"></i><em style="left:50%"></em></span><span class="num fine">${nf(wkr * 100)}% of usual</span>`;
+    const yr = st.at52 == null ? "–" : `<span class="rng" title="52 weeks: ${esc(fmtPx(a, st.lo52!))} to ${esc(fmtPx(a, st.hi52!))}"><i style="left:${(st.at52 * 100).toFixed(1)}%"></i></span><span class="num fine">${st.offHi! >= -0.0005 ? "at the high" : `${pct(st.offHi!, 1)} from high`}</span>`;
+    const rsi = st.rsi == null ? "–" : `<span class="rsi${st.rsi >= 70 ? " hi" : st.rsi <= 30 ? " lo" : ""}"><i style="left:${st.rsi}%"></i></span><span class="num">${st.rsi}</span>`;
+    return `<tr data-cls="${b.cls}"><th scope="row"><a href="/markets/${b.id}" class="mkt-n">${art(b.id, "sm")}<span><b>${esc(b.name)}</b><span class="num">${esc(b.sym)}</span></span></a></th>
+      <td class="num px-c" data-live="${b.id}"><b class="px">${esc(q.txt)}</b></td><td class="num rg-d">${day}</td><td class="rg-w">${wk}</td><td class="rg-y">${yr}</td><td class="rg-r">${rsi}</td>
+      <td class="num ${st.ma50 == null ? "" : st.ma50 >= 0 ? "up" : "dn"}">${st.ma50 == null ? "–" : pct(st.ma50, 1)}</td></tr>`;
+  }).join("");
+  return `<div class="tblw"><table class="board rg"><thead><tr><th scope="col">Market</th><th scope="col">Price</th><th scope="col">Daily range</th><th scope="col">This week so far</th><th scope="col">52 week range</th><th scope="col">RSI 14d</th><th scope="col">Vs 50d avg</th></tr></thead><tbody>${rows}</tbody></table></div>
+  <p class="fine mx-key">Daily range is the average high-to-low over the last 14 sessions where we have real highs and lows; elsewhere it's the average daily close-to-close move. This week's range is compared with the average of the last 26 weeks. RSI above 70 is often called overbought, below 30 oversold.</p>`;
+}
+
+// ---------------------------------------------------------------- correlation: which markets have moved together
+function corrHtml(bs: Brief[]) {
+  const C = state.corr; if (!C.ids.length) return `<p class="fine">Correlations appear once there's enough weekly history.</p>`;
+  const COL: Record<string, string> = { gold: "XAU", silver: "XAG", platinum: "XPT", copper: "HG", wti: "WTI", brent: "Brent", natgas: "Gas", btc: "BTC", eth: "ETH" };
+  const nm = (id: string) => bs.find((b) => b.id === id)!, lab = (id: string) => esc(COL[id] || nm(id).sym);
+  const table = (w: 13 | 52) => {
+    const M = w === 13 ? C.w13 : C.w52;
+    return `<table class="matrix cor" data-w="${w}"${w === 13 ? " hidden" : ""}><thead><tr><th scope="col"><span class="sr">Market</span></th>${C.ids.map((id) => `<th scope="col"><span class="num">${lab(id)}</span></th>`).join("")}</tr></thead><tbody>${C.ids.map((i, a) =>
+      `<tr data-cls="${nm(i).cls}"><th scope="row"><a href="/markets/${i}" class="mkt-n">${art(i, "sm")}<b>${esc(nm(i).name)}</b></a></th>${C.ids.map((j, b) => {
+        const v = M[a][b];
+        if (a === b) return `<td class="mx self" aria-label="${esc(nm(i).name)}"></td>`;
+        if (v == null) return `<td class="mx nd"><span>·</span></td>`;
+        return `<td class="mx ${Math.abs(v) < 0.2 ? "z" : v > 0 ? "p" : "n"}" style="--a:${Math.abs(v).toFixed(2)}" tabindex="0" data-tip="${esc(nm(i).name)} and ${esc(nm(j).name)}: ${v > 0 ? "moved together" : "moved in opposite directions"} over the last ${w} weeks (correlation ${sgn(v)}).${Math.abs(v) < 0.2 ? " That's close to no link at all." : ""}"><span class="num">${sgn(v, 1).replace(".0", "")}</span></td>`;
+      }).join("")}</tr>`).join("")}</tbody></table>`;
+  };
+  return `<div class="cor-h"><div class="pc-tf" role="tablist" aria-label="Look-back"><button type="button" role="tab" data-cw="52" aria-selected="true">52 weeks</button><button type="button" role="tab" data-cw="13" aria-selected="false">13 weeks</button></div></div>
+  <div class="tblw mx-w">${table(52)}${table(13)}</div>
+  <p class="mx-key fine"><span class="k p"></span>moved together<span class="k n"></span>moved in opposite directions<span class="k z"></span>little link. Correlation of weekly returns, from −1 to +1. Forex pairs are read as quoted: USD/JPY rising means a stronger dollar, EUR/USD rising a weaker one.</p>`;
+}
+
+// ---------------------------------------------------------------- tools: a position size calculator, using live prices
+const SPEC: Record<string, [number, string]> = { gold: [100, "ounces"], silver: [5000, "ounces"], platinum: [100, "ounces"], copper: [25000, "pounds"], wti: [1000, "barrels"], brent: [1000, "barrels"], natgas: [10000, "MMBtu"], btc: [1, "bitcoin"], eth: [1, "ether"] };
+const STOP0: Record<string, number> = { gold: 10, silver: 0.5, platinum: 20, copper: 0.05, wti: 1, brent: 1, natgas: 0.1, btc: 1500, eth: 80 };
+function toolsHtml(bs: Brief[]) {
+  const mk = bs.map((b) => {
+    const a = ASSET.get(b.id)!, lq = quotes.get(b.id), p = lq && Date.now() - lq.t < 15 * 60_000 ? lq.p : b.live ? b.live.price : b.stats.last ?? b.px;
+    const fx = a.cls === "fx";
+    return { id: b.id, n: b.name, s: b.sym, dp: a.dp, pre: a.pre, fx, size: fx ? 100000 : SPEC[b.id]?.[0] ?? 1, unit: fx ? b.sym.slice(0, 3) : SPEC[b.id]?.[1] ?? "units",
+      pip: fx ? (b.sym.endsWith("JPY") ? 0.01 : 0.0001) : 0, quote: fx ? b.sym.slice(3) : "USD", stop: fx ? 20 : STOP0[b.id] ?? 1, p: p ? +p.toPrecision(8) : null };
+  });
+  const opts = CLASSES.map((c) => `<optgroup label="${esc(c.name)}">${mk.filter((m) => bs.find((b) => b.id === m.id)!.cls === c.id).map((m) => `<option value="${m.id}"${m.id === "gold" ? " selected" : ""}>${esc(m.n)} (${esc(m.s)})</option>`).join("")}</optgroup>`).join("");
+  return `<section class="mk-tools" id="tools" aria-labelledby="tl-h"><div class="wrap">
+  <div class="sec-h"><div><h2 id="tl-h">Position size calculator</h2><p class="fine">How big a trade is, for the amount you're willing to lose if the stop is hit. Prices update live.</p></div></div>
+  <form class="pcalc" data-calc="${esc(JSON.stringify(mk))}" onsubmit="return false">
+    <div class="pcalc-in">
+      <label class="full">Market<select class="field" name="m">${opts}</select></label>
+      <label>Account currency<select class="field" name="ccy">${["USD", "EUR", "GBP", "AUD", "CAD", "CHF", "JPY"].map((c) => `<option>${c}</option>`).join("")}</select></label>
+      <label>Account balance<input class="field num" name="bal" type="number" inputmode="decimal" min="0" step="any" value="10000"></label>
+      <label>Risk per trade<span class="pcalc-u"><input class="field num" name="risk" type="number" inputmode="decimal" min="0" max="100" step="0.1" value="1"><em>%</em></span></label>
+      <label><span data-stop-lab>Stop loss distance</span><span class="pcalc-u"><input class="field num" name="stop" type="number" inputmode="decimal" min="0" step="any"><em data-stop-u>$</em></span></label>
+      <label>Contract size, one lot<span class="pcalc-u"><input class="field num" name="size" type="number" inputmode="decimal" min="0" step="any"><em data-size-u></em></span></label>
+      <label>Leverage<select class="field" name="lev">${[30, 50, 100, 200, 500].map((l) => `<option value="${l}"${l === 100 ? " selected" : ""}>1:${l}</option>`).join("")}</select></label>
+    </div>
+    <div class="pcalc-out" aria-live="polite">
+      <p class="lab">Position size</p><p class="pcalc-lots num"><b data-o="lots">–</b> lots</p>
+      <dl class="pcalc-kv">
+        <div><dt>Money at risk</dt><dd class="num" data-o="risk">–</dd></div>
+        <div><dt data-o="perlab">Per lot, per pip</dt><dd class="num" data-o="per">–</dd></div>
+        <div><dt>Margin needed</dt><dd class="num" data-o="margin">–</dd></div>
+        <div><dt>Price used</dt><dd class="num" data-o="px">–</dd></div>
+      </dl>
+      <p class="fine pcalc-n">Standard contract sizes; brokers differ, so check yours in MT5 (right-click the symbol, then Specification). Lots are rounded down to 0.01. Slippage around news can make a real loss bigger than this.</p>
+    </div>
+  </form>
+</div></section>`;
+}
+
+// ---------------------------------------------------------------- the one-market extras: key numbers, seasonality, what it moves with
+function statStrip(b: Brief) {
+  const a = ASSET.get(b.id)!, st = b.stats;
+  const cell = (lab: string, v: string, k = "") => `<div><dt>${lab}</dt><dd class="num ${k}">${v}</dd></div>`;
+  const r = (p: Period) => { const v = st.ret[p]; return cell(PERIODS.find((x) => x[0] === p)![1], v == null ? "–" : pct(v, 1), v == null ? "" : v >= 0 ? "up" : "dn"); };
+  const yr = st.at52 == null ? "" : `<div class="ss-y"><dt>52 week range</dt><dd><span class="num">${esc(fmtPx(a, st.lo52!))}</span><span class="rng big"><i style="left:${(st.at52 * 100).toFixed(1)}%"></i></span><span class="num">${esc(fmtPx(a, st.hi52!))}</span></dd></div>`;
+  return `<dl class="ss">${r("d1")}${r("w1")}${r("m1")}${r("m3")}${r("ytd")}${r("y1")}${yr}
+    ${cell(st.adr != null ? "Daily range" : "Daily move", st.adr != null ? pct(st.adr, 2).replace("+", "") : st.move != null ? pct(st.move, 2).replace("+", "") : "–")}${cell("RSI, 14 days", st.rsi == null ? "–" : String(st.rsi))}</dl>`;
+}
+function seasonHtml(b: Brief) {
+  const ss = b.stats.season; if (!ss.some((x) => x.n >= 3)) return "";
+  const m = Math.max(0.01, ...ss.map((x) => Math.abs(x.avg))), cur = new Date().getUTCMonth(), H = 120, mid = H / 2;
+  const bars = ss.map((x, k) => {
+    const h = (Math.abs(x.avg) / m) * (mid - 14), xx = k * 30 + 4;
+    return `<g class="${x.n < 3 ? "few" : x.avg >= 0 ? "u" : "d"}${k === cur ? " cur" : ""}"><title>${MON[k]}: average ${pct(x.avg, 1)} over ${x.n} years, up in ${nf(x.up * x.n)} of them</title><rect x="${xx}" y="${(x.avg >= 0 ? mid - h : mid).toFixed(1)}" width="22" height="${Math.max(1, h).toFixed(1)}" rx="3"/><text x="${xx + 11}" y="${H - 1}" text-anchor="middle">${MON[k][0]}</text></g>`;
+  }).join("");
+  const c = ss[cur];
+  return `<div class="card2 sea"><h4>Seasonality</h4><svg viewBox="0 0 360 ${H}" role="img" aria-label="Average return by calendar month since ${esc(monthYear(b.stats.seasonFrom + "-15"))}"><path d="M0 ${mid}H360" class="z"/>${bars}</svg>
+    <p class="fine">Average return in each calendar month since ${esc(monthYear(b.stats.seasonFrom + "-15"))}.${c && c.n >= 3 ? ` ${MON[cur]} has averaged ${pct(c.avg, 1)}, up in ${nf(c.up * c.n)} of ${c.n} years.` : ""} A few years of history is a small sample, so read it as a tendency, not a rule.</p></div>`;
+}
+function linksHtml(b: Brief, bs: Brief[]) {
+  const C = state.corr, i = C.ids.indexOf(b.id); if (i < 0) return "";
+  const xs = C.ids.map((id, j) => ({ id, v: C.w52[i][j] })).filter((x) => x.id !== b.id && x.v != null).sort((x, y) => y.v! - x.v!);
+  if (xs.length < 4) return "";
+  const nm = (id: string) => bs.find((x) => x.id === id)!.name;
+  const row = (lab: string, v: number | null, href = "") => v == null ? "" : `<li>${href ? `<a href="${href}">${esc(lab)}</a>` : `<span>${esc(lab)}</span>`}<span class="cbar"><i class="${v >= 0 ? "pos" : "neg"}" style="width:${(Math.abs(v) * 50).toFixed(1)}%"></i></span><b class="num ${v >= 0 ? "up" : "dn"}">${sgn(v)}</b></li>`;
+  const mc = state.mc[b.id] || { dxy: null, ry: null, vix: null, y2: null };
+  return `<div class="card2 lnk"><h4>What it moves with</h4><p class="fine">Correlation of weekly returns over the last year, from −1 to +1.</p>
+    <ul>${xs.slice(0, 3).map((x) => row(nm(x.id), x.v, "/markets/" + x.id)).join("")}${xs.slice(-2).reverse().map((x) => row(nm(x.id), x.v, "/markets/" + x.id)).join("")}</ul>
+    <h4 class="lnk-m">Against the macro numbers</h4><ul>${row("Dollar index", mc.dxy)}${row("Real yields, week change", mc.ry)}${row("2 year yield, week change", mc.y2)}${row("VIX, week change", mc.vix)}</ul></div>`;
+}
+
 export function renderHub(path: string): { title: string; desc: string; html: string } | null {
   const bs = state.briefs;
   if (!bs.length) return { title: "Markets this week | GoldenStraddler", desc: "Weekly calls for gold, oil, forex and crypto from a scoring model on public data.",
@@ -384,9 +549,13 @@ export function renderHub(path: string): { title: string; desc: string; html: st
   </div>
   <div class="mk-hr"><h2 class="sr">Macro pulse</h2>${macroHtml(state.macro)}</div>
 </div></section>
+<nav class="mk-sub" aria-label="On this page"><div class="wrap"><a href="#hours">Market hours</a><a href="#moves">Moves</a><a href="#next">Releases</a><a href="#desk">The desk</a><a href="#tools">Calculator</a><a href="#briefs">Briefs</a><a href="#method">Method</a></div></nav>
+${clockHtml()}
+${heatHtml(bs)}
 ${nextHtml()}
 ${deskHtml(bs)}
-<section class="mk-briefs"><div class="wrap">
+${toolsHtml(bs)}
+<section class="mk-briefs" id="briefs"><div class="wrap">
   <div class="mk-bh"><h2>The briefs</h2><p class="fine">One per market, written from the numbers. Copy any of them as a Telegram post.</p></div>
   ${CLASSES.map((c) => `<h3 class="mk-cls" data-cls="${c.id}">${c.name}</h3><div class="mk-grid" data-cls="${c.id}">${bs.filter((b) => b.cls === c.id).map((b) => briefHtml(b)).join("")}</div>`).join("")}
 </div></section>
@@ -418,6 +587,7 @@ function oneHtml(b: Brief, bs: Brief[]) {
     <div class="one-q">${quoteHtml(b, true)}${intr.length > 3 ? `<div class="one-i">${minic(intr, { h: 40 })}<span class="fine">Last 24 hours, hourly candles</span></div>` : ""}</div>
     <div class="one-g">${gauge(b.call.score)}<p class="num">Score ${sgn(b.call.score)}</p></div>
   </header>
+  ${statStrip(b)}
   <div class="one-grid">
     <div class="one-main">
       ${priceChart(a, b)}
@@ -433,6 +603,8 @@ function oneHtml(b: Brief, bs: Brief[]) {
       <div class="card2 bf-w"><h4><svg aria-hidden="true"><use href="#i-eye"/></svg>Releases to watch</h4>${watchHtml(b.watch, 10)}</div>
     </div>
     <aside class="one-side">
+      ${linksHtml(b, bs)}
+      ${seasonHtml(b)}
       ${positionChart(b)}
       ${testCard(b)}
       ${historyHtml(b)}

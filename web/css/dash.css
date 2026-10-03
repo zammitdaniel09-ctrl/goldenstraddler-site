@@ -60,7 +60,7 @@
 .chart .empty{color:var(--muted);font-size:14px;padding:40px 0;text-align:center}
 .tick{fill:var(--muted);font:11px var(--mono)}
 .gridl{stroke:#171c25}.axisl{stroke:var(--edge2)}
-.tip{position:absolute;pointer-events:none;background:#0b0e13;border:1px solid var(--edge2);border-radius:10px;padding:9px 11px;font-size:13px;min-width:150px;z-index:3;opacity:0;transition:opacity .12s;box-shadow:0 14px 30px -12px #000}
+.tip{position:absolute;pointer-events:none;background:var(--carbon);border:1px solid var(--edge2);border-radius:10px;padding:9px 11px;font-size:13px;min-width:150px;z-index:3;opacity:0;transition:opacity .12s;box-shadow:0 14px 30px -12px #000}
 .tip.on{opacity:1}
 .tip .tv{font:600 16px var(--mono)}
 .tip .tr{display:flex;align-items:center;gap:8px;color:var(--txt2);font:12px var(--mono)}

@@ -1,6 +1,6 @@
 /* admin + customer area */
 .shell{display:grid;grid-template-columns:236px minmax(0,1fr);min-height:100vh}
-.side{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:6px;padding:22px 14px;border-right:1px solid var(--edge);background:#05070a}
+.side{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:6px;padding:22px 14px;border-right:1px solid var(--edge);background:color-mix(in srgb,var(--carbon) 40%,var(--void))}
 .side .mark{padding:0 8px 18px}
 .side nav{display:flex;flex-direction:column;gap:2px}
 .side nav a{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;border-radius:10px;text-decoration:none;color:var(--txt2);font-size:15px}
@@ -18,7 +18,7 @@
   .shell{grid-template-columns:1fr}
   .side{position:fixed;inset:0 auto 0 0;width:260px;z-index:60;transform:translateX(-100%);transition:transform .2s}
   .side.open{transform:none;box-shadow:0 0 0 100vmax rgba(0,0,0,.6)}
-  .mbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid var(--edge);position:sticky;top:0;background:rgba(0,0,0,.9);backdrop-filter:blur(10px);z-index:40}
+  .mbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid var(--edge);position:sticky;top:0;background:rgba(var(--bg-rgb),.9);backdrop-filter:blur(10px);z-index:40}
   .main{padding:20px 16px 56px}
 }
 .grid{display:grid;gap:14px}
@@ -43,7 +43,7 @@ table.t tbody tr.click:hover td{background:#0b0e13}
 .empty-row{color:var(--muted);text-align:center;padding:28px 10px!important}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--edge2);margin-right:8px;vertical-align:1px}
 .dot.on{background:var(--ice);box-shadow:0 0 10px rgba(var(--ice-rgb),.8)}
-.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;background:rgba(255,255,255,.07);color:var(--txt2);white-space:nowrap}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;background:rgba(var(--fg-rgb),.07);color:var(--txt2);white-space:nowrap}
 .pill.ok,.pill.paid,.pill.active{background:rgba(var(--ice-rgb),.12);color:var(--ice)}
 .pill.pending,.pill.processing,.pill.expiring{background:rgba(var(--gold-rgb),.13);color:var(--gold)}
 .pill.revoked,.pill.refunded,.pill.disputed,.pill.failed,.pill.expired,.pill.locked{background:rgba(var(--loss-rgb),.13);color:var(--loss)}

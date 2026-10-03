@@ -436,6 +436,86 @@ export function factorStats(c: Ctx) {
   return [...st.entries()].sort().map(([k, x]) => `${k}: early ${x.n[0]} ${x.n[0] ? Math.round((x.h[0] / x.n[0]) * 1000) / 10 : "-"}% ${x.n[0] ? Math.round((x.r[0] / x.n[0]) * 1e5) / 10 : "-"}bp | late ${x.n[1]} ${x.n[1] ? Math.round((x.h[1] / x.n[1]) * 1000) / 10 : "-"}% ${x.n[1] ? Math.round((x.r[1] / x.n[1]) * 1e5) / 10 : "-"}bp`);
 }
 
+// ================================================================ the numbers traders look up: moves over each period, ranges, the 52 week range, seasonality
+export const PERIODS = [["d1", "1D", "Last session"], ["w1", "1W", "1 week"], ["m1", "1M", "1 month"], ["m3", "3M", "3 months"], ["ytd", "YTD", "This year"], ["y1", "1Y", "1 year"]] as const;
+export type Period = (typeof PERIODS)[number][0];
+export type Stats = {
+  last: number | null; lastD: string;
+  ret: Record<Period, number | null>; path: Record<Period, number[]>;
+  hi52: number | null; lo52: number | null; at52: number | null; offHi: number | null; offLo: number | null;
+  adr: number | null; move: number | null; wkAvg: number | null; wkNow: number | null; realRange: boolean;
+  rsi: number | null; ma50: number | null; ma200: number | null;
+  season: { m: number; avg: number; up: number; n: number }[]; seasonFrom: string;
+};
+const thin = (xs: number[], n = 40) => { if (xs.length <= n) return xs; const out: number[] = []; for (let k = 0; k < n; k++) out.push(xs[Math.round((k / (n - 1)) * (xs.length - 1))]); return out; };
+const r4 = (x: number | null) => (x == null || !Number.isFinite(x) ? null : Math.round(x * 1e5) / 1e5);
+export function marketStats(dc: Candle[], wc: Candle[], nowMs = Date.now()): Stats {
+  const n = dc.length, empty = { d1: null, w1: null, m1: null, m3: null, ytd: null, y1: null } as Record<Period, number | null>;
+  const st: Stats = { last: null, lastD: "", ret: { ...empty }, path: { d1: [], w1: [], m1: [], m3: [], ytd: [], y1: [] }, hi52: null, lo52: null, at52: null, offHi: null, offLo: null,
+    adr: null, move: null, wkAvg: null, wkNow: null, realRange: false, rsi: null, ma50: null, ma200: null, season: [], seasonFrom: "" };
+  if (n < 2) return st;
+  const last = dc[n - 1], lastMs = Date.parse(last.t + "T00:00:00Z"), cl = dc.map((x) => x.c);
+  st.last = last.c; st.lastD = last.t;
+  // the close on or before a date, if there is one within a week of it
+  const before = (ms: number) => { let k = n - 1; while (k >= 0 && Date.parse(dc[k].t + "T00:00:00Z") > ms) k--; return k >= 0 && ms - Date.parse(dc[k].t + "T00:00:00Z") <= 7 * DAYMS ? k : -1; };
+  const refs: Record<Period, number> = { d1: n - 2, w1: before(lastMs - 7 * DAYMS), m1: before(lastMs - 30 * DAYMS), m3: before(lastMs - 91 * DAYMS),
+    ytd: before(Date.parse(last.t.slice(0, 4) + "-01-01T00:00:00Z") - DAYMS), y1: before(lastMs - 365 * DAYMS) };
+  // the last session's move only while it's recent: series that arrive days late (FRED oil and gas) would compare an old day with today's
+  if (nowMs - lastMs > 4 * DAYMS) refs.d1 = -1;
+  for (const [p] of PERIODS) {
+    const k = refs[p]; if (k < 0 || !(dc[k].c > 0)) continue;
+    st.ret[p] = r4(last.c / dc[k].c - 1);
+    st.path[p] = thin(cl.slice(k), p === "d1" ? 2 : 40).map((v) => +v.toPrecision(7));
+  }
+  // the last year's range
+  const y0 = before(lastMs - 365 * DAYMS), yr = dc.slice(y0 >= 0 ? y0 : 0);
+  if (yr.length >= 120) {
+    const hi = Math.max(...yr.map((x) => x.h)), lo = Math.min(...yr.map((x) => x.l));
+    st.hi52 = hi; st.lo52 = lo; st.at52 = hi > lo ? r4((last.c - lo) / (hi - lo)) : null; st.offHi = r4(last.c / hi - 1); st.offLo = r4(last.c / lo - 1);
+  }
+  // how far it usually moves: the daily range where candles have real highs and lows, the daily close-to-close move everywhere
+  const d20 = dc.slice(-21), real = d20.filter((x) => x.r).length >= 15;
+  const moves = d20.slice(1).map((x, k) => Math.abs(x.c / d20[k].c - 1)).filter(Number.isFinite);
+  st.move = moves.length >= 10 ? r4(mean(moves)) : null;
+  if (real) { const rs = dc.slice(-15, -1).filter((x) => x.r).map((x) => (x.h - x.l) / x.c); st.adr = rs.length >= 10 ? r4(mean(rs)) : null; }
+  const wk = wc.slice(-27, -1), wr = wk.slice(1).map((x, k) => (x.h - x.l) / wk[k].c).filter(Number.isFinite);
+  st.wkAvg = wr.length >= 12 ? r4(mean(wr)) : null; st.realRange = real;
+  if (wc.length >= 2) { const cw = wc[wc.length - 1], pw = wc[wc.length - 2]; st.wkNow = r4((cw.h - cw.l) / pw.c); }
+  // momentum and distance from the averages, on daily closes
+  const ch = cl.slice(-15).slice(1).map((v, k) => v / cl.slice(-15)[k] - 1);
+  if (ch.length >= 12) { const up = mean(ch.map((c) => Math.max(0, c))), dn = mean(ch.map((c) => Math.max(0, -c))); st.rsi = dn === 0 ? 100 : Math.round(100 - 100 / (1 + up / dn)); }
+  if (n >= 50) st.ma50 = r4(last.c / mean(cl.slice(-50)) - 1);
+  if (n >= 200) st.ma200 = r4(last.c / mean(cl.slice(-200)) - 1);
+  // seasonality: each calendar month's return, close to close, over every complete month we have
+  const me = new Map<string, number>();
+  for (const x of dc) me.set(x.t.slice(0, 7), x.c);
+  const ms = [...me.entries()], curM = last.t.slice(0, 7), by: number[][] = Array.from({ length: 12 }, () => []);
+  for (let k = 1; k < ms.length; k++) {
+    const [ym, v] = ms[k], [pym, pv] = ms[k - 1];
+    if (ym === curM) continue;
+    const gap = (Number(ym.slice(0, 4)) - Number(pym.slice(0, 4))) * 12 + Number(ym.slice(5)) - Number(pym.slice(5));
+    if (gap !== 1 || !(pv > 0)) continue;
+    by[Number(ym.slice(5)) - 1].push(v / pv - 1);
+    if (!st.seasonFrom) st.seasonFrom = ym;
+  }
+  st.season = by.map((xs, m) => ({ m, avg: xs.length ? r4(mean(xs))! : 0, up: xs.length ? Math.round((xs.filter((x) => x > 0).length / xs.length) * 100) / 100 : 0, n: xs.length }));
+  return st;
+}
+
+// weekly-return correlations between markets, and with the macro inputs, so the page can say what moves together
+export function pearson(x: number[], y: number[]) {
+  const n = x.length; if (n < 8) return null;
+  const mx = mean(x), my = mean(y); let sxy = 0, sxx = 0, syy = 0;
+  for (let k = 0; k < n; k++) { const a = x[k] - mx, b = y[k] - my; sxy += a * b; sxx += a * a; syy += b * b; }
+  return sxx && syy ? Math.round((sxy / Math.sqrt(sxx * syy)) * 100) / 100 : null;
+}
+export function weeklyReturns(arr: (number | null)[], pct = true) { return arr.map((v, k) => (k && nz(v) && nz(arr[k - 1]) ? (pct ? v / arr[k - 1]! - 1 : v - arr[k - 1]!) : null)); }
+export function corrOver(a: (number | null)[], b: (number | null)[], weeks: number) {
+  const x: number[] = [], y: number[] = [], n = Math.min(a.length, b.length);
+  for (let k = Math.max(0, n - weeks); k < n; k++) if (nz(a[k]) && nz(b[k])) { x.push(a[k]!); y.push(b[k]!); }
+  return x.length >= weeks * 0.7 ? pearson(x, y) : null;
+}
+
 // ================================================================ the brief, written like a weekly post
 export type Brief = {
   id: string; name: string; sym: string; cls: Cls; asOf: string; title: string; call: Call; px: number | null; pxTxt: string; chg: number | null;
@@ -446,6 +526,7 @@ export type Brief = {
   cells: Record<string, Cell>; drivers: { key: string; name: string; c: number; s: number; text: string }[];
   chart: { wk: string; px: number; o: number; h: number; l: number; r: boolean; m20: number | null; m50: number | null }[]; pxDate: string;
   day: { t: string; o: number; h: number; l: number; c: number; r: boolean; m20: number | null; m50: number | null }[]; cndSrc: string;
+  stats: Stats;
 };
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"], WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 export const short = (d: string) => { const t = new Date(d + "T12:00:00Z"); return `${t.getUTCDate()} ${MON[t.getUTCMonth()]} ${String(t.getUTCFullYear()).slice(2)}`; };
@@ -536,7 +617,7 @@ export function brief(a: Asset, c: Ctx, nowS = Date.now() / 1000, bt: (a: Asset,
     id: a.id, name: a.name, sym: a.sym, cls: a.cls, asOf: c.weeks[i], title: `${a.name.toUpperCase()} WEEKLY, ${short(c.weeks[i])}`, call,
     px: nz(p[i]) ? p[i] : null, pxTxt: nz(p[i]) ? fmtPx(a, p[i]!) : "", chg: pl.chg, priceLine: pl.line,
     forIt: pros.slice(0, 5).map((f) => f.text), against: cons.slice(0, 4).map((f) => f.text), verdict, watch, watchLine,
-    live, back: bk, notes, cot, recent: [], cells, drivers, chart, day, cndSrc: candleSource(a), pxDate: c.pxDate[a.id] || "",
+    live, back: bk, notes, cot, recent: [], cells, drivers, chart, day, cndSrc: candleSource(a), pxDate: c.pxDate[a.id] || "", stats: marketStats(dc, wc, nowS * 1000),
   };
 }
 function spotNow(sym: string) { const s = spot[sym]; if (s && Date.now() - s.at < 6 * 3600_000) return s; const l = lastOf("spot:" + sym); return l ? { price: l.v, at: Date.parse(l.d + "T12:00:00Z") } : null; }

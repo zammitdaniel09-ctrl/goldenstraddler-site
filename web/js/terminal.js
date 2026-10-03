@@ -10,10 +10,10 @@ const $ = (s) => root.querySelector(s);
 const cv = $("canvas"), cx = cv.getContext("2d");
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const MINUS = "−";
-const C = { gold: "#E6B450", ice: "#3FC4FC", white: "#dfe5ee", loss: "#F2616F", axis: "#6f7787", txt2: "#a3abb9", ink: "#07090d", g: "230,180,80", i: "63,196,252", l: "242,97,111" };
+const C = { gold: "#E6B450", ice: "#3FC4FC", up: "#3FC4FC", white: "#dfe5ee", loss: "#F2616F", axis: "#6f7787", txt2: "#a3abb9", ink: "#07090d", g: "230,180,80", i: "63,196,252", l: "242,97,111" };
 function palette() {                                   // the chart follows the site's colour theme
-  const cs = getComputedStyle(document.documentElement), v = (n, d) => cs.getPropertyValue(n).trim() || d;
-  C.gold = v("--gold", C.gold); C.ice = v("--ice", C.ice); C.loss = v("--loss", C.loss); C.ink = v("--term2", C.ink);
+  const cs = getComputedStyle(root), v = (n, d) => cs.getPropertyValue(n).trim() || d;   // the terminal's own tokens: it stays dark in light mode
+  C.gold = v("--gold", C.gold); C.ice = v("--ice", C.ice); C.up = v("--up", C.ice); C.loss = v("--loss", C.loss); C.ink = v("--term2", C.ink);
   C.g = v("--gold-rgb", C.g); C.i = v("--ice-rgb", C.i); C.l = v("--loss-rgb", C.l);
 }
 const rgba = (rgb, a) => `rgba(${rgb},${a})`;
@@ -218,7 +218,7 @@ function draw(now) {
     if (x.t > tMkt || (x.te <= tMkt && x.te < Lv - 1)) continue;
     const closed = x.te <= tMkt, ex = X(x.t), ey = Y(x.entry), col = x.side > 0 ? C.ice : C.white;
     if (closed) {
-      const c2 = x.res >= 0 ? C.ice : C.loss;
+      const c2 = x.res >= 0 ? C.up : C.loss;
       cx.strokeStyle = c2; cx.globalAlpha = 0.55; cx.lineWidth = 1.2; cx.setLineDash([2, 3]);
       cx.beginPath(); cx.moveTo(ex, ey); cx.lineTo(X(x.te), Y(x.exit)); cx.stroke(); cx.setLineDash([]); cx.globalAlpha = 1;
     } else {
@@ -241,7 +241,7 @@ function draw(now) {
       const lab = `${x.side > 0 ? "BUY" : "SELL"} #${x.n}  ${sg(pl)} pts`; cx.font = `600 ${fs}px ${MONO}`;
       const w = cx.measureText(lab).width + 14, lx = pw - w - 8, ly = ey + (x.side > 0 ? 6 : -24);
       box(lx, ly, w, 18, 5); cx.fillStyle = "rgba(9,12,17,.88)"; cx.fill(); cx.strokeStyle = pl >= 0 ? rgba(C.i, 0.6) : rgba(C.l, 0.6); cx.lineWidth = 1; cx.stroke();
-      cx.fillStyle = pl >= 0 ? C.ice : C.loss; cx.textAlign = "left"; cx.textBaseline = "middle"; cx.fillText(lab, lx + 7, ly + 9.5); cx.textBaseline = "alphabetic";
+      cx.fillStyle = pl >= 0 ? C.up : C.loss; cx.textAlign = "left"; cx.textBaseline = "middle"; cx.fillText(lab, lx + 7, ly + 9.5); cx.textBaseline = "alphabetic";
       if (s.trail) { cx.font = `${fs}px ${MONO}`; cx.fillStyle = C.ice; cx.textAlign = "right"; cx.fillText("Trailing stop", lx - 10, Y(s.v) + (x.side > 0 ? 13 : -5)); }
       else { cx.font = `${fs}px ${MONO}`; cx.fillStyle = C.loss; cx.textAlign = "right"; cx.fillText("Stop loss", pw - 8, Y(x.sl0) + (x.side > 0 ? 13 : -5)); }
     }
@@ -264,7 +264,7 @@ function draw(now) {
     else { cx.moveTo(ex, ey + s); cx.lineTo(ex - s, ey - s * 0.85); cx.lineTo(ex + s, ey - s * 0.85); }
     cx.closePath(); cx.fill();
     if (x.te <= tMkt) {
-      const c2 = x.res >= 0 ? C.ice : C.loss, xx = X(x.te), yy = Y(x.exit);
+      const c2 = x.res >= 0 ? C.up : C.loss, xx = X(x.te), yy = Y(x.exit);
       cx.fillStyle = C.ink; cx.strokeStyle = c2; cx.lineWidth = 2; cx.beginPath(); cx.arc(xx, yy, small ? 3.5 : 4.5, 0, Math.PI * 2); cx.fill(); cx.stroke();
     }
   }
@@ -275,7 +275,7 @@ function draw(now) {
   cx.textAlign = "center"; cx.textBaseline = "alphabetic";
   for (const f of floaters) {
     const a = (rn - f.at) / 1.7, x = clamp(X(f.t), 26, pw - 26), y0 = Y(f.v), up = f.res >= 0 ? -1 : 1;
-    const col = f.res >= 0 ? C.ice : C.loss;
+    const col = f.res >= 0 ? C.up : C.loss;
     cx.globalAlpha = Math.max(0, 0.55 - a); cx.strokeStyle = col; cx.lineWidth = 1.5; cx.beginPath(); cx.arc(X(f.t), y0, 6 + a * 24, 0, Math.PI * 2); cx.stroke();
     cx.globalAlpha = 1 - a * a; cx.fillStyle = col; cx.font = `700 ${small ? 12 : 14}px ${MONO}`;
     cx.fillText(sg(f.res), x, y0 + up * (16 + a * 30) + (up > 0 ? 8 : 0));

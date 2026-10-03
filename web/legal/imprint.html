@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#000000">
-<script>try{var t=localStorage.getItem("gs-theme");if(t&&/^[a-z]+$/.test(t))document.documentElement.dataset.theme=t}catch(e){}</script>
+<script>try{var s=localStorage,d=document.documentElement,t=s.getItem("gs-theme"),v=s.getItem("gs-vars");if(s.getItem("gs-mode")==="light"){d.dataset.mode="light";var m=document.querySelector("meta[name=theme-color]");if(m)m.content="#F2F4F7"}if(t&&/^[a-z]+$/.test(t)){d.dataset.theme=t;if(t==="custom"&&v)d.style.cssText=v}}catch(e){}</script>
 <title>Imprint | GoldenStraddler</title>
 <meta name="description" content="Business details for GoldenStraddler.">
 <link rel="canonical" href="{{SITE_URL}}/imprint">

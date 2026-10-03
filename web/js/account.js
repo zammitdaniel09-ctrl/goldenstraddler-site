@@ -80,7 +80,7 @@ function renderLicences() {
     box.appendChild(c); return;
   }
   ME.licences.forEach((l) => {
-    const c = el("article", "licard"), left = el("div"), right = el("dl");
+    const c = el("article", "licard dark-ui"), left = el("div"), right = el("dl");
     const [st, cls] = statusText(l);
     left.append(el("span", "lab", PLAN[l.plan] + " licence"));
     const key = el("div", "key", l.key); left.appendChild(key);
