@@ -87,6 +87,21 @@ function legalVars(s: string) {
   return s.replace(/\{\{([A-Z_]+)\}\}/g, (_, k) => esc(v[k] ?? ""));
 }
 
+// structured data for search engines: the product with both plans, and the questions on the page
+function jsonLd(s: string) {
+  const strip = (h: string) => h.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/\s+/g, " ").replace(/\s+([.,])/g, "$1").trim();
+  const faq = [...s.matchAll(/<details><summary>([\s\S]*?)<\/summary><div class="a">([\s\S]*?)<\/div><\/details>/g)].map((m) => ({ "@type": "Question", name: strip(m[1]), acceptedAnswer: { "@type": "Answer", text: strip(m[2]) } }));
+  const price = (c: number) => (c / 100).toFixed(2), url = siteUrl() + "/";
+  const data = [
+    { "@context": "https://schema.org", "@type": "SoftwareApplication", name: "GoldenStraddler", applicationCategory: "FinanceApplication", operatingSystem: "Windows, MetaTrader 5", url,
+      description: "An Expert Advisor for MetaTrader 5 that trades gold (XAUUSD) around high-impact US news with a buy stop and a sell stop placed five seconds before each release and a trailing stop.",
+      offers: [{ "@type": "Offer", name: "Lifetime licence", price: price(listPrice("lifetime")), priceCurrency: "EUR", url: siteUrl() + "/checkout?plan=lifetime", availability: "https://schema.org/InStock" },
+        { "@type": "Offer", name: "Monthly licence", price: price(listPrice("monthly")), priceCurrency: "EUR", url: siteUrl() + "/checkout?plan=monthly", availability: "https://schema.org/InStock" }] },
+    ...(faq.length ? [{ "@context": "https://schema.org", "@type": "FAQPage", mainEntity: faq }] : []),
+  ];
+  return s.replace("<!--JSONLD-->", () => `<script type="application/ld+json">${JSON.stringify(data).replace(/</g, "\\u003c")}</script>`);
+}
+
 // ================================================================ live updates (Server-Sent Events)
 type Sub = { admin: boolean; licence: string };
 const subs = new Map<ReadableStreamDefaultController, Sub>();
@@ -490,7 +505,11 @@ async function handle(req: Request): Promise<Response> {
   }
   if (p === "/health") return json(200, { ok: true, uptime: Math.round((now() - STARTED) / 1000) });
   const pages: Record<string, [string, boolean?]> = { "/": ["index.html"], "/checkout": ["checkout.html"], "/account": ["account.html", true], "/admin": ["admin.html", true] };
-  if (pages[p]) return file(req, pages[p][0], { noindex: !!pages[p][1], replace: (s) => hubNav(legalVars(s)) });
+  if (pages[p]) return file(req, pages[p][0], { noindex: !!pages[p][1], replace: (s) => {
+    let o = hubNav(legalVars(s));
+    if (p === "/") { o = jsonLd(o); if (getS("record_public") !== "1") o = o.replace(/<a href="#record">/g, '<a href="#record" hidden>'); }
+    return o;
+  } });
   if (p === "/markets" || /^\/markets\/[a-z]{2,12}$/.test(p)) {
     const r = renderHub(p);
     if (!r) return notFound(req);

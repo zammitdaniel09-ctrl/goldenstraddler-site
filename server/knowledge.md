@@ -38,6 +38,7 @@ Buttons: PAUSE/RESUME; ARM NOW (opens a manual window straight away, 35 seconds 
 - There is no fixed minimum balance. Choose a lot size where a full stop loss plus slippage is an amount you're comfortable losing many times over.
 - Prop firms: many funded-account programmes don't allow trading around news. Check the rules first.
 - Demo first is recommended. The licence locks to the first account it runs on, and the customer can move it to their live account straight away from the account page.
+- There is no free trial. Instead there is the money-back guarantee (the refund window is in the live facts): someone can buy, run it on a demo account, and ask for a full refund from their account page within that window if it isn't for them. When someone is undecided, mention this.
 
 ## Brokers we use and partner with
 Any MT5 broker with gold works. On the home page (/#brokers) we list the three brokers we use and partner with. We are an introducing broker (IB) for all three and may earn a commission when someone opens an account through our links; always say so when you recommend one. Facts are from the brokers' own sites (September 2026) and can change.

@@ -318,7 +318,7 @@ function nextHtml() {
   for (const e of evs) { const k = new Date(e.utc * 1000).toISOString().slice(0, 10); days.set(k, [...(days.get(k) || []), e]); }
   return `<section class="mk-next" id="next" aria-labelledby="nx-h"><div class="wrap"><div class="sec-h nx-h"><div><h2 id="nx-h">Releases ahead</h2><p class="fine">Times in your time zone.</p></div><div class="pc-tf nx-v" role="tablist" aria-label="View"><button type="button" role="tab" data-nv="cards" aria-selected="true">Next up</button><button type="button" role="tab" data-nv="cal" aria-selected="false">Full week</button></div></div>
   <div data-nv-p="cards">${evs.length ? "" : `<p class="fine nx-none">No high-impact releases on the calendar for the next few days. The full week shows the rest.</p>`}<ol class="nx-l"${evs.length ? "" : " hidden"}>${evs.map((e) =>
-    `<li class="nx-i"><div class="nx-t"><time class="num" data-utc="${e.utc}" datetime="${new Date(e.utc * 1000).toISOString()}">${esc(dayTime(e.utc))}</time><span class="cd num" data-cd="${e.utc}"></span></div><div class="nx-m"><b class="ccy">${esc(e.ccy)}</b><span class="nx-n">${esc(e.title)}</span></div>${e.fc || e.prev ? `<div class="nx-f num">${e.fc ? `<span>Forecast <b>${esc(e.fc)}</b></span>` : ""}${e.prev ? `<span>Previous <b>${esc(e.prev)}</b></span>` : ""}</div>` : ""}${evLinks(e)}</li>`).join("")}</ol><p class="fine nx-note">High impact only. The full week adds medium impact releases and a filter by currency.</p></div>
+    `<li class="nx-i${eaTrades(e) ? " ea" : ""}"><div class="nx-t"><time class="num" data-utc="${e.utc}" datetime="${new Date(e.utc * 1000).toISOString()}">${esc(dayTime(e.utc))}</time><span class="cd num" data-cd="${e.utc}"></span></div><div class="nx-m"><b class="ccy">${esc(e.ccy)}</b><span class="nx-n">${esc(e.title)}</span></div>${e.fc || e.prev ? `<div class="nx-f num">${e.fc ? `<span>Forecast <b>${esc(e.fc)}</b></span>` : ""}${e.prev ? `<span>Previous <b>${esc(e.prev)}</b></span>` : ""}</div>` : ""}${eaTrades(e) ? `<a class="nx-ea" href="/#how">GoldenStraddler trades this</a>` : ""}${evLinks(e)}</li>`).join("")}</ol><p class="fine nx-note">High impact only. The full week adds medium impact releases and a filter by currency.</p></div>
   <div data-nv-p="cal" hidden>${calHtml()}</div></div></section>`;
 }
 function summary(bs: Brief[]) {
@@ -417,7 +417,7 @@ function calHtml() {
   return `<div class="cal" data-cal>
     <div class="cal-f"><div class="cal-c" role="group" aria-label="Currency"><button type="button" aria-pressed="true" data-ccy="all">All</button>${ccys.map((c) => `<button type="button" aria-pressed="false" data-ccy="${esc(c)}">${esc(c)}</button>`).join("")}</div>
       <label class="check cal-m"><input type="checkbox" data-med checked>Medium impact too</label></div>
-    <ol class="cal-l">${evs.map((e) => `<li class="cal-i" data-utc="${e.utc}" data-ccy="${esc(e.ccy)}" data-imp="${e.imp || "H"}"><time class="num" datetime="${new Date(e.utc * 1000).toISOString()}" data-utc="${e.utc}" data-fmt="t">${esc(dayTime(e.utc))}</time><span class="imp" title="${e.imp === "M" ? "Medium" : "High"} impact"><i></i><i></i><i></i></span><b class="ccy">${esc(e.ccy)}</b><span class="cal-n">${esc(e.title)}</span><span class="cal-x num">${e.fc ? `<span>Forecast <b>${esc(e.fc)}</b></span>` : ""}${e.prev ? `<span>Previous <b>${esc(e.prev)}</b></span>` : ""}</span><span class="cd num" data-cd="${e.utc}"></span></li>`).join("")}</ol>
+    <ol class="cal-l">${evs.map((e) => `<li class="cal-i" data-utc="${e.utc}" data-ccy="${esc(e.ccy)}" data-imp="${e.imp || "H"}"><time class="num" datetime="${new Date(e.utc * 1000).toISOString()}" data-utc="${e.utc}" data-fmt="t">${esc(dayTime(e.utc))}</time><span class="imp" title="${e.imp === "M" ? "Medium" : "High"} impact"><i></i><i></i><i></i></span><b class="ccy">${esc(e.ccy)}</b><span class="cal-n">${esc(e.title)}${eaTrades(e) ? ` <a class="cal-ea" href="/#how" title="GoldenStraddler trades this release">EA</a>` : ""}</span><span class="cal-x num">${e.fc ? `<span>Forecast <b>${esc(e.fc)}</b></span>` : ""}${e.prev ? `<span>Previous <b>${esc(e.prev)}</b></span>` : ""}</span><span class="cd num" data-cd="${e.utc}"></span></li>`).join("")}</ol>
   </div>`;
 }
 
@@ -527,6 +527,36 @@ function linksHtml(b: Brief, bs: Brief[]) {
     <h4 class="lnk-m">Against the macro numbers</h4><ul>${row("Dollar index", mc.dxy)}${row("Real yields, week change", mc.ry)}${row("2 year yield, week change", mc.y2)}${row("VIX, week change", mc.vix)}</ul></div>`;
 }
 
+// ---------------------------------------------------------------- the EA: these releases are what it trades
+const eaTrades = (e: { ccy: string; imp?: string; ad?: number }) => e.ccy === "USD" && e.imp !== "M" && !e.ad;   // the releases GoldenStraddler arms for
+function nextUsd() { const t = Date.now() / 1000; return calendar().find((e) => eaTrades(e) && e.utc > t - 30) || null; }
+function eaBandHtml() {
+  const e = nextUsd();
+  return `<section class="mk-ea" aria-labelledby="ea-h"><div class="wrap"><div class="ea-c">
+  <div class="ea-t">
+    <p class="ea-k">From the makers of this desk</p>
+    <h2 id="ea-h">Let GoldenStraddler trade the USD releases</h2>
+    <p>Our Expert Advisor for MetaTrader&nbsp;5 trades gold around every red-folder USD release on this calendar. Five seconds before the number it places a buy stop and a sell stop, the number picks the side, the other order is deleted, and a trailing stop follows the move.</p>
+    ${e ? `<p class="ea-n"><span><span class="dot"></span>Next one it trades: <b>${esc(e.title)}</b>, <time data-utc="${e.utc}" datetime="${new Date(e.utc * 1000).toISOString()}">${esc(dayTime(e.utc))}</time></span><span class="cd num" data-cd="${e.utc}"></span></p>` : ""}
+    <div class="ea-b"><a class="btn pri" href="/#pricing">Get GoldenStraddler</a><a class="btn" href="/">Watch a simulated release</a></div>
+  </div>
+  <ol class="ea-tl" aria-label="One release with GoldenStraddler">
+    <li><b class="num">−5 s</b><span>Buy stop and sell stop go in, 60 points either side</span></li>
+    <li class="hot"><b class="num">0 s</b><span>The number fills one side, the other is deleted</span></li>
+    <li><b class="num">+50 pts</b><span>The stop starts trailing and only ever tightens</span></li>
+    <li><b class="num">+30 s</b><span>Leftover orders removed, nothing left behind</span></li>
+  </ol>
+  <p class="ea-f fine">Runs on your own MT5 account with any broker that offers gold. ${esc(getS("refund_days") || "7")}-day money-back guarantee. Trading carries a high risk of loss.</p>
+</div></div></section>`;
+}
+function eaSide(b: Brief) {
+  if (b.id === "gold") return `<div class="card2 ea-s"><p class="ea-k">GoldenStraddler</p><h4>Trade gold's news spikes automatically</h4>
+    <p class="fine">Our MT5 Expert Advisor brackets gold five seconds before every red-folder USD release and trails whichever side the number picks.</p>
+    <ul><li>Both orders in at T−5 s</li><li>Trailing stop from +50 points</li><li>Nothing left pending after T+30 s</li></ul>
+    <a class="btn pri sm" href="/#pricing">Get GoldenStraddler</a><a class="ea-more" href="/#how">How it trades</a></div>`;
+  return `<div class="card2 ea-s sm"><p class="fine"><b>Trade the USD releases on gold?</b> GoldenStraddler, our MT5 Expert Advisor, places both sides five seconds before each red-folder release and trails the winner.</p><a class="ea-more" href="/">Watch a simulated release</a></div>`;
+}
+
 export function renderHub(path: string): { title: string; desc: string; html: string } | null {
   const bs = state.briefs;
   if (!bs.length) return { title: "Markets this week | GoldenStraddler", desc: "Weekly calls for gold, oil, forex and crypto from a scoring model on public data.",
@@ -553,6 +583,7 @@ export function renderHub(path: string): { title: string; desc: string; html: st
 ${clockHtml()}
 ${heatHtml(bs)}
 ${nextHtml()}
+${eaBandHtml()}
 ${deskHtml(bs)}
 ${toolsHtml(bs)}
 <section class="mk-briefs" id="briefs"><div class="wrap">
@@ -603,6 +634,7 @@ function oneHtml(b: Brief, bs: Brief[]) {
       <div class="card2 bf-w"><h4><svg aria-hidden="true"><use href="#i-eye"/></svg>Releases to watch</h4>${watchHtml(b.watch, 10)}</div>
     </div>
     <aside class="one-side">
+      ${b.id === "gold" ? eaSide(b) : ""}
       ${linksHtml(b, bs)}
       ${seasonHtml(b)}
       ${positionChart(b)}
@@ -610,6 +642,7 @@ function oneHtml(b: Brief, bs: Brief[]) {
       ${historyHtml(b)}
       ${others.length ? `<div class="card2 one-more"><h4>More ${esc(clsName(b.cls).toLowerCase())}</h4><ul>${others.map((o) => `<li><a href="/markets/${o.id}" class="mkt-n">${art(o.id, "sm")}<b>${esc(o.name)}</b></a>${pillHtml(o)}</li>`).join("")}</ul></div>` : ""}
       ${b.notes.length ? `<div class="card2">${b.notes.map((n) => `<p class="fine">${esc(n)}</p>`).join("")}</div>` : ""}
+      ${b.id !== "gold" ? eaSide(b) : ""}
     </aside>
   </div>
 </div></section>`;

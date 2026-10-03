@@ -258,7 +258,7 @@ async function cot(code: string) {
 }
 
 // ---------------------------------------------------------------- calendar: this week and next week, every currency, high impact only
-export type Ev = { utc: number; ccy: string; title: string; fc: string; prev: string; imp?: "H" | "M" };
+export type Ev = { utc: number; ccy: string; title: string; fc: string; prev: string; imp?: "H" | "M"; ad?: 1 };   // ad: all day or tentative, no set time
 export function calendar(): Ev[] { try { return JSON.parse(kvGet("cal") || "[]"); } catch { return []; } }
 // high and medium impact, for the full calendar on the Markets page (the calls and their briefs only use high impact)
 export function calendarAll(): Ev[] { try { const x = JSON.parse(kvGet("cal_all") || "[]"); return x.length ? x : calendar().map((e) => ({ ...e, imp: "H" })); } catch { return []; } }
@@ -276,6 +276,7 @@ async function cal() {
           if (!Number.isFinite(utc)) continue;
           const ev = { utc, ccy: String(e.country || "").slice(0, 3), title: String(e.title || "").slice(0, 100), fc: String(e.forecast || "").slice(0, 20), prev: String(e.previous || "").slice(0, 20) };
           if (!/^[A-Z]{3}$/.test(ev.ccy)) continue;                       // a currency code, nothing else
+          if (/T00:00:00/.test(e.date)) (ev as Ev).ad = 1;
           if (e.impact === "High") out.set(ev.ccy + ev.utc + ev.title, ev); else med.set(ev.ccy + ev.utc + ev.title, { ...ev, imp: "M" });
         }
       } catch (e: any) { if (wk === "thisweek") throw e; }               // next week's file only appears late in the week

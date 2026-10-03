@@ -11,7 +11,7 @@ HEAD = '''<!doctype html>
 <title>{title} | GoldenStraddler</title>
 <meta name="description" content="{desc}">
 <link rel="canonical" href="{{{{SITE_URL}}}}/{slug}">
-<meta property="og:type" content="website"><meta property="og:site_name" content="GoldenStraddler"><meta property="og:title" content="{title} | GoldenStraddler"><meta property="og:image" content="{{{{SITE_URL}}}}/og.png">
+<meta property="og:type" content="website"><meta property="og:site_name" content="GoldenStraddler"><meta property="og:title" content="{title} | GoldenStraddler"><meta property="og:image" content="{{{{SITE_URL}}}}/og.png?v=2">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preload" href="/fonts/unbounded-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/fonts/space-grotesk-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/css/fonts.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/site.css"><link rel="stylesheet" href="/css/chat.css">

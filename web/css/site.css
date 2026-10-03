@@ -758,3 +758,19 @@ body.lock{overflow:hidden}
 .mt-l .meter i{position:absolute;top:-4px;width:4px;height:13px;margin-left:-2px;border-radius:2px;background:var(--white)}
 @media (max-width:900px){.mt-l{grid-template-columns:1fr 1fr}}
 @media (max-width:600px){.mt{padding:30px 0 34px}.mt-h{grid-template-columns:1fr}.mt-h .btn{grid-row:auto;grid-column:auto;justify-self:start}.mt-l{grid-template-columns:1fr;gap:8px}.mt-l li:nth-child(n+5){display:none}}
+
+/* ---------------------------------------------------------------- sales additions */
+.go{display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px;margin-top:34px}
+.go .fine{max-width:46ch}
+.nx-buy{display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid var(--edge);font-size:14px;color:var(--txt2)}
+.dk-next.armed .nx-buy,.dk-next.soon .nx-buy{display:none}
+/* what changed in the latest version */
+.news{margin-top:44px;padding:24px 26px;border:1px solid rgba(var(--ice-rgb),.3);border-radius:20px;background:linear-gradient(180deg,rgba(var(--ice-rgb),.07),rgba(var(--ice-rgb),.015)),var(--carbon)}
+.news-h{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.news-h h3{font:600 19px var(--body)}
+.news-h .fine{flex-basis:100%;margin-top:-6px}
+.news ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:12px 28px}
+.news li{font-size:14.5px;color:var(--txt2)}
+.news li b{display:block;color:var(--white);font-weight:600;margin-bottom:2px}
+.news .fine{margin-top:16px}
+@media (max-width:760px){.news{padding:18px}.news ul{grid-template-columns:1fr}}

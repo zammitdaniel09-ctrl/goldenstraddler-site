@@ -60,7 +60,7 @@ function shortName(g) { for (const [re, n] of SHORT) if (g.titles.some((t) => re
 const when = (utc, long) => new Date(utc * 1000).toLocaleString(undefined, long ? { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" } : { weekday: "short", hour: "2-digit", minute: "2-digit" });
 const hhmmss = (ms) => new Date(ms).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
-let WEEK = [], PROMO = null, weekKey = "", REC = null;
+let WEEK = [], PROMO = null, weekKey = "", REC = null, REFUND = 0;
 const ARM_MS = 5000, WIN_MS = 30000;   // the EA's default window: on 5 s before a release, off 30 s after
 function upcoming(now) { return GROUPS.filter((g) => g.utc * 1000 > now - WIN_MS); }
 
@@ -76,6 +76,9 @@ function tickNext(now) {
   roll($("nxCount"), live ? [{ v: "+", c: "sep" }, ...tokens(-left)] : tokens(left));
   $("nxBar").style.width = (live ? 100 : Math.max(0, Math.min(1, 1 - left / 86400000)) * 100).toFixed(2) + "%";
   $("nxArm").textContent = live ? "The EA trails whichever side filled. Leftover orders go 30 seconds after the release." : armed ? "Buy stop and sell stop are 60 points either side of price." : `The EA arms at ${hhmmss(g.utc * 1000 - ARM_MS)}, your time.`;
+  // card payments deliver the licence straight away and setup takes about five minutes, so offer it while the release is over an hour away
+  const nb = $("nxBuy"); nb.hidden = left < 3600000;
+  if (!nb.hidden) $("nxBuyT").textContent = `Pay by card and set it up in about five minutes, and it can be armed for ${shortName(g)}.`;
   // same data on the example licence card
   $("licNext").textContent = `${names(g)}, ${when(g.utc, false)}`;
   $("licArm").textContent = `Arms at ${hhmmss(g.utc * 1000 - ARM_MS)}, your time`;
@@ -157,6 +160,7 @@ function applyPromo(pm) {
   set("lifetime", "pLifeWas", "pLife", "pLifeU", "buyLife", "Buy lifetime");
   set("monthly", "pMonWas", "pMon", "pMonU", "buyMon", "Start monthly");
   const hb = $("heroBuy"); hb.href = href; hb.textContent = `Get it for ${eur(q.amount)}`;
+  $("heroPay").textContent = `${eur(q.amount)} ${plan === "lifetime" ? "once" : q.note === "every month" ? "a month" : "for the first month"} with code ${code}, normally ${eur(q.list)}.${REFUND ? ` ${REFUND}-day money-back guarantee.` : ""}`;
   $("sheetBuy").href = href; $("sheetBuy").textContent = `Get it for ${eur(q.amount)}`;
   $("mbWas").textContent = eur(q.list); $("mbNow").textContent = eur(q.amount); $("mbU").textContent = plan === "lifetime" ? "lifetime" : "first month"; $("mbGo").href = href;
   if (PROMO.plans.lifetime) { const tg = $("pTag"); tg.textContent = `${eur(PROMO.plans.lifetime.list - PROMO.plans.lifetime.amount)} off with code ${code}`; tg.classList.add("gold"); }
@@ -281,6 +285,10 @@ function applyPublic(j) {
     const n = Math.ceil(j.prices.lifetime / j.prices.monthly);
     $("pTag").textContent = n > 1 && n <= 12 ? `Costs less than ${WORDS[n]} months of monthly` : "Pay once";
   }
+  REFUND = j.refundDays || REFUND;
+  if (j.prices) {
+    $("heroPay").textContent = `${eur(j.prices.lifetime)} once or ${eur(j.prices.monthly)} a month.${j.refundDays ? ` ${j.refundDays}-day money-back guarantee.` : ""}`;
+  }
   if (j.methods) {
     const m = j.methods, parts = [];
     if (m.card) parts.push("by <b>card, Apple Pay or Google Pay</b>");
@@ -298,6 +306,8 @@ function applyPublic(j) {
   WEEK = j.week || [];
   if (j.record) REC = j.record;
   if (j.record && j.record.trades && $("record").hidden) record(j.record);
+  // the Results links only lead somewhere while the live record is public
+  document.querySelectorAll('a[href="#record"]').forEach((a) => (a.hidden = !(j.record && j.record.trades)));
   if (j.verifyUrl) {
     const v = $("recVerify"); v.replaceChildren("Independently tracked: ");
     const a = document.createElement("a"); a.href = j.verifyUrl; a.rel = "noopener"; a.target = "_blank"; a.textContent = "see the verified record"; v.appendChild(a); v.append(".");

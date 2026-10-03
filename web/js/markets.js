@@ -294,8 +294,9 @@ if (ck) {
     else if (on.length) { const nextS = D.s.filter((s, k) => !isOpen[k]).map((s) => ({ n: s[0], t: nextChange((t) => open(s, t), now) })).filter((x) => x.t).sort((x, y) => x.t - y.t)[0];
       txt = `<b>${on.join(" and ")}</b> ${on.length > 1 ? "are" : "is"} open.${nextS ? ` ${nextS.n} opens in ${dur(nextS.t - now)}.` : ""}`; }
     else txt = "Between sessions: forex is quiet until the next one opens.";
-    const ev = D.e.find(([u]) => u * 1000 > now);
+    const ev = D.e.find(([u]) => u * 1000 > now), usd = D.e.find(([u, c]) => c === "USD" && u * 1000 > now);
     if (ev) txt += ` Next high-impact release: <b>${escH(ev[1] + " " + ev[2])}</b> in ${dur(ev[0] * 1000 - now)}.`;
+    if (usd) txt += ` <a href="/#how">GoldenStraddler</a> arms five seconds before ${usd === ev ? "it" : "the next USD one, " + escH(usd[2])}.`;
     stEl.innerHTML = txt;
   }
   draw(); setInterval(draw, 30000); addEventListener("resize", () => { built = ""; draw(); });

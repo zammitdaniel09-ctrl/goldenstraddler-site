@@ -13,18 +13,19 @@
 <meta property="og:title" content="GoldenStraddler: ready before the number drops">
 <meta property="og:description" content="The news straddle EA for gold on MetaTrader 5. Armed 5 seconds before every high-impact US release.">
 <meta property="og:url" content="{{SITE_URL}}/">
-<meta property="og:image" content="{{SITE_URL}}/og.png">
+<meta property="og:image" content="{{SITE_URL}}/og.png?v=2">
 <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="GoldenStraddler: a buy stop and a sell stop placed around gold before a US news release">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="GoldenStraddler: ready before the number drops">
 <meta name="twitter:description" content="The news straddle EA for gold on MetaTrader 5.">
-<meta name="twitter:image" content="{{SITE_URL}}/og.png">
+<meta name="twitter:image" content="{{SITE_URL}}/og.png?v=2">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preload" href="/fonts/unbounded-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/fonts/space-grotesk-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/css/fonts.css">
 <link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/site.css"><link rel="stylesheet" href="/css/chat.css">
+<!--JSONLD-->
 </head>
 <body class="home">
 <a class="skip" href="#main">Skip to content</a>
@@ -68,8 +69,8 @@
     <h1>Ready before the number drops.</h1>
     <div class="hero-side">
       <p class="sub">GoldenStraddler is an Expert Advisor for MetaTrader&nbsp;5 that trades gold around high-impact US news. Five seconds before each release it brackets price with a buy stop and a sell stop. The number picks the side and a trailing stop follows the move.</p>
-      <div class="cta"><a class="btn pri" id="heroBuy" href="#pricing">See pricing</a><a class="btn" href="#how">How it works</a></div>
-      <p class="meta" id="heroPay">Card, Apple Pay, Google Pay or crypto. Card checkout is handled by Stripe.</p>
+      <div class="cta"><a class="btn pri" id="heroBuy" href="#pricing">Get GoldenStraddler</a><a class="btn" href="#how">How it works</a></div>
+      <p class="meta" id="heroPay">{{PRICE_LIFETIME}} once or {{PRICE_MONTHLY}} a month, with a {{REFUND_DAYS}}-day money-back guarantee.</p>
     </div>
   </div>
   <figure class="term dark-ui" id="term">
@@ -134,6 +135,7 @@
     <p class="when" id="nxWhen"></p>
     <div class="count" id="nxCount" role="timer" aria-live="off"></div>
     <div class="arm"><div class="track" aria-hidden="true"><i id="nxBar"></i></div><span class="fine" id="nxArm"></span></div>
+    <p class="nx-buy" id="nxBuy" hidden><span id="nxBuyT">Setup takes about five minutes, so it can be armed for this one.</span><a class="btn pri sm" href="#pricing">Get it armed</a></p>
   </article>
   <article class="dk dk-gold" id="gold" data-panel="gold" hidden>
     <div class="dk-h"><span class="lab">Gold spot, XAU/USD</span><span class="chip gold pulse" id="gLive"><i></i>Live</span></div>
@@ -168,6 +170,7 @@
     <div class="vs-r" role="row"><b role="rowheader">Afterwards</b><span role="cell"><svg aria-hidden="true"><use href="#i-x"/></svg>Leftover orders are easy to forget.</span><span role="cell" class="us"><svg aria-hidden="true"><use href="#i-check"/></svg>Anything unfilled is removed 30 seconds after the release.</span></div>
     <div class="vs-r" role="row"><b role="rowheader">The calendar</b><span role="cell"><svg aria-hidden="true"><use href="#i-x"/></svg>You check it yourself and set alarms.</span><span role="cell" class="us"><svg aria-hidden="true"><use href="#i-check"/></svg>The week's releases load on their own, with two backups.</span></div>
   </div>
+  <div class="go"><a class="btn pri" href="#pricing">Let it trade the next release</a><span class="fine">{{REFUND_DAYS}}-day money-back guarantee. Set up in about five minutes.</span></div>
 </div></section>
 
 <section class="sec rule" id="how"><div class="wrap">
@@ -182,6 +185,7 @@
     <li><span class="t">+30 s</span><h3>Disarms</h3><p>Leftover pending orders are removed. A trade that's still open keeps trailing until its stop closes it.</p></li>
   </ol>
   <p class="defaults">These are the defaults. Lot size, distances, stop loss, trailing, the window around each release and the currency are all inputs you can change, and there's an always-on mode if you want it trading between releases too.</p>
+  <div class="go"><a class="btn pri" href="#pricing">See the plans</a><button class="btn" type="button" data-chat-open>Ask a question first</button></div>
 </div></section>
 
 <section class="sec rule" id="record" hidden><div class="wrap">
@@ -199,6 +203,7 @@
       <p class="fine" id="recVerify"></p>
     </div>
   </div>
+  <div class="go"><a class="btn pri" href="#pricing">Run it on your account</a><span class="fine">One account on one broker: your fills and results will differ.</span></div>
 </div></section>
 
 <section class="sec rule" id="need"><div class="wrap need">
@@ -272,6 +277,16 @@
       <div><dt>Updates and help</dt><dd><span class="lg">New versions appear in your account. Ask the assistant any time, or reach us from your account page.</span><span class="sh">New versions in your account, and real people.</span></dd></div>
     </dl>
   </div>
+  <div class="news" aria-labelledby="newsH">
+    <div class="news-h"><span class="chip"><i></i>Version 3.10</span><h3 id="newsH">What's new in this version</h3><p class="fine">Built from what we measured on our own live account at the 2 October payrolls release.</p></div>
+    <ul>
+      <li><b>Both orders leave together.</b> Orders go out without waiting for the broker to answer, so the buy stop and sell stop are sent in the same instant.</li>
+      <li><b>Priced from the newest tick.</b> Every order and stop move uses the latest price, and a refused side is resent on its own while the other stays in place.</li>
+      <li><b>Spread-aware.</b> When the spread widens before the number, entry and stop move out to at least twice the spread, so normal pre-release widening doesn't trigger them.</li>
+      <li><b>A tighter window.</b> On 5 seconds before the release and off 30 seconds after, with a timing log after each release.</li>
+    </ul>
+    <p class="fine">Customers get every new version from their account page at no extra cost.</p>
+  </div>
 </div></section>
 
 <section class="sec rule glow" id="pricing"><div class="wrap">
@@ -318,6 +333,7 @@
   <div class="faq">
     <details><summary>Which brokers does it work with?</summary><div class="a"><p>Any MetaTrader 5 broker that offers gold. The ones we use and partner with are <a href="#brokers">listed above</a>. Attach it to your broker's gold symbol, whether that's called XAUUSD, GOLD or something like XAUUSD.r. It works on 2-digit and 3-digit gold quotes and scales its point distances automatically. Raw-spread or ECN accounts with fast execution give the best fills around news.</p></div></details>
     <details><summary>How much do I need in my account?</summary><div class="a"><p>There's no fixed minimum. What matters is lot size: at the default 0.10 lots, a full 100-point stop loss is about $10 plus slippage and costs. Use the calculator above and pick a size where a full stop is an amount you're comfortable losing many times over.</p></div></details>
+    <details><summary>Is there a free trial?</summary><div class="a"><p>There's no free trial, but there's a {{REFUND_DAYS}}-day money-back guarantee. Run it on a demo account first if you like: if it isn't for you, ask for a refund from your account page within {{REFUND_DAYS}} days of your first payment and you get the full amount back.</p></div></details>
     <details><summary>Can I try it on a demo account first?</summary><div class="a"><p>Yes, and we recommend it. The licence locks to the first account it runs on, and you can move it to your live account straight away from your account page.</p></div></details>
     <details><summary>Can I use it on a prop firm account?</summary><div class="a"><p>Check your firm's rules first. Many funded-account programmes don't allow trading around news, and breaking that rule can cost you the account or your payouts.</p></div></details>
     <details><summary>How often does it trade?</summary><div class="a"><p>Only around high-impact USD releases, the red-folder events such as Non-Farm Payrolls, CPI and FOMC. Most weeks have a handful. Between releases it does nothing, by design. If you want it trading all the time there's an always-on mode, but that's a much busier way to trade.</p></div></details>
