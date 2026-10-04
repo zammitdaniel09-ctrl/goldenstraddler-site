@@ -34,11 +34,12 @@
         <div class="pick" id="plans">
           <label><input type="radio" name="plan" value="lifetime" checked><b>Lifetime</b><span class="p" id="lpLife">{{PRICE_LIFETIME}}</span><span>One payment, never expires</span></label>
           <label><input type="radio" name="plan" value="monthly"><b>Monthly</b><span class="p" id="lpMon">{{PRICE_MONTHLY}}</span><span>A month, cancel any time</span></label>
+          <label id="jPlan" hidden><input type="radio" name="plan" value="journal"><b>Journal</b><span class="p" id="lpJournal"></span><span>The journal with the AI coach, a month, cancel any time</span></label>
         </div>
       </section>
 
       <section class="step" aria-labelledby="h-you">
-        <h2 id="h-you">Where should we send your licence?</h2>
+        <h2 id="h-you" data-lic>Where should we send your licence?</h2>
         <div class="form">
           <label>Email<input class="field" name="email" id="email" type="email" autocomplete="email" required maxlength="200" placeholder="you@example.com"></label>
           <label>Name (optional)<input class="field" name="name" autocomplete="name" maxlength="80"></label>
@@ -79,7 +80,7 @@
       <div class="safe">
         <span id="safeProc">Card and wallet payments are handled by Stripe. We never see your card details.</span>
         <span>Refund within {{REFUND_DAYS}} days of your first payment if it isn't for you.</span>
-        <span>One licence runs on one MT5 account.</span>
+        <span id="oneAcc">One licence runs on one MT5 account.</span>
       </div>
     </aside>
   </form>

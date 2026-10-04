@@ -45,6 +45,16 @@ const keyBox = (k: string) =>
 
 export function mailLicence(o: Order, l: Licence) {
   const site = siteUrl();
+  if (l.plan === "journal") return sendMail(o.email, "Your GoldenStraddler Journal is ready", layout("Your journal is ready", [
+    p(`Thanks for subscribing to GoldenStraddler Journal (${euros(o.amount_cents)} a month). Sign in with this email address to open it.`),
+    `<ol style="margin:0 0 16px 18px;padding:0;font-size:15px;line-height:1.7;color:#2a3140">
+      <li>Open the journal and add your trading account.</li>
+      <li>Connect MT5 with the small connector EA, or import a history file from MT4, MT5 or any platform.</li>
+      <li>Ask the AI coach what's working and where your trading leaks.</li></ol>`,
+    btn(site + "/journal/app", "Open your journal"),
+    p(`Order ${esc(o.id)}. Your subscription renews every month until you cancel it from your account.`),
+    p(`Not happy? You can ask for a full refund within ${getS("refund_days")} days from your account page.`),
+  ].join("")));
   const plan = l.plan === "lifetime" ? "Lifetime licence" : "Monthly subscription";
   return sendMail(o.email, "Your GoldenStraddler licence", layout("You're in. Here's your licence.", [
     p(`Thanks for buying GoldenStraddler (${plan}, ${euros(o.amount_cents)}). Your licence key:`),
@@ -62,7 +72,8 @@ export function mailLicence(o: Order, l: Licence) {
 
 export function mailRenewed(o: Order, l: Licence) {
   return sendMail(o.email, "GoldenStraddler subscription renewed", layout("Payment received, you're set for another month", [
-    p(`We received ${euros(o.amount_cents)} for your GoldenStraddler subscription. The bot keeps running without anything to do on your side.`),
+    p(l.plan === "journal" ? `We received ${euros(o.amount_cents)} for your GoldenStraddler Journal subscription. Your journal stays open with everything in it.`
+      : `We received ${euros(o.amount_cents)} for your GoldenStraddler subscription. The bot keeps running without anything to do on your side.`),
     l.expires_at ? p(`Paid until ${new Date(l.expires_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}.`) : "",
     btn(siteUrl() + "/account", "View your account"),
   ].join("")));
@@ -88,7 +99,7 @@ export function mailBankInstructions(o: Order) {
 
 export function mailExpiring(email: string, l: Licence, payUrl: string) {
   return sendMail(email, "Your GoldenStraddler subscription ends soon", layout("Your subscription ends soon", [
-    p(`Your GoldenStraddler subscription runs until ${new Date(l.expires_at || 0).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}. Pay for the next month to keep the bot running.`),
+    p(`Your GoldenStraddler ${l.plan === "journal" ? "Journal " : ""}subscription runs until ${new Date(l.expires_at || 0).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}. Pay for the next month to keep ${l.plan === "journal" ? "your journal open" : "the bot running"}.`),
     btn(payUrl, "Pay for next month"),
   ].join("")));
 }

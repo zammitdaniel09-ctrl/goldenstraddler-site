@@ -52,10 +52,14 @@ async function start() {
   const q = new URLSearchParams(location.search);
   if (q.has("welcome") || sessionStorageGet("gs_welcome")) {
     $("welcome").hidden = false;
-    $("welcomeTxt").textContent = "Payment received, you're in. Your licence key is below and in your email. Download the EA, follow the four steps, and it locks to your MT5 account the first time it runs.";
+    $("welcomeTxt").textContent = ME.hasEa ? "Payment received, you're in. Your licence key is below and in your email. Download the EA, follow the four steps, and it locks to your MT5 account the first time it runs."
+      : "Payment received, you're in. Open your journal to add your trading account and bring your trades in.";
   }
   renderLicences(); renderOrders(); helpForm();
-  const lics = ME.licences.filter((l) => l.status !== "revoked");
+  // journal-only customers have no EA to download or dashboard to show
+  if (!ME.hasEa) document.querySelectorAll("[data-ea-only]").forEach((x) => (x.hidden = true));
+  if (ME.journal) { const j = $("journalCard"); if (j) j.hidden = false; }
+  const lics = ME.licences.filter((l) => l.status !== "revoked" && l.plan !== "journal");
   const pick = $("licPick");
   if (lics.length > 1) {
     pick.hidden = false; pick.replaceChildren();
@@ -82,12 +86,13 @@ function renderLicences() {
   ME.licences.forEach((l) => {
     const c = el("article", "licard dark-ui"), left = el("div"), right = el("dl");
     const [st, cls] = statusText(l);
-    left.append(el("span", "lab", PLAN[l.plan] + " licence"));
+    left.append(el("span", "lab", l.plan === "journal" ? "Journal plan" : PLAN[l.plan] + " licence"));
     const key = el("div", "key", l.key); left.appendChild(key);
     const row = el("div", "row");
     const cp = el("button", "btn sm pri", "Copy licence key"); cp.type = "button"; cp.onclick = () => copyText(l.key, cp); row.appendChild(cp);
-    if (l.plan === "monthly" && l.stripe_sub && ME.customer.portal) row.appendChild(act(el("button", "btn sm", "Manage subscription"), async () => { const r = await api("/api/me/portal", {}); location.href = r.url; }));
-    if (l.plan === "monthly" && !l.stripe_sub && l.status !== "revoked") {
+    if (l.plan === "journal" && l.status === "active") { const o = el("a", "btn sm", "Open your journal"); o.href = "/journal/app"; row.appendChild(o); }
+    if (l.plan !== "lifetime" && l.stripe_sub && ME.customer.portal) row.appendChild(act(el("button", "btn sm", "Manage subscription"), async () => { const r = await api("/api/me/portal", {}); location.href = r.url; }));
+    if (l.plan !== "lifetime" && !l.stripe_sub && l.status !== "revoked") {
       if (ME.methods.crypto) row.appendChild(act(el("button", "btn sm", "Pay next month in crypto"), async () => { const r = await api("/api/me/renew", { licence: l.id, method: "crypto" }); location.href = r.url; }));
       if (ME.methods.bank) row.appendChild(act(el("button", "btn sm", "Pay next month by bank transfer"), async () => { const r = await api("/api/me/renew", { licence: l.id, method: "bank" }); location.href = r.url; }));
     }
@@ -99,9 +104,12 @@ function renderLicences() {
     left.appendChild(row);
     const add = (k, v, extra) => { right.append(el("dt", "", k)); const d = el("dd"); if (v instanceof Node) d.appendChild(v); else d.textContent = v; if (extra) d.append(" ", el("span", "fine", extra)); right.append(d); };
     add("Status", el("span", "pill " + cls, st));
-    if (l.plan === "monthly") add(l.stripe_sub ? "Renews" : "Paid until", l.expires_at ? dateFmt(l.expires_at, false) : DASH, l.stripe_sub ? "automatically" : "");
-    add("MT5 account", l.account ? `${l.account}${l.account_demo ? " (demo)" : ""}` : "Locks on first run", l.account_server || "");
-    add("EA", l.online ? "online now" : l.last_seen ? "last seen " + agoFmt(l.last_seen) : "not connected yet");
+    if (l.plan !== "lifetime") add(l.stripe_sub ? "Renews" : "Paid until", l.expires_at ? dateFmt(l.expires_at, false) : DASH, l.stripe_sub ? "automatically" : "");
+    if (l.plan === "journal") add("Includes", "GoldenStraddler Journal with the AI coach");
+    else {
+      add("MT5 account", l.account ? `${l.account}${l.account_demo ? " (demo)" : ""}` : "Locks on first run", l.account_server || "");
+      add("EA", l.online ? "online now" : l.last_seen ? "last seen " + agoFmt(l.last_seen) : "not connected yet");
+    }
     if (l.account && !l.canMove && l.nextMove) add("Next move", "from " + dateFmt(l.nextMove, false));
     c.append(left, right); box.appendChild(c);
   });

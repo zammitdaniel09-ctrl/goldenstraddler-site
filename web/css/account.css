@@ -36,3 +36,8 @@
 .showme summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .15s}
 .showme[open] summary::before{transform:rotate(45deg)}
 .showme img{display:block;width:100%;height:auto;margin-top:12px;border-radius:10px;border:1px solid var(--edge2)}
+
+/* the journal, included with the plan */
+.jcard{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.jcard h3{font:700 19px var(--disp);letter-spacing:-.015em;margin:4px 0 6px}
+.jcard .fine{max-width:64ch}

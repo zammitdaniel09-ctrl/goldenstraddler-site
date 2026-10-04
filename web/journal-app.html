@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#000000">
+<script>try{var s=localStorage,d=document.documentElement,t=s.getItem("gs-theme"),v=s.getItem("gs-vars");if(s.getItem("gs-mode")==="light"){d.dataset.mode="light";var m=document.querySelector("meta[name=theme-color]");if(m)m.content="#F2F4F7"}if(t&&/^[a-z]+$/.test(t)){d.dataset.theme=t;if(t==="custom"&&v)d.style.cssText=v}}catch(e){}</script>
+<title>Journal | GoldenStraddler</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/space-grotesk-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/fonts.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/site.css"><link rel="stylesheet" href="/css/journal.css">
+</head>
+<body class="jr">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="gs" viewBox="0 0 64 64"><rect x="1" y="1" width="62" height="62" rx="16" fill="#0E1116" stroke="#2e3644" stroke-width="2"/><text x="25" y="44" font-family="Unbounded,Arial Black,sans-serif" font-weight="800" font-size="30" fill="#fff" text-anchor="middle">G</text><text x="42" y="49" font-family="Sedgwick Ave,Segoe Script,cursive" font-size="36" style="fill:var(--ice)" text-anchor="middle">S</text></symbol>
+  <symbol id="j-home" viewBox="0 0 24 24"><path d="M3.5 11.2 12 4.5l8.5 6.7V19a1.5 1.5 0 0 1-1.5 1.5h-4.2v-5.6H9.2v5.6H5A1.5 1.5 0 0 1 3.5 19z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+  <symbol id="j-list" viewBox="0 0 24 24"><path d="M8.5 6.5h12M8.5 12h12M8.5 17.5h12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="4.5" cy="6.5" r="1.2" fill="currentColor"/><circle cx="4.5" cy="12" r="1.2" fill="currentColor"/><circle cx="4.5" cy="17.5" r="1.2" fill="currentColor"/></symbol>
+  <symbol id="j-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 10h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  <symbol id="j-chart" viewBox="0 0 24 24"><path d="M4 20V4M4 20h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M7.5 15.5l3.5-4 3 2.5 5-6.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="j-book" viewBox="0 0 24 24"><path d="M5 4.5h10.5A3.5 3.5 0 0 1 19 8v11.5H8.5A3.5 3.5 0 0 1 5 16z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M5 16a3.5 3.5 0 0 1 3.5-3.5H19M9 8.5h6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  <symbol id="j-shield" viewBox="0 0 24 24"><path d="M12 2.8l7.5 3v5.6c0 4.6-3.1 8.4-7.5 9.8-4.4-1.4-7.5-5.2-7.5-9.8V5.8z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8.6 12.2l2.4 2.4 4.5-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="j-spark" viewBox="0 0 24 24"><path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1L5 10.5l5.1-1.9zM18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+  <symbol id="j-wallet" viewBox="0 0 24 24"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A1.5 1.5 0 0 1 19 6.5V8M4 7.5v10A2.5 2.5 0 0 0 6.5 20h12a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 18.5 8H6.5A2.5 2.5 0 0 1 4 7.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="16" cy="14" r="1.3" fill="currentColor"/></symbol>
+  <symbol id="j-cog" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  <symbol id="j-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="j-x" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11m0-11l-11 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="j-up" viewBox="0 0 24 24"><path d="M12 19V5m0 0l-6 6m6-6l6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="j-down" viewBox="0 0 24 24"><path d="M12 5v14m0 0l-6-6m6 6l6-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="j-left" viewBox="0 0 24 24"><path d="M14.5 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="j-right" viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="j-star" viewBox="0 0 24 24"><path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+  <symbol id="j-img" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="9" cy="10" r="1.6" fill="currentColor"/><path d="M4 17l5-4.5 4 3.5 3-2.5 4.5 3.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+  <symbol id="j-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M15 15l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="j-filter" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="j-upload" viewBox="0 0 24 24"><path d="M12 15V4m0 0L7.5 8.5M12 4l4.5 4.5M5 15v3.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="j-dl" viewBox="0 0 24 24"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 15v3.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="j-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="j-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="j-send" viewBox="0 0 24 24"><path d="M4.5 12l15-7.5-5 15-2.5-6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+  <symbol id="j-trash" viewBox="0 0 24 24"><path d="M5 7h14M10 7V5h4v2M7 7l1 12.5h8L17 7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="j-note" viewBox="0 0 24 24"><path d="M5 4.5h14v11l-4 4H5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8.5 9h7M8.5 12.5h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+</svg>
+
+<div class="j-shell" id="shell">
+  <aside class="j-side" id="side" aria-label="Journal">
+    <a class="mark" href="/journal"><svg aria-hidden="true"><use href="#gs"/></svg><span>Journal</span></a>
+    <nav class="j-nav" aria-label="Sections">
+      <a href="#/overview" data-v="overview"><svg aria-hidden="true"><use href="#j-home"/></svg>Overview</a>
+      <a href="#/trades" data-v="trades"><svg aria-hidden="true"><use href="#j-list"/></svg>Trades<em id="navReview" hidden></em></a>
+      <a href="#/days" data-v="days"><svg aria-hidden="true"><use href="#j-cal"/></svg>Daily journal</a>
+      <a href="#/analytics" data-v="analytics"><svg aria-hidden="true"><use href="#j-chart"/></svg>Analytics</a>
+      <a href="#/playbooks" data-v="playbooks"><svg aria-hidden="true"><use href="#j-book"/></svg>Setups</a>
+      <a href="#/discipline" data-v="discipline"><svg aria-hidden="true"><use href="#j-shield"/></svg>Discipline</a>
+      <a href="#/coach" data-v="coach"><svg aria-hidden="true"><use href="#j-spark"/></svg>AI coach</a>
+      <a href="#/accounts" data-v="accounts"><svg aria-hidden="true"><use href="#j-wallet"/></svg>Accounts and import</a>
+      <a href="#/settings" data-v="settings"><svg aria-hidden="true"><use href="#j-cog"/></svg>Settings</a>
+    </nav>
+    <div class="j-side-f">
+      <div class="thm"><button class="thm-btn" id="thmBtn" type="button" aria-expanded="false" aria-controls="thmPop" aria-label="Colours"><i class="thm-sw"></i></button><div class="thm-pop up" id="thmPop" hidden data-thm-host></div></div>
+      <div class="who"><b id="whoEmail"></b><a href="/account">Your account</a></div>
+    </div>
+  </aside>
+  <div class="j-scrim" id="scrim" hidden></div>
+
+  <div class="j-body">
+    <div class="j-demo" id="demoBar" hidden><span><b>Sample data.</b> You're exploring the journal with made-up trades. Nothing you change is saved.</span><a class="btn sm pri" href="/journal#pricing">Get the journal</a></div>
+    <header class="j-top" id="top">
+      <button class="j-menu" id="menuBtn" type="button" aria-label="Open menu" aria-controls="side" aria-expanded="false"><svg aria-hidden="true"><use href="#j-menu"/></svg></button>
+      <h1 id="title">Overview</h1>
+      <div class="j-filters" id="filters" role="group" aria-label="Filters">
+        <label class="j-sel"><span class="sr">Account</span><select id="fAcc"></select></label>
+        <div class="j-seg" id="fRange" role="radiogroup" aria-label="Period"></div>
+        <button class="btn sm j-more" id="fMore" type="button" aria-expanded="false" aria-controls="fPanel"><svg aria-hidden="true"><use href="#j-filter"/></svg>Filters<b id="fCount" hidden></b></button>
+      </div>
+    </header>
+    <div class="j-fpanel" id="fPanel" hidden></div>
+    <div class="j-chips" id="fChips" hidden></div>
+    <main class="j-main" id="main" tabindex="-1"></main>
+  </div>
+</div>
+
+<aside class="j-drawer" id="drawer" aria-hidden="true" aria-labelledby="dTitle" role="dialog"></aside>
+<div class="j-modal" id="modal" hidden role="dialog" aria-modal="true"></div>
+<div class="j-light" id="light" hidden><img alt=""><button type="button" class="j-x" aria-label="Close"><svg aria-hidden="true"><use href="#j-x"/></svg></button></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<div class="gate" id="gate" hidden></div>
+
+<script src="/js/theme.js"></script>
+<script src="/js/jstats.js"></script>
+<script src="/js/jcharts.js"></script>
+<script src="/js/journal.js"></script>
+</body>
+</html>

@@ -232,13 +232,13 @@ function issueDialog() {
   const g = el("form", "formgrid");
   const email = el("input", "field"); email.type = "email"; email.required = true;
   const name = el("input", "field");
-  const plan = el("select", "field"); ["lifetime", "monthly"].forEach((p) => { const o = el("option", "", PLAN[p]); o.value = p; plan.appendChild(o); });
+  const plan = el("select", "field"); ["lifetime", "monthly", "journal"].forEach((p) => { const o = el("option", "", p === "journal" ? "Journal only" : PLAN[p]); o.value = p; plan.appendChild(o); });
   const days = el("input", "field"); days.type = "number"; days.min = "0"; days.placeholder = "30";
   const amount = el("input", "field"); amount.type = "number"; amount.min = "0"; amount.step = "0.01"; amount.value = "0";
   const note = el("input", "field"); note.placeholder = "e.g. paid in cash, partner, friend";
   const lab = (t, inp, full) => { const l = el("label", full ? "full" : ""); l.append(t, inp); return l; };
   const go = btn("Issue licence and email it", "btn sm pri"); go.type = "submit";
-  g.append(lab("Customer email", email), lab("Name (optional)", name), lab("Plan", plan), lab("Days (monthly; blank = 30)", days), lab("Amount received (EUR)", amount), lab("Note", note), go);
+  g.append(lab("Customer email", email), lab("Name (optional)", name), lab("Plan", plan), lab("Days (monthly or journal; blank = 30)", days), lab("Amount received (EUR)", amount), lab("Note", note), go);
   g.onsubmit = async (e) => { e.preventDefault(); go.disabled = true;
     try { const r = await api("/api/admin/licence/new", { email: email.value, name: name.value, plan: plan.value, days: days.value, amount: amount.value, note: note.value });
       toast("Licence " + r.licence.key + " issued and emailed."); $("drawer").classList.remove("open"); render(page()); }
@@ -571,6 +571,18 @@ VIEWS.settings = async () => {
     const acts = el("div", "row"); acts.append(open);
     if (owner) acts.append(act(btn("Fetch all data now", "btn sm"), () => api("/api/admin/hub/refresh", {}), () => "Fetching. It takes about a minute; reload this page after."));
     out.push(card("Markets data", el("p", "fine", `${hub.markets} markets, calls for the week ending ${hub.asOf || "(not yet)"}${hub.computedAt ? ", worked out " + new Date(hub.computedAt).toLocaleString() : ""}. Live record: ${hub.live.n ? hub.live.hits + " of " + hub.live.n + " right" : "starts once the first week is graded"}.${hub.err ? " Error: " + hub.err : ""}`), list, acts));
+  }
+  // the journal: hidden until it's switched on here
+  if (cs) {
+    const modelOpts2 = cs.models.map((m) => [m.id, m.label]);
+    const open = el("a", "btn sm", "Open the journal"); open.href = "/journal/app"; open.target = "_blank"; open.rel = "noopener";
+    const demo = el("a", "btn sm", "Open it with sample data"); demo.href = "/journal/app?demo=1"; demo.target = "_blank"; demo.rel = "noopener";
+    const land = el("a", "btn sm", "Open the journal page"); land.href = "/journal"; land.target = "_blank"; land.rel = "noopener";
+    const row = el("div", "row"); row.append(open, demo, land);
+    out.push(form("Journal", d.settings.journal_public === "1" ? "Published: the journal page is linked and the Journal plan can be bought. GoldenStraddler customers get it included." : "Hidden: only you (signed in to admin) can open it. Customers don't see it and the Journal plan can't be bought yet.",
+      inp("journal_public", "Publish the journal", { select: yn }), inp("price_journal", "Journal plan (EUR a month)", { type: "number", step: "0.01", money: 1 }),
+      inp("journal_ai_credits", "AI coach credits per customer each month (a question or trade review is 1, a review is 4)", { type: "number" }), inp("journal_ai_model", "AI coach model", { select: modelOpts2 })));
+    out.push(card("Open the journal", el("p", "fine", "To use it yourself, sign in to your customer account in this browser as well (any email with a licence), then open it."), row));
   }
   if (owner) { const b = el("a", "btn sm", "Download a backup of the database"); b.href = "/api/admin/export"; out.push(card("Backup", el("p", "fine", "Everything: customers, licences, orders, codes, trades."), b)); }
   view.replaceChildren(...out);

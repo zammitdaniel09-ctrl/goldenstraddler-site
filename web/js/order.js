@@ -19,14 +19,16 @@ function acts(...btns) { const a = el("div", "acts"); btns.forEach((b) => a.appe
 function link(text, href, pri) { const a = el("a", "btn" + (pri ? " pri" : ""), text); a.href = href; return a; }
 
 function render(j) {
-  const o = j.order, amount = eur(o.amount, { cents: o.amount % 100 }), what = (o.plan === "lifetime" ? "Lifetime licence" : "Monthly licence") + (o.kind === "renew" ? " renewal" : "");
+  const o = j.order, J = o.plan === "journal";
+  const amount = eur(o.amount, { cents: o.amount % 100 }), what = (o.plan === "lifetime" ? "Lifetime licence" : J ? "Journal plan" : "Monthly licence") + (o.kind === "renew" ? " renewal" : "");
   if (o.status === "paid") {
     head(chip("", "Paid"), o.kind === "renew" ? "Renewed. Thank you." : "You're in.",
-      o.kind === "renew" ? "Your licence has been extended. Nothing else to do: the EA picks it up on its own." :
-      `Your licence key is on your account page and on its way to ${o.email}. Download the EA there and follow the four setup steps.`);
-    acts(link(j.signedIn ? "Open your account" : "Sign in to your account", "/account" + (o.kind === "renew" ? "" : "?welcome=1"), true));
+      o.kind === "renew" ? (J ? "Your Journal plan has been extended. Everything in your journal stays as it is." : "Your licence has been extended. Nothing else to do: the EA picks it up on its own.") :
+      J ? `Your journal is ready. Sign in with ${o.email} to open it and bring your trades in.` : `Your licence key is on your account page and on its way to ${o.email}. Download the EA there and follow the four setup steps.`);
+    if (J && j.signedIn && o.kind !== "renew") acts(link("Open your journal", "/journal/app", true));
+    else acts(link(j.signedIn ? "Open your account" : "Sign in to your account", "/account" + (o.kind === "renew" ? "" : "?welcome=1"), true));
     if (!j.signedIn) { const p = el("p", "fine", "Sign in with the email you used at checkout. We'll send you a 6-digit code."); p.style.marginTop = "14px"; box.appendChild(p); }
-    if (j.signedIn && o.kind !== "renew" && !redirected) { redirected = true; try { sessionStorage.setItem("gs_welcome", "1"); } catch {} setTimeout(() => (location.href = "/account?welcome=1"), 2600); }
+    if (j.signedIn && o.kind !== "renew" && !redirected && !J) { redirected = true; try { sessionStorage.setItem("gs_welcome", "1"); } catch {} setTimeout(() => (location.href = "/account?welcome=1"), 2600); }
     return "done";
   }
   if (o.status === "refunded") { head(chip("dim", "Refunded"), "This order was refunded.", "The money has gone back to the way you paid. The licence from this order is switched off."); acts(link("Back to the website", "/")); return "done"; }

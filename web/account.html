@@ -43,7 +43,11 @@
   <div class="lics" id="lics"></div>
 </div></section>
 
-<section class="blk" id="setup"><div class="wrap">
+<section class="blk" id="journalCard" hidden><div class="wrap">
+  <div class="card jcard"><div><span class="lab">Included with your plan</span><h3>GoldenStraddler Journal</h3><p class="fine">Every trade synced from MT5 with its stop loss, analytics on where your edge comes from and where it leaks, and an AI coach that answers from your own numbers.</p></div><a class="btn pri" href="/journal/app">Open your journal</a></div>
+</div></section>
+
+<section class="blk" id="setup" data-ea-only><div class="wrap">
   <h2>Set it up in five minutes</h2>
   <div class="setup-grid">
     <div class="card dl">
@@ -66,7 +70,7 @@
   </div>
 </div></section>
 
-<section class="blk" id="d-live"><div class="wrap">
+<section class="blk" id="d-live" data-ea-only><div class="wrap">
   <div class="hdr"><h2><span class="sig">Live</span> from MT5</h2><select class="field" id="licPick" aria-label="Which licence" hidden></select></div>
   <div class="g3">
     <div class="card"><div class="chd"><span class="lab">Status</span><span class="fine" id="lvMode"></span></div><span class="chip" id="lvChip"><i></i><span id="lvChipTxt"></span></span><div class="kv" id="lvKv"></div></div>
@@ -76,7 +80,7 @@
   <div class="gn"><div class="card nx" id="nextCard"></div><div class="card"><div class="chd"><span class="lab">High-impact USD releases</span><span class="fine" id="newsSrc"></span></div><ul class="ev" id="evList"></ul></div></div>
 </div></section>
 
-<section class="blk" id="d-perf"><div class="wrap">
+<section class="blk" id="d-perf" data-ea-only><div class="wrap">
   <div class="hdr"><h2>Performance</h2><div class="filters"><div class="seg" id="rangeSeg" role="group" aria-label="Range"><button type="button" data-v="all" aria-pressed="true">All</button><button type="button" data-v="1">Day</button><button type="button" data-v="7">7 days</button><button type="button" data-v="30">30 days</button></div><div class="seg" id="sideSeg" role="group" aria-label="Side"><button type="button" data-v="all" aria-pressed="true">Both</button><button type="button" data-v="BUY">Buy</button><button type="button" data-v="SELL">Sell</button></div></div></div>
   <p class="fine" id="srcTxt"></p>
   <div class="gp"><div class="card"><span class="lab">Net profit</span><div class="netv" id="netBig"></div><div class="fine" id="netSub"></div><dl class="minis" id="minis"></dl></div>
@@ -90,7 +94,7 @@
   </div>
 </div></section>
 
-<section class="blk" id="d-trades"><div class="wrap"><div class="hdr"><h2>Trades</h2><span class="fine" id="ledgerNote"></span></div>
+<section class="blk" id="d-trades" data-ea-only><div class="wrap"><div class="hdr"><h2>Trades</h2><span class="fine" id="ledgerNote"></span></div>
   <div class="card tw"><table class="trades"><thead><tr><th>#</th><th>Entry time</th><th>Side</th><th>Lots</th><th>Entry</th><th>Exit</th><th>Points</th><th>Gross</th><th>Costs</th><th>Net</th><th>Running</th></tr></thead><tbody id="ledger"></tbody></table><p class="fine" id="ledgerMore"></p></div>
 </div></section>
 

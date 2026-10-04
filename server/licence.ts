@@ -4,7 +4,7 @@ import { DAY, E, getN, getS, hmacHex, newId, newLicenceKey, str } from "./util";
 import { mailLicence, mailRenewed, notifyAdmins } from "./mail";
 
 export type Licence = {
-  id: string; key: string; customer_id: string; plan: "lifetime" | "monthly"; status: string; expires_at: number | null; source: string;
+  id: string; key: string; customer_id: string; plan: "lifetime" | "monthly" | "journal"; status: string; expires_at: number | null; source: string;
   account: string; account_server: string; account_name: string; account_demo: number; bound_at: number | null; last_move_at: number | null;
   last_seen: number | null; ea_build: string; stripe_sub: string; refundable_until: number | null; note: string; created_at: number;
 };
@@ -69,7 +69,7 @@ export function fulfil(orderId: string, opts: { periodEnd?: number; paymentRef?:
         run("UPDATE licences SET expires_at = ?, status = CASE WHEN status = 'revoked' THEN status ELSE 'active' END WHERE id = ?", exp, lic.id);
       }
     } else {
-      const exp = o.plan === "monthly" ? (opts.periodEnd || monthEnd(t)) + GRACE_DAYS * DAY : null;
+      const exp = o.plan !== "lifetime" ? (opts.periodEnd || monthEnd(t)) + GRACE_DAYS * DAY : null;
       lic = issueLicence(c.id, o.plan, o.method, exp, { stripe_sub: opts.stripeSub || "", refundable_until: t + getN("refund_days") * DAY });
     }
     run("UPDATE orders SET status = 'paid', paid_at = ?, customer_id = ?, licence_id = ?, payment_ref = CASE WHEN ? != '' THEN ? ELSE payment_ref END WHERE id = ?",
@@ -114,6 +114,8 @@ export function eaHello(b: any) {
   if (!l) return signed(key, account, "invalid", 0, "This licence key doesn't exist. Check it in your GoldenStraddler account.");
   const exp = l.expires_at ? Math.floor(l.expires_at / 1000) : 0, st = effective(l);
   if (st === "revoked") return signed(key, account, "revoked", exp, "This licence has been switched off. Contact support from your account page.", l.plan);
+  // a Journal plan key opens the journal, not the EA, and never locks to a trading account
+  if (l.plan === "journal") return signed(key, account, "invalid", 0, "This key is for the Journal plan. The EA needs a GoldenStraddler licence.");
   if (!l.account) {
     run("UPDATE licences SET account = ?, account_server = ?, account_name = ?, account_demo = ?, bound_at = ? WHERE id = ?",
       account, str(b.server, 96), str(b.name, 96), b.demo ? 1 : 0, now(), l.id);
@@ -133,7 +135,7 @@ export function eaHello(b: any) {
 export function licenceForSync(b: any) {
   const key = str(b.key, 40).toUpperCase(), account = str(b.account, 20);
   const l = key ? one<Licence>("SELECT * FROM licences WHERE key = ?", key) : null;
-  if (!l || !l.account || l.account !== account || l.status === "revoked") return null;
+  if (!l || l.plan === "journal" || !l.account || l.account !== account || l.status === "revoked") return null;
   return l;
 }
 

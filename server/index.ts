@@ -16,6 +16,8 @@ import { mailConfigured, mailExpiring, mailLicence, mailLoginCode, notifyAdmins,
 import { fulfil } from "./licence";
 import { chatAdmin, chatEnabled, chatRoute, initChat, testAnthropicKey } from "./chat";
 import { hubDetail, hubJson, hubLive, hubPublic, hubRefreshNow, hubStatus, hubTeaser, renderHub, startHub } from "./hub";
+import { archiveEvents, connectorSync, journalAccess, journalAdmin, journalApi, journalOpen } from "./journal";
+import { journalAi } from "./jai";
 
 const PORT = Number(E.PORT) || 3000, DEV = E.DEV === "1";
 const WEB = join(import.meta.dir, "..", "web");
@@ -130,7 +132,7 @@ async function refreshNews() {
     const r = await fetch(E.FF_URL || "https://nfs.faireconomy.media/ff_calendar_thisweek.json", { headers: { "User-Agent": "GoldenStraddler/3" }, signal: AbortSignal.timeout(8000) });
     if (!r.ok) throw new Error("HTTP " + r.status);
     const raw = await r.text(), list: any = JSON.parse(raw);
-    if (Array.isArray(list) && list.length) news.raw = raw;   // served to customers' EAs, so they only need to allow one address
+    if (Array.isArray(list) && list.length) { news.raw = raw; try { archiveEvents(list); } catch (e: any) { console.error("news archive:", e.message); } }   // served to customers' EAs, so they only need to allow one address
     news.events = (Array.isArray(list) ? list : []).filter((e: any) => e && e.country === "USD" && e.impact === "High" && typeof e.date === "string" && !/T00:00:00/.test(e.date))
       .map((e: any) => ({ utc: Math.round(Date.parse(e.date) / 1000), title: str(e.title, 120), src: 1, fc: str(e.forecast, 24), prev: str(e.previous, 24) })).filter((e) => Number.isFinite(e.utc)).sort((a, b) => a.utc - b.utc);
     news.fetchedAt = now(); news.tryAt = now() + 3_600_000;
@@ -177,7 +179,9 @@ function goldPublic() {
 }
 
 // ================================================================ helpers
-const plans = new Set(["lifetime", "monthly"]);
+const plans = new Set(["lifetime", "monthly", "journal"]);
+// the Journal plan can only be bought once the journal is public
+const planOk = (p: string) => p === "lifetime" || p === "monthly" || (p === "journal" && journalOpen());
 const meCustomer = (req: Request) => { const id = sessionOf(req, "customer"); return id ? one<Customer>("SELECT * FROM customers WHERE id = ?", id) : null; };
 const licOf = (c: Customer, id: string) => one<Licence>("SELECT * FROM licences WHERE id = ? AND customer_id = ?", id, c.id);
 const MOCK = E.MOCK_PAY === "1";
@@ -275,6 +279,29 @@ async function handle(req: Request): Promise<Response> {
   // ---------------------------------------------------------------- website chat
   if (p.startsWith("/api/chat/")) return chatRoute(req, url, p);
 
+  // ---------------------------------------------------------------- journal (hidden behind an admin session until journal_public is on)
+  if (p === "/api/journal/sync") {
+    if (!post) return bad("POST only", 405);
+    if (limited("jsync:" + ipOf(req), 240, 3_600_000)) return bad("Slow down", 429);
+    let b: any; try { b = await body(req, 16 << 20); } catch (e: any) { return bad(e.message, e.code || 400); }
+    const r = connectorSync(b);
+    return json(r.code, r.body);
+  }
+  if (p.startsWith("/api/journal/")) {
+    if (!journalOpen() && !adminOf(req)) return bad("Not found", 404);
+    const c = meCustomer(req);
+    const rd = (max: number) => () => body(req, max);
+    try {
+      if (p.startsWith("/api/journal/ai/")) {
+        if (!c) return bad("Sign in to use your journal.", 401);
+        const a = journalAccess(c);
+        if (!a.ok) return json(403, { ok: false, error: "The journal comes with GoldenStraddler or the Journal plan.", why: a.why });
+        return await journalAi(req, p, c, rd(1 << 20));
+      }
+      return await journalApi(req, p, c, rd(32 << 20));
+    } catch (e: any) { return bad(e.message || "Something went wrong.", e.code || 500); }
+  }
+
   // ---------------------------------------------------------------- payment webhooks
   if (p === "/webhooks/stripe" && post) return stripeWebhook(req);
   if (p === "/webhooks/nowpayments" && post) return nowpaymentsWebhook(req);
@@ -284,7 +311,7 @@ async function handle(req: Request): Promise<Response> {
     await Promise.all([refreshNews(), refreshRecord()]);
     const minTrades = getN("record_min_trades"), rec = record.data;
     const showRec = getS("record_public") === "1" && rec && rec.trades >= minTrades;
-    return json(200, { ok: true, serverNow: now(), prices: { lifetime: listPrice("lifetime"), monthly: listPrice("monthly") }, methods: methodsOn(),
+    return json(200, { ok: true, serverNow: now(), prices: { lifetime: listPrice("lifetime"), monthly: listPrice("monthly"), ...(journalOpen() || adminOf(req) ? { journal: listPrice("journal") } : {}) }, methods: methodsOn(),
       refundDays: getN("refund_days"), news: news.events.filter((e) => e.utc > now() / 1000 - 75).slice(0, 8), week: news.events, record: showRec ? rec : null,
       announcement: getS("announcement"), promo: promo(), verifyUrl: /^https:\/\/[\w.-]+\//.test(getS("record_verify_url")) ? getS("record_verify_url") : "" });
   }
@@ -302,7 +329,7 @@ async function handle(req: Request): Promise<Response> {
   }
   if (p === "/api/quote") {
     const plan = url.searchParams.get("plan") as Plan;
-    if (!plans.has(plan)) return bad("Choose a plan.");
+    if (!planOk(plan)) return bad("Choose a plan.");
     if (limited("quote:" + ipOf(req), 60, 600_000)) return bad("Too many tries. Wait a few minutes.", 429);
     return json(200, { ok: true, ...quote(plan, url.searchParams.get("code") || "") });
   }
@@ -310,7 +337,7 @@ async function handle(req: Request): Promise<Response> {
     const ip = ipOf(req);
     if (limited("checkout:" + ip, 12, 3_600_000)) return bad("Too many checkout attempts. Try again later.", 429);
     const b = await body(req), plan = b.plan as Plan, method = str(b.method, 10), email = str(b.email, 200).toLowerCase();
-    if (!plans.has(plan)) return bad("Choose a plan.");
+    if (!planOk(plan)) return bad("Choose a plan.");
     if (!emailOk(email)) return bad("Enter a valid email address. Your licence is sent there.");
     if (!b.consent) return bad("Please accept the Terms and Risk Disclosure to continue.");
     const m = methodsOn() as any;
@@ -396,7 +423,8 @@ async function handle(req: Request): Promise<Response> {
         licences: lics.map((l) => ({ ...publicLicence(l), canMove: !!l.account && (!l.last_move_at || now() - l.last_move_at > moveDays * DAY), nextMove: l.last_move_at ? l.last_move_at + moveDays * DAY : null })),
         orders: ordersFor(c.id).map((o) => ({ id: o.id, plan: o.plan, kind: o.kind, method: o.method, status: o.status, amount: o.amount_cents, created_at: o.created_at, paid_at: o.paid_at,
           refundable: o.status === "paid" && o.kind === "new" && !!o.paid_at && now() - o.paid_at < getN("refund_days") * DAY })),
-        eaVersion: getS("ea_version"), eaReady: !!eaPath(), methods: methodsOn(), moveDays, refundDays: getN("refund_days"), support: getS("support_email"), serverNow: now() });
+        eaVersion: getS("ea_version"), eaReady: !!eaPath(), methods: methodsOn(), moveDays, refundDays: getN("refund_days"), support: getS("support_email"), serverNow: now(),
+        journal: (journalOpen() || !!adminOf(req)) && journalAccess(c).ok, hasEa: lics.some((l) => l.plan !== "journal" && l.status !== "revoked") });
     }
     if (p === "/api/me/state") {
       const l = licOf(c, url.searchParams.get("licence") || "") || lics[0];
@@ -426,11 +454,11 @@ async function handle(req: Request): Promise<Response> {
     }
     if (p === "/api/me/renew") {
       const l = licOf(c, str(b.licence, 40)), method = str(b.method, 10);
-      if (!l || l.plan !== "monthly" || l.stripe_sub) return bad("This licence renews automatically or can't be renewed here.");
+      if (!l || (l.plan !== "monthly" && l.plan !== "journal") || l.stripe_sub) return bad("This licence renews automatically or can't be renewed here.");
       if (l.status === "revoked") return bad("This licence has been switched off. Contact support.");
       if (!(methodsOn() as any)[method] || method === "card") return bad("Choose crypto or bank transfer.");
-      const price = listPrice("monthly");
-      const { order, claim } = createOrder({ email: c.email, plan: "monthly", method, code: "", list: price, amount: price, ip: ipOf(req), country: "", kind: "renew", licenceId: l.id });
+      const price = listPrice(l.plan);
+      const { order, claim } = createOrder({ email: c.email, plan: l.plan, method, code: "", list: price, amount: price, ip: ipOf(req), country: "", kind: "renew", licenceId: l.id });
       const go = await startPayment(order);
       return json(200, { ok: true, url: go }, { "Set-Cookie": `gs_o=${claim}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${14 * 86400}` });
     }
@@ -483,7 +511,7 @@ async function handle(req: Request): Promise<Response> {
   // ---------------------------------------------------------------- downloads (customers with a licence)
   if (p === "/dl/GoldenStraddler.ex5" || p === "/dl/GoldenStraddler-Guide.pdf") {
     const c = meCustomer(req);
-    const ok = c && one("SELECT id FROM licences WHERE customer_id = ? AND status != 'revoked'", c.id);
+    const ok = c && one("SELECT id FROM licences WHERE customer_id = ? AND status != 'revoked' AND plan != 'journal'", c.id);
     if (!ok) return Response.redirect(siteUrl() + "/account", 302);
     if (p.endsWith(".ex5")) {
       const f = eaPath();
@@ -497,9 +525,9 @@ async function handle(req: Request): Promise<Response> {
 
   // ---------------------------------------------------------------- pages
   if (req.method !== "GET" && req.method !== "HEAD") return bad("Method not allowed", 405);
-  if (p === "/robots.txt") return new Response(`User-agent: *\nAllow: /\nDisallow: /account\nDisallow: /admin\nDisallow: /order/\nDisallow: /api/\nSitemap: ${siteUrl()}/sitemap.xml\n`, { headers: { "Content-Type": "text/plain" } });
+  if (p === "/robots.txt") return new Response(`User-agent: *\nAllow: /\nDisallow: /account\nDisallow: /admin\nDisallow: /order/\nDisallow: /journal/app\nDisallow: /api/\nSitemap: ${siteUrl()}/sitemap.xml\n`, { headers: { "Content-Type": "text/plain" } });
   if (p === "/sitemap.xml") {
-    const u = ["", "/checkout", "/terms", "/refunds", "/privacy", "/risk", "/imprint", ...(hubPublic() ? ["/markets", ...hubJson().markets.map((m) => "/markets/" + m.id)] : [])]
+    const u = ["", "/checkout", "/terms", "/refunds", "/privacy", "/risk", "/imprint", ...(hubPublic() ? ["/markets", ...hubJson().markets.map((m) => "/markets/" + m.id)] : []), ...(journalOpen() ? ["/journal"] : [])]
       .map((x) => `<url><loc>${siteUrl()}${x}</loc></url>`).join("");
     return new Response(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${u}</urlset>`, { headers: { "Content-Type": "application/xml" } });
   }
@@ -517,6 +545,17 @@ async function handle(req: Request): Promise<Response> {
       .replace(/\{\{HUB_TITLE\}\}/g, () => esc(r.title)).replace(/\{\{HUB_DESC\}\}/g, () => esc(r.desc)).replace(/\{\{HUB_PATH\}\}/g, () => p)) });
   }
   if (/^\/order\/[A-Z0-9-]{6,12}$/i.test(p)) return file(req, "order.html", { noindex: true });
+  if (p === "/journal" || p === "/journal/app") {
+    const open = journalOpen();
+    if (!open && !adminOf(req)) return notFound(req);
+    if (p === "/journal/app") return file(req, "journal-app.html", { noindex: true });
+    return file(req, "journal.html", { noindex: !open, replace: (s) => hubNav(legalVars(s)) });
+  }
+  if (p === "/dl/GoldenStraddler-Journal.ex5" || p === "/dl/GoldenStraddler-Journal.mq5") {
+    const c = meCustomer(req);
+    if (!c || !journalAccess(c).ok) return Response.redirect(siteUrl() + "/journal/app", 302);
+    return file(req, p.slice(1), { download: p.slice(4), cache: 0 });
+  }
   if (["/terms", "/refunds", "/privacy", "/risk", "/imprint"].includes(p)) return file(req, "legal" + p + ".html", { replace: legalVars });
   if (/^\/(css|js|img|fonts)\/[\w.\-/]+$/.test(p) || /^\/[\w.-]+\.(png|ico|svg|webmanifest|jpg)$/.test(p)) return file(req, p.slice(1), { cache: 86400 });
   return notFound(req);
@@ -549,9 +588,10 @@ async function adminRoute(req: Request, url: URL, p: string, a: Admin): Promise<
       WHERE status = 'paid' AND paid_at >= ? GROUP BY d ORDER BY d`, t - 30 * DAY);
     return json(200, { ok: true,
       revenue: { today: sum(day), month: sum(month), all: sum(0), refunds },
-      licences: { active: active.length, lifetime: active.filter((l) => l.plan === "lifetime").length, monthly: active.filter((l) => l.plan === "monthly").length,
+      licences: { active: active.length, lifetime: active.filter((l) => l.plan === "lifetime").length, monthly: active.filter((l) => l.plan === "monthly").length, journal: active.filter((l) => l.plan === "journal").length,
         expired: lic.filter((l) => effective(l) === "expired").length, revoked: lic.filter((l) => l.status === "revoked").length, total: lic.length },
-      mrr: active.filter((l) => l.plan === "monthly").length * listPrice("monthly"),
+      mrr: active.filter((l) => l.plan === "monthly").length * listPrice("monthly") + active.filter((l) => l.plan === "journal").length * listPrice("journal"),
+      journal: journalAdmin(),
       online, customers: one<{ n: number }>("SELECT COUNT(*) n FROM customers")!.n, daily,
       pendingBank: all("SELECT id, email, plan, amount_cents, created_at FROM orders WHERE method = 'bank' AND status IN ('pending','processing') ORDER BY created_at DESC LIMIT 20"),
       refundRequests: all("SELECT id, at, email, message FROM messages WHERE topic = 'refund' AND handled = 0 ORDER BY at DESC"),
@@ -587,10 +627,10 @@ async function adminRoute(req: Request, url: URL, p: string, a: Admin): Promise<
     return json(200, { ok: true, licences: rows.map((l) => ({ ...l, effective: effective(l), online: !!l.status_at && l.status_at > now() - 20000 })) });
   }
   if (p === "/licence/new" && post) {
-    const email = str(b.email, 200).toLowerCase(), plan = b.plan === "monthly" ? "monthly" : "lifetime", days = Math.max(0, Math.min(3650, Number(b.days) || 0));
+    const email = str(b.email, 200).toLowerCase(), plan: Plan = b.plan === "monthly" ? "monthly" : b.plan === "journal" ? "journal" : "lifetime", days = Math.max(0, Math.min(3650, Number(b.days) || 0));
     if (!emailOk(email)) return bad("Enter a valid email address.");
     const c = customerFor(email, str(b.name, 80));
-    const l = issueLicence(c.id, plan, "manual", plan === "monthly" ? now() + (days || 30) * DAY : (days ? now() + days * DAY : null), { note: str(b.note, 300) });
+    const l = issueLicence(c.id, plan, "manual", plan !== "lifetime" ? now() + (days || 30) * DAY : (days ? now() + days * DAY : null), { note: str(b.note, 300) });
     const price = Number(b.amount) >= 0 ? Math.round(Number(b.amount) * 100) : 0;
     const { order } = createOrder({ email, plan, method: "manual", code: "", list: listPrice(plan), amount: price, ip: "", country: "" });
     run("UPDATE orders SET status = 'paid', paid_at = ?, customer_id = ?, licence_id = ?, note = ? WHERE id = ?", now(), c.id, l.id, "Issued by " + who, order.id);
@@ -709,7 +749,8 @@ async function adminRoute(req: Request, url: URL, p: string, a: Admin): Promise<
     const editable = ["price_lifetime", "price_monthly", "mail_from", "support_email", "notify_emails", "bank_name", "bank_holder", "bank_iban", "bank_bic",
       "seller_name", "seller_address", "seller_vat", "seller_reg", "record_public", "record_min_trades", "stripe_tax", "methods_card", "methods_crypto", "methods_bank",
       "refund_days", "move_days", "announcement", "site_url", "ea_version", "promo_code", "record_verify_url",
-      "chat_enabled", "chat_ai", "chat_model", "chat_daily_cap", "chat_greeting", "hub_public"];
+      "chat_enabled", "chat_ai", "chat_model", "chat_daily_cap", "chat_greeting", "hub_public",
+      "journal_public", "journal_ai_credits", "journal_ai_model", "price_journal"];
     if (post) {
       if (!owner) return bad("Only the owner can change settings.", 403);
       for (const k of editable) if (b[k] !== undefined) {
@@ -761,7 +802,7 @@ async function hourly() {
   try {
     const t = now();
     // crypto/bank monthly licences: remind 5 days before the paid period ends
-    const due = all<Licence & { email: string }>(`SELECT l.*, c.email FROM licences l JOIN customers c ON c.id = l.customer_id WHERE l.plan = 'monthly' AND l.stripe_sub = ''
+    const due = all<Licence & { email: string }>(`SELECT l.*, c.email FROM licences l JOIN customers c ON c.id = l.customer_id WHERE l.plan IN ('monthly', 'journal') AND l.stripe_sub = ''
       AND l.status = 'active' AND l.expires_at BETWEEN ? AND ? AND (l.reminded_at IS NULL OR l.reminded_at < l.expires_at - ?)`, t, t + 8 * DAY, 9 * DAY);
     for (const l of due) { await mailExpiring(l.email, l, siteUrl() + "/account"); run("UPDATE licences SET reminded_at = ? WHERE id = ?", t, l.id); }
     // abandoned orders
