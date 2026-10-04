@@ -184,7 +184,7 @@ function noTrades(main) {
 }
 const tagChip = (id) => { const t = tagOf(id); return t ? h("span.j-tag." + t.kind, t.name) : null; };
 function stars(n, onSet) {
-  const box = h("div.j-stars", { role: onSet ? "radiogroup" : null, "aria-label": "Rating" });
+  const box = h("div.j-stars", onSet ? { role: "radiogroup", "aria-label": "Rating" } : { role: "img", "aria-label": n ? `Rated ${n} of 5` : "Not rated" });
   for (let i = 1; i <= 5; i++) {
     const b = h(onSet ? "button" : "span", { type: onSet ? "button" : null, class: i <= (n || 0) ? "on" : "", role: onSet ? "radio" : null, "aria-checked": onSet ? String(i === n) : null, "aria-label": onSet ? i + " of 5" : null, on: onSet ? { click: () => onSet(i === n ? null : i) } : null }, icon("j-star"));
     box.appendChild(b);
@@ -280,12 +280,13 @@ function calendarCard(ts) {
   const draw = () => {
     const [y, m] = ST.calMonth.split("-").map(Number), first = new Date(Date.UTC(y, m - 1, 1)), startWd = (first.getUTCDay() + 6) % 7, nDays = new Date(Date.UTC(y, m, 0)).getUTCDate();
     const monthDays = [...days.values()].filter((d) => d.day.startsWith(ST.calMonth)), mx = Math.max(1e-9, ...monthDays.map((d) => Math.abs(d.net))), net = monthDays.reduce((a, d) => a + d.net, 0);
-    const grid = h("div.j-cal", { role: "grid", "aria-label": "Daily results" }, JS.WD.map((d) => h("span.wd", d.slice(0, 2))));
+    const grid = h("div.j-cal", { role: "group", "aria-label": "Daily results" }, JS.WD.map((d) => h("span.wd", d.slice(0, 2))));
     for (let i = 0; i < startWd; i++) grid.appendChild(h("span.pad"));
     for (let d = 1; d <= nDays; d++) {
       const key = `${ST.calMonth}-${String(d).padStart(2, "0")}`, x = days.get(key), nt = notes.get(key);
       const a = x ? Math.min(1, Math.sqrt(Math.abs(x.net) / mx)) : 0;
-      const c = h("a.day" + (x ? (x.net >= 0 ? ".pos" : ".neg") : "") + (nt && nt.notes ? ".note" : ""), { href: "#/days/" + key, style: x ? { "--a": (0.14 + a * 0.7).toFixed(2) } : null, "aria-label": `${dayName(key)}${x ? `: ${money(x.net, { sign: true })}, ${x.n} trades` : ""}` },
+      // the strongest day tops out at 58% colour so its text stays readable in both modes
+      const c = h("a.day" + (x ? (x.net >= 0 ? ".pos" : ".neg") : "") + (nt && nt.notes ? ".note" : ""), { href: "#/days/" + key, style: x ? { "--a": (0.12 + a * 0.46).toFixed(2) } : null, "aria-label": `${dayName(key)}${x ? `: ${money(x.net, { sign: true })}, ${x.n} trades` : ""}` },
         [h("span.n", d), x ? h("b", [h("span.lg", money(x.net, { compact: true, sign: true })), h("span.sm", shortMoney(x.net))]) : null, x ? h("span.c", x.n + (x.n === 1 ? " trade" : " trades")) : null]);
       grid.appendChild(c);
     }
@@ -305,7 +306,7 @@ const HM = new Set(["v", "op", "cp", "dur", "pb", "rt", "tags"]);   // columns t
 function tradeTable(ts, o = {}) {
   const cols = o.compact ? COLS.filter(([k]) => ["ct", "s", "d", "v", "r", "net", "tags"].includes(k)) : COLS;
   const t = h("table.j-t", [h("thead", h("tr", [o.select ? h("th.ck", h("input", { type: "checkbox", "aria-label": "Select all", checked: ts.length && ts.every((x) => ST.sel.has(x.id)), on: { change: (e) => { for (const x of ts) e.target.checked ? ST.sel.add(x.id) : ST.sel.delete(x.id); render(); } } })) : null,
-    ...cols.map(([k, l]) => h("th" + (["v", "op", "cp", "dur", "r", "net"].includes(k) ? ".r" : "") + (HM.has(k) ? ".hm" : ""), o.sortable ? h("button.sort", { type: "button", "aria-sort": ST.sort.k === k ? (ST.sort.d > 0 ? "ascending" : "descending") : null, on: { click: () => { ST.sort = { k, d: ST.sort.k === k ? -ST.sort.d : -1 }; render(); } } }, [l, ST.sort.k === k ? (ST.sort.d > 0 ? " ↑" : " ↓") : ""]) : l)), h("th", "")]))]);
+    ...cols.map(([k, l]) => h("th" + (["v", "op", "cp", "dur", "r", "net"].includes(k) ? ".r" : "") + (HM.has(k) ? ".hm" : ""), { "aria-sort": o.sortable && ST.sort.k === k ? (ST.sort.d > 0 ? "ascending" : "descending") : null }, o.sortable ? h("button.sort", { type: "button", on: { click: () => { ST.sort = { k, d: ST.sort.k === k ? -ST.sort.d : -1 }; render(); } } }, [l, ST.sort.k === k ? (ST.sort.d > 0 ? " ↑" : " ↓") : ""]) : l)), h("th", "")]))]);
   const tb = h("tbody");
   for (const x of ts) {
     const tr = h("tr.click" + (ST.sel.has(x.id) ? ".sel" : ""), { tabindex: 0, on: { click: (e) => { if (e.target.closest("input,button,a")) return; openTrade(x.id, ts); }, keydown: (e) => { if (e.key === "Enter") openTrade(x.id, ts); } } }, [
@@ -687,7 +688,7 @@ function monthGrid(ts) {
   const years = [...new Set([...byM.keys()].map((k) => k.slice(0, 4)))].sort().reverse(), MS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const mx = Math.max(1e-9, ...[...byM.values()].map(Math.abs));
   return h("div.j-tw", h("table.j-t.mgrid", [h("thead", h("tr", [h("th", "Year"), ...MS.map((m) => h("th.r", m)), h("th.r", "Year")])), h("tbody", years.map((y) => {
-    let tot = 0; const cells = MS.map((_, i) => { const k = `${y}-${String(i + 1).padStart(2, "0")}`, v = byM.get(k); if (v === undefined) return h("td.n.r.dim", ""); tot += v; return h("td.n.r.hc." + (v >= 0 ? "pos" : "neg"), { style: { "--a": (0.12 + Math.min(1, Math.sqrt(Math.abs(v) / mx)) * 0.6).toFixed(2) } }, money(v, { compact: true, sign: true })); });
+    let tot = 0; const cells = MS.map((_, i) => { const k = `${y}-${String(i + 1).padStart(2, "0")}`, v = byM.get(k); if (v === undefined) return h("td.n.r.dim", ""); tot += v; return h("td.n.r.hc." + (v >= 0 ? "pos" : "neg"), { style: { "--a": (0.1 + Math.min(1, Math.sqrt(Math.abs(v) / mx)) * 0.48).toFixed(2) } }, money(v, { compact: true, sign: true })); });
     return h("tr", [h("td", h("b", y)), ...cells, h("td.n.r." + cls(tot), h("b", money(tot, { compact: true, sign: true })))]);
   }))]));
 }

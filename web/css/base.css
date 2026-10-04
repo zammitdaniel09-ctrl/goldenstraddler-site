@@ -1,4 +1,4 @@
-:root{--ice-rgb:63,196,252;--gold-rgb:230,180,80;--loss-rgb:242,97,111;--on-ice:#001018;--on-gold:#1a1205;--term1:#0c1017;--term2:#080a0f;--void:#000;--carbon:#0E1116;--carbon2:#141922;--edge:#1f252f;--edge2:#2e3644;--edge3:#46506a;--white:#fff;--ice:#3FC4FC;--deep:#1E9FE3;--frost:#A6E6FF;--gold:#E6B450;--loss:#F2616F;--txt2:#a3abb9;--muted:#6f7787;
+:root{--ice-rgb:63,196,252;--gold-rgb:230,180,80;--loss-rgb:242,97,111;--on-ice:#001018;--on-gold:#1a1205;--term1:#0c1017;--term2:#080a0f;--void:#000;--carbon:#0E1116;--carbon2:#141922;--edge:#1f252f;--edge2:#2e3644;--edge3:#46506a;--white:#fff;--ice:#3FC4FC;--deep:#1E9FE3;--frost:#A6E6FF;--gold:#E6B450;--loss:#F2616F;--txt2:#a3abb9;--muted:#7a8292;
 --up:var(--ice);--up-rgb:var(--ice-rgb);--fg-rgb:255,255,255;--bg-rgb:0,0,0;--shadow:rgba(0,0,0,.95);
 --disp:"Unbounded","Arial Black",system-ui,sans-serif;--body:"Space Grotesk","Segoe UI",system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,Consolas,monospace;--sig:"Sedgwick Ave","Segoe Script",cursive;color-scheme:dark}
 /* colour themes, picked by the visitor and remembered on their device; Ice is the brand default.
@@ -13,19 +13,19 @@
 [data-theme=lime]{--ice:#B9F25A;--ice-rgb:185,242,90;--deep:#8ACB2E;--frost:#E1FFB0;--on-ice:#111a02;--carbon:#0e110b;--carbon2:#151a10;--edge:#222a19;--edge2:#344026;--term1:#0e110a;--term2:#080a06}
 [data-theme=orchid]{--ice:#E58CFF;--ice-rgb:229,140,255;--deep:#C25AF0;--frost:#F6D9FF;--on-ice:#23062e;--carbon:#120d15;--carbon2:#19131d;--edge:#29202f;--edge2:#3d3046;--term1:#120d16;--term2:#0a070c}
 /* light: the same accents, deepened so they read on white. --ice-d and --gold-d keep the bright versions for parts that stay dark. */
-:root[data-mode=light]{color-scheme:light;--void:#F2F4F7;--carbon:#fff;--carbon2:#F5F7FA;--term1:#fff;--term2:#F7F9FB;--edge:#E1E6EC;--edge2:#CAD2DC;--edge3:#98A3B3;--white:#0B0F15;--txt2:#465062;--muted:#687183;--fg-rgb:11,15,21;--bg-rgb:242,244,247;--shadow:rgba(16,24,40,.18);
-  --ice:#0B8BD0;--ice-rgb:11,139,208;--deep:#086EA6;--frost:#2AA5E6;--on-ice:#fff;--gold:#A26E0C;--gold-rgb:162,110,12;--on-gold:#fff;--loss:#D2364A;--loss-rgb:210,54,74;--ice-d:#3FC4FC;--ice-d-rgb:63,196,252;--gold-d:#E6B450;--gold-d-rgb:230,180,80}
-[data-mode=light][data-theme=cobalt]{--ice:#4458E6;--ice-rgb:68,88,230;--deep:#3143C9;--frost:#6A7BF0;--ice-d:#7B93FF;--ice-d-rgb:123,147,255}
-[data-mode=light][data-theme=emerald]{--ice:#0B9A69;--ice-rgb:11,154,105;--deep:#087A53;--frost:#18B67F;--ice-d:#3DDC97;--ice-d-rgb:61,220,151}
-[data-mode=light][data-theme=violet]{--ice:#7A57E0;--ice-rgb:122,87,224;--deep:#6040C4;--frost:#9478EC;--ice-d:#B197FC;--ice-d-rgb:177,151,252}
-[data-mode=light][data-theme=bullion]{--ice:#A87410;--ice-rgb:168,116,16;--deep:#8A5E0A;--frost:#C28A1C;--gold:#0B8BD0;--gold-rgb:11,139,208;--ice-d:#E6B450;--ice-d-rgb:230,180,80;--gold-d:#3FC4FC;--gold-d-rgb:63,196,252}
-[data-mode=light][data-theme=copper]{--ice:#C25A1E;--ice-rgb:194,90,30;--deep:#A04712;--frost:#DA7236;--gold:#0B8BD0;--gold-rgb:11,139,208;--up:#0B9A69;--up-rgb:11,154,105;--ice-d:#F2A065;--ice-d-rgb:242,160,101;--gold-d:#3FC4FC;--gold-d-rgb:63,196,252}
-[data-mode=light][data-theme=rose]{--ice:#CC3F78;--ice-rgb:204,63,120;--deep:#AA2D60;--frost:#E0588F;--up:#0B9A7D;--up-rgb:11,154,125;--ice-d:#FF8DB8;--ice-d-rgb:255,141,184}
-[data-mode=light][data-theme=platinum]{--ice:#2F3846;--ice-rgb:47,56,70;--deep:#1D242F;--frost:#4A5566;--ice-d:#DCE3EC;--ice-d-rgb:220,227,236}
-[data-mode=light][data-theme=lime]{--ice:#4F8A0B;--ice-rgb:79,138,11;--deep:#3D6D07;--frost:#63A515;--ice-d:#B9F25A;--ice-d-rgb:185,242,90}
-[data-mode=light][data-theme=orchid]{--ice:#9C3CC9;--ice-rgb:156,60,201;--deep:#7E2BA6;--frost:#B556E0;--ice-d:#E58CFF;--ice-d-rgb:229,140,255}
+:root[data-mode=light]{color-scheme:light;--void:#F2F4F7;--carbon:#fff;--carbon2:#F5F7FA;--term1:#fff;--term2:#F7F9FB;--edge:#E1E6EC;--edge2:#CAD2DC;--edge3:#98A3B3;--white:#0B0F15;--txt2:#465062;--muted:#5f6879;--fg-rgb:11,15,21;--bg-rgb:242,244,247;--shadow:rgba(16,24,40,.18);
+  --ice:#0972AB;--ice-rgb:9,114,171;--deep:#075B89;--frost:#086496;--on-ice:#fff;--gold:#99680B;--gold-rgb:153,104,11;--on-gold:#fff;--loss:#BC2C3F;--loss-rgb:188,44,63;--ice-d:#3FC4FC;--ice-d-rgb:63,196,252;--gold-d:#E6B450;--gold-d-rgb:230,180,80}
+[data-mode=light][data-theme=cobalt]{--ice:#4458E6;--ice-rgb:68,88,230;--deep:#3143C9;--frost:#3C4DCA;--ice-d:#7B93FF;--ice-d-rgb:123,147,255}
+[data-mode=light][data-theme=emerald]{--ice:#097E56;--ice-rgb:9,126,86;--deep:#076545;--frost:#086F4C;--ice-d:#3DDC97;--ice-d-rgb:61,220,151}
+[data-mode=light][data-theme=violet]{--ice:#7A57E0;--ice-rgb:122,87,224;--deep:#6040C4;--frost:#6B4DC5;--ice-d:#B197FC;--ice-d-rgb:177,151,252}
+[data-mode=light][data-theme=bullion]{--ice:#90640E;--ice-rgb:144,100,14;--deep:#73500B;--frost:#7F580C;--gold:#0972AB;--gold-rgb:9,114,171;--ice-d:#E6B450;--ice-d-rgb:230,180,80;--gold-d:#3FC4FC;--gold-d-rgb:63,196,252}
+[data-mode=light][data-theme=copper]{--ice:#AF511B;--ice-rgb:175,81,27;--deep:#8C4116;--frost:#9A4718;--gold:#0972AB;--gold-rgb:9,114,171;--up:#0B9A69;--up-rgb:11,154,105;--ice-d:#F2A065;--ice-d-rgb:242,160,101;--gold-d:#3FC4FC;--gold-d-rgb:63,196,252}
+[data-mode=light][data-theme=rose]{--ice:#C23C72;--ice-rgb:194,60,114;--deep:#9B305B;--frost:#AB3564;--up:#0B9A7D;--up-rgb:11,154,125;--ice-d:#FF8DB8;--ice-d-rgb:255,141,184}
+[data-mode=light][data-theme=platinum]{--ice:#2F3846;--ice-rgb:47,56,70;--deep:#1D242F;--frost:#29313E;--ice-d:#DCE3EC;--ice-d-rgb:220,227,236}
+[data-mode=light][data-theme=lime]{--ice:#477C0A;--ice-rgb:71,124,10;--deep:#396308;--frost:#3E6D09;--ice-d:#B9F25A;--ice-d-rgb:185,242,90}
+[data-mode=light][data-theme=orchid]{--ice:#9C3CC9;--ice-rgb:156,60,201;--deep:#7E2BA6;--frost:#8935B1;--ice-d:#E58CFF;--ice-d-rgb:229,140,255}
 /* parts drawn like a trading terminal stay dark in light mode */
-:root[data-mode=light] .dark-ui{color-scheme:dark;--void:#000;--carbon:#0E1116;--carbon2:#141922;--edge:#1f252f;--edge2:#2e3644;--edge3:#46506a;--white:#fff;--txt2:#a3abb9;--muted:#6f7787;--fg-rgb:255,255,255;--bg-rgb:0,0,0;--shadow:rgba(0,0,0,.95);
+:root[data-mode=light] .dark-ui{color-scheme:dark;--void:#000;--carbon:#0E1116;--carbon2:#141922;--edge:#1f252f;--edge2:#2e3644;--edge3:#46506a;--white:#fff;--txt2:#a3abb9;--muted:#7a8292;--fg-rgb:255,255,255;--bg-rgb:0,0,0;--shadow:rgba(0,0,0,.95);
   --ice:var(--ice-d);--ice-rgb:var(--ice-d-rgb);--up:var(--up-d,var(--ice-d));--up-rgb:var(--up-d-rgb,var(--ice-d-rgb));--gold:var(--gold-d);--gold-rgb:var(--gold-d-rgb);--on-gold:#1a1205;--loss:#F2616F;--loss-rgb:242,97,111;--on-ice:#001018;--term1:#0c1017;--term2:#080a0f;color:var(--white)}
 :root[data-mode=light][data-theme=copper] .dark-ui,:root[data-mode=light][data-theme=rose] .dark-ui{--up:#3DDC97;--up-rgb:61,220,151}
 :root[data-mode=light][data-theme=bullion] .dark-ui,:root[data-mode=light][data-theme=copper] .dark-ui{--on-gold:#001018}
@@ -107,3 +107,10 @@ select.field{appearance:none;background-image:linear-gradient(45deg,transparent 
 .check input{width:18px;height:18px;margin:2px 0 0;accent-color:var(--ice);flex:none}
 .check a{color:var(--white)}
 .skip{position:absolute;left:-9999px}.skip:focus{left:16px;top:12px;z-index:100;background:var(--ice);color:var(--on-ice);padding:8px 14px;border-radius:8px}
+/* light mode: an accent used as text on its own tint needs a deeper shade to stay readable */
+:root[data-mode=light] :is(.tabs button[aria-selected=true],.j-seg button[aria-checked=true],.seg button[aria-pressed=true],.j-accbtn .btn.on):not(.dark-ui *){color:var(--deep);color:color-mix(in srgb,var(--ice) 74%,#000)}
+:root[data-mode=light] .pill.up:not(.dark-ui *){color:color-mix(in srgb,var(--up) 74%,#000)}
+:root[data-mode=light] .pill.dn:not(.dark-ui *){color:color-mix(in srgb,var(--loss) 82%,#000)}
+:root[data-mode=light] .j-dir.l,:root[data-mode=light] .j-tag.custom{color:color-mix(in srgb,var(--ice) 78%,#000)}
+:root[data-mode=light] .j-dir.s,:root[data-mode=light] .j-tag.mistake{color:color-mix(in srgb,var(--loss) 85%,#000)}
+:root[data-mode=light] .j-tag.emotion{color:color-mix(in srgb,var(--gold) 82%,#000)}

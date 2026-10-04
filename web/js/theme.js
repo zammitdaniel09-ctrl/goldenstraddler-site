@@ -47,10 +47,10 @@ function palette(hex, m) {
     if (goldish) Object.assign(o, { "--gold": "#3FC4FC", "--on-gold": "#001018" });
   } else {
     let Ld = 0.46, d = hsl(h, S * 0.92, Ld);                                                     // deep enough to read on white
-    while (contrast(d, "#FFFFFF") < 4.2 && Ld > 0.18) { Ld -= 0.02; d = hsl(h, S * 0.92, Ld); }
-    Object.assign(o, { "--ice": d, "--deep": hsl(h, S * 0.92, Ld - 0.08), "--frost": hsl(h, S * 0.92, Ld + 0.08), "--on-ice": "#fff", "--ice-d": acc });
+    while (contrast(d, "#FFFFFF") < 4.8 && Ld > 0.18) { Ld -= 0.02; d = hsl(h, S * 0.92, Ld); }
+    Object.assign(o, { "--ice": d, "--deep": hsl(h, S * 0.92, Ld - 0.08), "--frost": hsl(h, S * 0.92, Math.max(0.12, Ld - 0.05)), "--on-ice": "#fff", "--ice-d": acc });
     if (reddish) Object.assign(o, { "--up": "#0B9A69", "--up-d": "#3DDC97" });
-    if (goldish) Object.assign(o, { "--gold": "#0B8BD0", "--gold-d": "#3FC4FC" });
+    if (goldish) Object.assign(o, { "--gold": "#0972AB", "--gold-d": "#3FC4FC" });
   }
   for (const k of ["--ice", "--up", "--gold", "--ice-d", "--gold-d", "--up-d"]) if (o[k]) o[k + "-rgb"] = hex2rgb(o[k]).join(",");
   return o;

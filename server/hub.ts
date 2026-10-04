@@ -305,7 +305,7 @@ function deskHtml(bs: Brief[]) {
 // ---------------------------------------------------------------- the top of the page
 function tickerHtml(bs: Brief[]) {
   const items = bs.map((b) => { const q = livePx(b); return `<li data-live="${b.id}"><a href="/markets/${b.id}"><b>${esc(b.sym)}</b><span class="num px">${esc(q.txt)}</span><span class="num ch ${q.ch == null ? "" : q.ch >= 0 ? "up" : "dn"}">${q.ch == null ? "" : pct(q.ch, 2)}</span></a></li>`; }).join("");
-  return `<div class="tape" aria-label="Prices"><div class="tape-in"><ul>${items}</ul><ul aria-hidden="true">${items}</ul></div></div>`;
+  return `<div class="tape" aria-label="Prices"><div class="tape-in"><ul>${items}</ul><ul aria-hidden="true">${items.replace(/<a /g, '<a tabindex="-1" ')}</ul></div></div>`;
 }
 type Macro = { id: string; name: string; v: number; unit: string; dp: number; chg: number; chgTxt: string; bars: OB[]; note: string; good: number };
 function macroHtml(ms: Macro[]) {

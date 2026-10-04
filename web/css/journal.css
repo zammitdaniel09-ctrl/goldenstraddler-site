@@ -145,7 +145,7 @@ details.j-limf .formgrid{margin-top:10px}
 .j-cal .day .c{font-size:10.5px;color:var(--txt2);white-space:nowrap;overflow:hidden}
 .j-cal .day.pos{background:rgba(var(--up-rgb),var(--a))}
 .j-cal .day.neg{background:rgba(var(--loss-rgb),var(--a))}
-.j-cal .day.pos b,.j-cal .day.neg b{color:var(--white)}
+.j-cal .day.pos b,.j-cal .day.neg b,.j-cal .day.pos .c,.j-cal .day.neg .c,.j-cal .day.pos .n,.j-cal .day.neg .n{color:var(--white)}
 .j-cal .day.note::after{content:"";position:absolute;top:7px;right:7px;width:5px;height:5px;border-radius:50%;background:var(--gold)}
 
 /* ------------------------------------------------------------ tables */

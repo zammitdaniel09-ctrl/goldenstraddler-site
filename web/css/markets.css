@@ -233,7 +233,7 @@
 /* ---------------------------------------------------------------- one market */
 .mk-one{padding:24px 0 20px}
 .crumbs{font-size:13px;color:var(--muted);margin-bottom:18px}
-.crumbs a{color:var(--txt2);text-decoration:none}
+.crumbs a{color:var(--txt2);text-decoration:underline;text-decoration-color:var(--edge3);text-underline-offset:3px}
 .crumbs a:hover{color:var(--white)}
 .one-h{display:grid;grid-template-columns:auto minmax(0,1.3fr) auto auto;gap:24px;align-items:center;padding:24px;border:1px solid var(--edge);border-radius:24px;
   background:radial-gradient(500px 200px at 10% 0%,rgba(var(--gold-rgb),.08),transparent 70%),linear-gradient(180deg,var(--carbon2),var(--carbon))}
