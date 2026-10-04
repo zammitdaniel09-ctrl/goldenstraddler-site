@@ -52,6 +52,9 @@ db.exec(`CREATE TABLE IF NOT EXISTS j_bars ( trade_id TEXT PRIMARY KEY, customer
   data TEXT NOT NULL, ct INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL ); CREATE INDEX IF NOT EXISTS j_bars_c ON j_bars(customer_id, ct);`);
 // accounts gained prop-firm style limits after the first release of this table
 if (!all<any>("PRAGMA table_info(j_accounts)").some((c) => c.name === "limits")) db.exec("ALTER TABLE j_accounts ADD COLUMN limits TEXT DEFAULT '{}'");
+// an account can be shared as a public results page at /j/<share>
+if (!all<any>("PRAGMA table_info(j_accounts)").some((c) => c.name === "share")) { db.exec("ALTER TABLE j_accounts ADD COLUMN share TEXT DEFAULT ''"); db.exec("ALTER TABLE j_accounts ADD COLUMN share_opts TEXT DEFAULT '{}'"); }
+db.exec("CREATE INDEX IF NOT EXISTS j_accounts_s ON j_accounts(share)");
 
 const MEDIA_DIR = join(DB_PATH, "..", "journal-media");
 mkdirSync(MEDIA_DIR, { recursive: true });
@@ -438,9 +441,21 @@ function dropMedia(cid: string, ids: string[]) {
   for (const id of ids) { const m = mediaFile(cid, id); if (m) try { unlinkSync(m.f); } catch {} run("DELETE FROM j_media WHERE id = ? AND customer_id = ?", id, cid); }
 }
 
+// ---------------------------------------------------------------- a shared results page: one account, read-only, for anyone with the link
+export function sharedAccount(tok: string) {
+  if (!/^[A-Za-z0-9_-]{12,40}$/.test(tok)) return null;
+  const a = one<any>("SELECT * FROM j_accounts WHERE share = ?", tok);
+  if (!a || a.archived) return null;
+  const c = one<Customer>("SELECT * FROM customers WHERE id = ?", a.customer_id);
+  if (!c || !journalAccess(c).ok) return null;
+  const trades = all(OUT + " WHERE account_id = ? ORDER BY close_time", a.id).map(shape);
+  const typed = one<{ n: number }>("SELECT COUNT(*) n FROM j_trades WHERE account_id = ? AND source NOT IN ('connector', 'ea')", a.id)!.n;
+  return { account: a, trades, prefs: prefsOf(c.id), opts: J(a.share_opts) || {}, synced: trades.length > 0 && typed === 0 };
+}
+
 // ---------------------------------------------------------------- the whole journal in one payload
 const pubAcc = (a: any) => ({ id: a.id, name: a.name, broker: a.broker, platform: a.platform, currency: a.currency, login: a.login ? "••••" + String(a.login).slice(-4) : "", server: a.server,
-  demo: !!a.demo, source: a.source, time_mode: a.time_mode, balance_start: a.balance_start, token_hint: a.token_hint, last_sync: a.last_sync, balance: a.balance, equity: a.equity, archived: !!a.archived, ea: String(a.ref || "").startsWith("lic:"), limits: J(a.limits) || {} });
+  demo: !!a.demo, source: a.source, time_mode: a.time_mode, balance_start: a.balance_start, token_hint: a.token_hint, last_sync: a.last_sync, balance: a.balance, equity: a.equity, archived: !!a.archived, ea: String(a.ref || "").startsWith("lic:"), limits: J(a.limits) || {}, share: a.share ? "/j/" + a.share : "", share_opts: J(a.share_opts) || {} });
 export function journalState(c: Customer) {
   syncEaTrades(c.id);
   const trades = tradesOf(c.id);
@@ -498,11 +513,21 @@ export async function journalApi(req: Request, p: string, c: Customer | null, b:
       id, cid, f.name, f.broker, f.platform, f.currency, f.time_mode, f.balance_start, f.demo, f.limits, now());
     return json(200, { ok: true, account: pubAcc(one("SELECT * FROM j_accounts WHERE id = ?", id)) });
   }
-  let m = /^\/api\/journal\/accounts\/(ja_[a-z0-9]+)(\/token)?$/.exec(p);
+  let m = /^\/api\/journal\/accounts\/(ja_[a-z0-9]+)(\/token|\/share)?$/.exec(p);
   if (m) {
     const a = one<any>("SELECT * FROM j_accounts WHERE id = ? AND customer_id = ?", m[1], cid);
     if (!a) return bad("Account not found.", 404);
-    if (m[2] && post) {
+    if (m[2] === "/share" && post) {
+      const x = await b();
+      if (!x.on) { run("UPDATE j_accounts SET share = '', share_opts = '{}' WHERE id = ?", a.id); audit("customer:" + c.email, "stopped sharing a journal account", a.id); }
+      else {
+        const opts = { money: !!x.money, trades: !!x.trades };
+        run("UPDATE j_accounts SET share = ?, share_opts = ? WHERE id = ?", a.share || token(12), JSON.stringify(opts), a.id);
+        audit("customer:" + c.email, "shared a journal account", a.id, JSON.stringify(opts));
+      }
+      return json(200, { ok: true, account: pubAcc(one("SELECT * FROM j_accounts WHERE id = ?", a.id)) });
+    }
+    if (m[2] === "/token" && post) {
       const t = "gsj_" + token(24);
       run("UPDATE j_accounts SET token_hash = ?, token_hint = ? WHERE id = ?", sha256(t), t.slice(-4), a.id);
       audit("customer:" + c.email, "made a journal connector token", a.id);

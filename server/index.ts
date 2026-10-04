@@ -2,6 +2,7 @@
  * goldenstraddler.com - sales site, checkout, customer accounts, admin, and the licence + sync API for the EA.
  * Bun + SQLite on a Railway volume. Static pages live in /web.
  */
+import { renderShare } from "./share";
 import { gzipSync } from "node:zlib";
 import { existsSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { createDecipheriv, createHash } from "node:crypto";
@@ -550,6 +551,15 @@ async function handle(req: Request): Promise<Response> {
     if (!open && !adminOf(req)) return notFound(req);
     if (p === "/journal/app") return file(req, "journal-app.html", { noindex: true });
     return file(req, "journal.html", { noindex: !open, replace: (s) => hubNav(legalVars(s)) });
+  }
+  const shm = /^\/j\/([A-Za-z0-9_-]{12,40})$/.exec(p);
+  if (shm) {
+    if (limited("share:" + ipOf(req), 240, 3_600_000)) return bad("Slow down", 429);
+    const r = renderShare(shm[1]);
+    if (!r) return notFound(req);
+    const open = journalOpen();
+    return file(req, "share.html", { noindex: true, replace: (s) => legalVars(s).replace(/%%SH_HOME%%/g, open ? "/journal" : "/").replace(/%%SH_CTA%%/g, open ? "Start your own journal" : "GoldenStraddler")
+      .replace(/%%SH_TITLE%%/g, () => esc(r.title)).replace(/%%SH_DESC%%/g, () => esc(r.desc)).replace("<!--SH_MAIN-->", () => r.main) });
   }
   if (p === "/dl/GoldenStraddler-Journal.ex5" || p === "/dl/GoldenStraddler-Journal.mq5") {
     const c = meCustomer(req);

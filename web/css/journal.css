@@ -519,3 +519,8 @@ svg.jc g.pt:hover circle:last-child{r:6}
   .j-mh,.j-mb,.j-mf{padding-left:16px;padding-right:16px}
 }
 @media (prefers-reduced-motion:reduce){.j-drawer,.j-side{transition:none}.j-msg.wait p{animation:none}}
+/* sharing an account */
+.j-accbtn{display:flex;gap:6px;align-items:center}
+.j-accbtn .btn svg{width:13px;height:13px}
+.j-accbtn .btn.on{color:var(--ice);border-color:rgba(var(--ice-rgb),.45)}
+.j-mfr{display:flex;gap:10px;justify-content:flex-end;width:100%;flex-wrap:wrap}

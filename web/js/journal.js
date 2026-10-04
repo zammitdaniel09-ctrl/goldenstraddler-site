@@ -928,7 +928,7 @@ VIEWS.accounts = (main) => {
     const ts = ST.trades.filter((t) => t.a === a.id), s = JS.lite(ts);
     main.appendChild(h("article.j-acc", [
       h("div.j-acch", [h("div", [h("h3", a.name), h("p.fine", [a.broker || a.platform.toUpperCase(), a.login ? " · " + a.login : "", a.demo ? " · demo" : "", a.ea ? " · from your GoldenStraddler EA" : ""])]),
-        h("div.j-accs", [h("span", [h("b", String(ts.length)), " trades"]), h("span." + cls(s.net), money(s.net, { sign: true })), a.last_sync ? h("span.fine", "Updated " + ago(a.last_sync)) : null]), h("button.btn.xs.ghost", { type: "button", on: { click: () => editAccount(a) } }, "Edit")]),
+        h("div.j-accs", [h("span", [h("b", String(ts.length)), " trades"]), h("span." + cls(s.net), money(s.net, { sign: true })), a.last_sync ? h("span.fine", "Updated " + ago(a.last_sync)) : null]), h("div.j-accbtn", [h("button.btn.xs.ghost" + (a.share ? ".on" : ""), { type: "button", on: { click: () => shareAccount(a) } }, [icon("j-link"), a.share ? "Shared" : "Share"]), h("button.btn.xs.ghost", { type: "button", on: { click: () => editAccount(a) } }, "Edit")])]),
       (() => { const r = a.limits && Object.keys(a.limits).some((k) => k !== "firm") ? limitRows(a) : null; return r ? h("div.j-lim", [h("p.lab", ["Limits", a.limits.firm ? " · " + a.limits.firm : ""]), h("div.j-limg", r)]) : null; })(),
       a.ea ? h("p.fine", "Trades from GoldenStraddler on this account appear here by themselves.") : h("div.j-accb", [
         h("div.j-way", [h("h4", [icon("j-link"), "Connect MT5"]), h("p.fine", a.source === "connector" && a.last_sync ? `Connected. Last trade data ${ago(a.last_sync)}.` : "A small connector EA sends every closed trade, with its stop loss and how far it went for and against you."),
@@ -991,6 +991,27 @@ function connector(a) {
     h("li", [h("b", "Paste your token. "), "Drag the connector onto any chart, paste the token on the Inputs tab and press OK. It sends your whole history once, then each trade as it closes."]),
     h("li", [h("b", "Your token"), tokBox, make]),
   ]), [h("button.btn", { type: "button", on: { click: closeModal } }, "Done")]);
+}
+// a read-only results page anyone with the link can open
+function shareAccount(a) {
+  if (DEMO) { toast("Sharing works once you have the journal."); return; }
+  const money = h("input", { type: "checkbox", checked: !!(a.share_opts && a.share_opts.money) }), trades = h("input", { type: "checkbox", checked: !!(a.share_opts && a.share_opts.trades) });
+  const linkBox = h("div");
+  const url = () => location.origin + a.share;
+  const drawLink = () => linkBox.replaceChildren(...(a.share ? [h("div.j-copy", [h("code", url()), h("button.btn.sm", { type: "button", on: { click: async (e) => { try { await navigator.clipboard.writeText(url()); e.currentTarget.textContent = "Copied"; } catch { } } } }, "Copy")]),
+    h("p.fine", [h("a", { href: a.share, target: "_blank", rel: "noopener" }, "Open the page"), " · anyone with this link can see it."])] : [h("p.fine", "Not shared. Nothing about this account is public.")]));
+  const apply = async (on) => { const j = await save("accounts/" + a.id + "/share", { on, money: money.checked, trades: trades.checked }); Object.assign(a, j.account); const raw = ST.data.accounts.find((x) => x.id === a.id); if (raw) Object.assign(raw, j.account); drawLink(); draw(); render(); };
+  const foot = h("div.j-mfr");
+  const draw = () => foot.replaceChildren(a.share ? h("button.btn.danger", { type: "button", on: { click: () => apply(false).then(() => toast("This account is no longer shared.")) } }, "Stop sharing") : null,
+    h("button.btn.pri", { type: "button", on: { click: () => apply(true).then(() => toast(a.share ? "Sharing settings saved." : "Shared.")) } }, a.share ? "Save" : "Share this account"));
+  drawLink(); draw();
+  openModal("Share " + a.name, [
+    h("p", "Make a read-only page with this account's results: the main statistics, the curve and a month-by-month table. It's handy for a mentor, a prop-firm application or your own site."),
+    h("label.check", [money, h("span", "Show money amounts. Off: results show as a share of the starting balance, or in R.")]),
+    h("label.check", [trades, h("span", "Show the latest 25 trades (date, symbol, side and result)")]),
+    h("p.fine", "Never shown: your account number, notes, tags, screenshots, AI reviews or other accounts. A badge says whether every trade came straight from MT5 or some were imported or typed in."),
+    linkBox,
+  ], [foot]);
 }
 function importFile(a) {
   const f = {};
