@@ -220,6 +220,7 @@ function chatFacts(tz: string) {
   } else L.push("- There is no public discount code right now.");
   const m = methodsOn(), meth = [m.card && "card, Apple Pay and Google Pay (Stripe)", m.crypto && "crypto (NOWPayments)", m.bank && "bank transfer"].filter(Boolean);
   L.push(`- Payment methods available now: ${meth.join(", ") || "none at the moment"}.`);
+  if (journalOpen()) L.push(`- GoldenStraddler Journal (goldenstraddler.com/journal) is included with every EA licence: the EA's trades appear in it by themselves, with analytics, prop-firm limits, news matching and an AI coach. Traders without the EA can buy the Journal plan alone for ${euros(listPrice("journal"))} a month; it works with any MT5 account through a read-only connector or a history file.`);
   if (getN("trial_days") > 0) L.push(`- Free trial: ${getN("trial_days")} days on a demo account only (it won't run on a live account). Start it from the pricing section of the home page with an email address; the key arrives by email. One trial per email address.`);
   else L.push("- There's no free trial right now.");
   L.push(`- Money-back guarantee: ${getN("refund_days")} days from the first payment. A licence can move to another MT5 account once every ${getN("move_days")} days.`);
@@ -604,6 +605,9 @@ async function handle(req: Request): Promise<Response> {
       const td = getN("trial_days");
       if (td > 0) o = o.replace(/(<p id="faqTrial">)[\s\S]*?(<\/p>)/, (_, a, b) => `${a}Yes: ${td} days on a demo account, free and without a card. Ask for a key in the pricing section and it arrives by email. The trial doesn't run on live accounts. When you buy, there's also a ${getN("refund_days")}-day money-back guarantee on the first payment.${b}`);
       o = o.replace("<!--ABOUT-->", () => aboutHtml());
+      // once the journal is published, the home page says it comes with every licence
+      if (journalOpen()) o = o.replace(/<!--JOURNAL_NAV-->/g, '<a href="/journal">Journal</a>').replace(/<!--JOURNAL_LI-->/g, "<li>GoldenStraddler Journal with the AI coach</li>")
+        .replace("<!--JOURNAL_FEAT-->", '<div class="wide"><dt>A trading journal, included</dt><dd><span class="lg">Every trade from the EA lands in GoldenStraddler Journal by itself, with analytics, prop-firm limits and an AI coach. <a href="/journal">See the journal</a>.</span><span class="sh">The EA\'s trades in a journal with an AI coach. <a href="/journal">See it</a>.</span></dd></div>');
       o = jsonLd(o); if (getS("record_public") !== "1") o = o.replace(/<a href="#record">/g, '<a href="#record" hidden>'); }
     return o;
   } });

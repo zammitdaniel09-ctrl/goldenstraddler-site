@@ -48,7 +48,7 @@
 </div></div>
 <div class="wrap">
   <a class="mark" href="/"><svg aria-hidden="true"><use href="#gs"/></svg><span>GoldenStraddler</span></a>
-  <nav aria-label="Main"><a href="#how">How it works</a><a href="#record">Results</a><!--HUB_NAV--><a href="#pricing">Pricing</a><a href="#faq">FAQ</a></nav>
+  <nav aria-label="Main"><a href="#how">How it works</a><a href="#record">Results</a><!--HUB_NAV--><!--JOURNAL_NAV--><a href="#pricing">Pricing</a><a href="#faq">FAQ</a></nav>
   <div class="r"><div class="thm"><button class="thm-btn" id="thmBtn" type="button" aria-expanded="false" aria-controls="thmPop" aria-label="Colours"><i class="thm-sw"></i></button>
     <div class="thm-pop" id="thmPop" hidden data-thm-host></div></div>
     <a class="signin" href="/account">Sign in</a><a class="btn pri sm" href="#pricing">Get it</a>
@@ -57,7 +57,7 @@
 
 <div class="sheet" id="sheet" hidden>
   <nav aria-label="Menu">
-    <a href="#how">How it works</a><a href="#replay">Watch a release</a><a href="#desk">Live gold and this week</a><a href="#record">Results</a><a href="#need">What you need</a><!--HUB_NAV--><a href="#pricing">Pricing</a><a href="#brokers">Brokers</a><a href="#faq">FAQ</a><a href="/account">Sign in</a>
+    <a href="#how">How it works</a><a href="#replay">Watch a release</a><a href="#desk">Live gold and this week</a><a href="#record">Results</a><a href="#need">What you need</a><!--HUB_NAV--><!--JOURNAL_NAV--><a href="#pricing">Pricing</a><a href="#brokers">Brokers</a><a href="#faq">FAQ</a><a href="/account">Sign in</a>
   </nav>
   <div class="sheet-thm" data-thm-host></div>
   <div class="sheet-cta"><a class="btn pri" id="sheetBuy" href="#pricing">Get GoldenStraddler</a><button class="btn" type="button" data-chat-open>Ask a question</button></div>
@@ -259,6 +259,7 @@
       <div><dt>A short setup guide</dt><dd><span class="lg">A PDF from download to armed in about five minutes, with every MT5 screen shown.</span><span class="sh">From download to armed in about five minutes.</span></dd></div>
       <div><dt>Keeps going if the internet blinks</dt><dd><span class="lg">A licence check is trusted for 48 hours, and the EA never calls our server during a release.</span><span class="sh">A licence check is trusted for 48 hours.</span></dd></div>
       <div><dt>Updates and help</dt><dd><span class="lg">New versions appear in your account. Ask the assistant any time, or reach us from your account page.</span><span class="sh">New versions in your account, and real people.</span></dd></div>
+      <!--JOURNAL_FEAT-->
     </dl>
   </div>
   <div class="news" aria-labelledby="newsH">
@@ -286,14 +287,14 @@
       <h3>Lifetime</h3>
       <div class="price"><s id="pLifeWas" hidden></s><b id="pLife">{{PRICE_LIFETIME}}</b><span id="pLifeU">once</span></div>
       <p class="for">One payment. The licence never expires.</p>
-      <ul><li>Licence for one MT5 account</li><li>All future updates</li><li>Your live online dashboard</li><li>Move to a new account every {{MOVE_DAYS}} days</li><li>{{REFUND_DAYS}}-day money-back guarantee</li></ul>
+      <ul><li>Licence for one MT5 account</li><li>All future updates</li><li>Your live online dashboard</li><!--JOURNAL_LI--><li>Move to a new account every {{MOVE_DAYS}} days</li><li>{{REFUND_DAYS}}-day money-back guarantee</li></ul>
       <a class="btn pri" id="buyLife" href="/checkout?plan=lifetime">Buy lifetime</a>
     </article>
     <article class="plan" data-panel="monthly">
       <h3>Monthly</h3>
       <div class="price"><s id="pMonWas" hidden></s><b id="pMon">{{PRICE_MONTHLY}}</b><span id="pMonU">a month</span></div>
       <p class="for">Cancel any time from your account page.</p>
-      <ul><li>Licence for one MT5 account</li><li>All updates while subscribed</li><li>Your live online dashboard</li><li>Renews on its own by card, or pay each month by bank or crypto</li><li>{{REFUND_DAYS}}-day money-back on the first payment</li></ul>
+      <ul><li>Licence for one MT5 account</li><li>All updates while subscribed</li><li>Your live online dashboard</li><!--JOURNAL_LI--><li>Renews on its own by card, or pay each month by bank or crypto</li><li>{{REFUND_DAYS}}-day money-back on the first payment</li></ul>
       <a class="btn" id="buyMon" href="/checkout?plan=monthly">Start monthly</a>
     </article>
   </div>
