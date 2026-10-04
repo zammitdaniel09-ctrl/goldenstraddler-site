@@ -2,25 +2,32 @@
 //| GoldenStraddler Journal Connector                                |
 //| Sends this account's closed trades to your GoldenStraddler        |
 //| Journal: entry, exit, the stop loss each trade opened with, costs |
-//| and how far price went for and against it (from 1-minute bars).   |
+//| and how far price went for and against it (from 1-minute bars),   |
+//| plus the candles around each trade for the journal's replay.      |
 //| It only reads history. It never opens, changes or closes trades.  |
 //+------------------------------------------------------------------+
 #property copyright "GoldenStraddler"
 #property link      "https://goldenstraddler.com/journal"
-#property version   "1.00"
+#property version   "1.10"
 #property description "Sends your closed trades to GoldenStraddler Journal. Read-only: it never places, changes or closes a trade."
 
 input string InpToken    = "";                              // Connector token (from Journal > Accounts)
 input string InpServer   = "https://goldenstraddler.com";   // Journal address (add it under Tools > Options > Expert Advisors)
 input int    InpDays     = 3650;                            // How far back to send on the first run (days)
 input bool   InpCalendar = true;                            // Also send high-impact releases from MT5's calendar
+input bool   InpCharts   = true;                            // Also send the candles around each trade (for the replay)
+input int    InpChartDays = 180;                            // ...for trades closed in the last this many days
 
 #define BATCH        400
+#define MAX_CHUNK    3000000                                // characters per request
+#define PAD_BARS     30                                     // candles shown before the entry and after the exit
 #define RECENT_DAYS  4
 #define GV_DONE      "GSJ_FULL_"
 
 datetime g_lastRun = 0;
 long     g_done[];                                          // positions already sent in this session
+long     g_pend[];                                          // positions sent before their closing candles existed
+datetime g_pendDue[];
 string   g_status  = "";
 int      g_sent    = 0;
 
@@ -86,9 +93,37 @@ bool Excursion(string sym, long dir, datetime from, datetime to, double &worst, 
 }
 
 //+------------------------------------------------------------------+
+//| Candles around one trade: the smallest timeframe that fits it     |
+//+------------------------------------------------------------------+
+int ChartTf(long dur, ENUM_TIMEFRAMES &tf)
+{
+   ENUM_TIMEFRAMES tfs[6] = {PERIOD_M1, PERIOD_M5, PERIOD_M15, PERIOD_H1, PERIOD_H4, PERIOD_D1};
+   int secs[6] = {60, 300, 900, 3600, 14400, 86400};
+   if(dur < 60) dur = 60;
+   for(int k = 0; k < 6; k++)
+      if(dur / secs[k] + 2 * PAD_BARS <= 400 || k == 5) { tf = tfs[k]; return secs[k]; }
+   tf = PERIOD_D1; return 86400;
+}
+long Pts(double v, double base, double pt) { return (long)MathRound((v - base) / pt); }
+string Candles(string sym, datetime ot, datetime ct, double base, int dg)
+{
+   ENUM_TIMEFRAMES tf; int sec = ChartTf((long)(ct - ot), tf);
+   MqlRates r[];
+   int n = CopyRates(sym, tf, ot - (datetime)(PAD_BARS * sec), ct + (datetime)(PAD_BARS * sec), r);
+   if(n < 2 || n > 800) return "";
+   double pt = SymbolInfoDouble(sym, SYMBOL_POINT); if(pt <= 0) pt = MathPow(10, -dg);
+   datetime t0 = r[0].time;
+   string b = "";
+   for(int i = 0; i < n; i++)
+      b += (i ? "," : "") + StringFormat("[%I64d,%I64d,%I64d,%I64d,%I64d]", (long)((r[i].time - t0) / sec),
+                                         Pts(r[i].open, base, pt), Pts(r[i].high, base, pt), Pts(r[i].low, base, pt), Pts(r[i].close, base, pt));
+   return StringFormat(",\"bars\":{\"tf\":%d,\"t\":%I64d,\"base\":%s,\"pt\":%s,\"b\":[%s]}", sec, (long)t0, Num(base, dg), DoubleToString(pt, 10), b);
+}
+
+//+------------------------------------------------------------------+
 //| One closed position, rebuilt from its deals                      |
 //+------------------------------------------------------------------+
-bool Position(long posId, string &json, datetime &closedAt)
+bool Position(long posId, string &json, datetime &closedAt, datetime &later)
 {
    if(!HistorySelectByPosition(posId)) return false;
    int n = HistoryDealsTotal();
@@ -133,11 +168,21 @@ bool Position(long posId, string &json, datetime &closedAt)
    double worst = 0, best = 0;
    bool hasEx = Excursion(sym, dir, ot, ct, worst, best);
    int dg = (int)SymbolInfoInteger(sym, SYMBOL_DIGITS); if(dg <= 0) dg = 5;
+   // the chart goes once the candles after the exit exist; until then the trade goes without it and is sent again later
+   string chart = "";
+   later = 0;
+   datetime now = TimeTradeServer();
+   if(InpCharts && ct >= now - (datetime)((long)InpChartDays * 86400))
+   {
+      ENUM_TIMEFRAMES tf; int sec = ChartTf((long)(ct - ot), tf);
+      if(now < ct + (datetime)(PAD_BARS * sec) + 60) later = ct + (datetime)(PAD_BARS * sec) + 60;
+      else chart = Candles(sym, ot, ct, inVal / inVol, dg);
+   }
    json = StringFormat("{\"id\":\"%I64d\",\"symbol\":\"%s\",\"side\":\"%s\",\"volume\":%s,\"open_time\":%I64d,\"close_time\":%I64d,\"open_price\":%s,\"close_price\":%s,"
                        "\"sl\":%s,\"tp\":%s,\"commission\":%s,\"swap\":%s,\"fee\":%s,\"profit\":%s,\"magic\":\"%I64d\",\"comment\":\"%s\"%s}",
                        posId, Esc(sym), dir > 0 ? "buy" : "sell", Num(inVol, 2), (long)ot, (long)ct, Num(inVal / inVol, dg + 1), Num(outVal / outVol, dg + 1),
                        Num(sl, dg), Num(tp, dg), Num(comm, 2), Num(swap, 2), Num(fee, 2), Num(profit, 2), magic, Esc(comment),
-                       hasEx ? StringFormat(",\"mae\":%s,\"mfe\":%s", Num(worst, dg), Num(best, dg)) : "");
+                       hasEx ? StringFormat(",\"mae\":%s,\"mfe\":%s", Num(worst, dg), Num(best, dg)) + chart : chart);
    closedAt = ct;
    return true;
 }
@@ -206,6 +251,16 @@ bool Post(string positions, string events, int &added)
    return true;
 }
 
+void Later(long id, datetime due)
+{
+   for(int i = ArraySize(g_pend) - 1; i >= 0; i--) if(g_pend[i] == id) { g_pendDue[i] = due; return; }
+   int s = ArraySize(g_pend); ArrayResize(g_pend, s + 1, 100); ArrayResize(g_pendDue, s + 1, 100); g_pend[s] = id; g_pendDue[s] = due;
+}
+void Done(long id)
+{
+   int s = ArraySize(g_pend);
+   for(int i = s - 1; i >= 0; i--) if(g_pend[i] == id) { g_pend[i] = g_pend[s - 1]; g_pendDue[i] = g_pendDue[s - 1]; ArrayResize(g_pend, s - 1); ArrayResize(g_pendDue, s - 1); return; }
+}
 bool Sent(long id) { for(int i = ArraySize(g_done) - 1; i >= 0; i--) if(g_done[i] == id) return true; return false; }
 void Remember(long &list[])
 {
@@ -237,20 +292,31 @@ void Sync()
       for(int k = ArraySize(ids) - 1; k >= 0 && k >= ArraySize(ids) - 50; k--) if(ids[k] == pid) { seen = true; break; }
       if(!seen) { int s = ArraySize(ids); ArrayResize(ids, s + 1, 1000); ids[s] = pid; }
    }
+   // trades sent earlier without their chart, now that the candles after the exit exist
+   for(int i = ArraySize(g_pend) - 1; i >= 0; i--)
+      if(g_pendDue[i] <= now)
+      {
+         bool dup = false;
+         for(int k = ArraySize(ids) - 1; k >= 0; k--) if(ids[k] == g_pend[i]) { dup = true; break; }
+         if(!dup) { int s = ArraySize(ids); ArrayResize(ids, s + 1, 1000); ids[s] = g_pend[i]; }
+      }
    int total = ArraySize(ids), batch = 0, added = 0, sentNow = 0;
    datetime first = now, last = 0;
    string chunk = "";
    long inChunk[];
    for(int i = 0; i < total; i++)
    {
-      if(!full && Sent(ids[i])) continue;
-      string js; datetime ct;
-      if(!Position(ids[i], js, ct)) continue;
+      bool due = false;
+      for(int k = ArraySize(g_pend) - 1; k >= 0; k--) if(g_pend[k] == ids[i] && g_pendDue[k] <= now) { due = true; break; }
+      if(!full && Sent(ids[i]) && !due) continue;
+      string js; datetime ct, later;
+      if(!Position(ids[i], js, ct, later)) continue;
+      if(later > 0) Later(ids[i], later); else if(due) Done(ids[i]);
       if(ct < first) first = ct;
       if(ct > last) last = ct;
       chunk += (batch ? "," : "") + js; batch++;
       int s = ArraySize(inChunk); ArrayResize(inChunk, s + 1, BATCH); inChunk[s] = ids[i];
-      if(batch >= BATCH)
+      if(batch >= BATCH || StringLen(chunk) > MAX_CHUNK)
       {
          int a = 0;
          if(!Post(chunk, "", a)) return;

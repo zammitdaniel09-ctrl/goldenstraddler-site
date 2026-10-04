@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/site.css"><link rel="stylesheet" href="/css/chat.css">
 </head>
 <body>
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="gs" viewBox="0 0 64 64"><rect x="1" y="1" width="62" height="62" rx="16" fill="#0E1116" stroke="#2e3644" stroke-width="2"/><text x="25" y="44" font-family="Unbounded,Arial Black,sans-serif" font-weight="800" font-size="30" fill="#fff" text-anchor="middle">G</text><text x="42" y="49" font-family="Sedgwick Ave,Segoe Script,cursive" font-size="36" style="fill:var(--ice)" text-anchor="middle">S</text></symbol></svg>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="gs" viewBox="0 0 64 64"><rect x="1" y="1" width="62" height="62" rx="16" fill="#0E1116" stroke="#2e3644" stroke-width="2"/><text x="25" y="44" font-family="Unbounded,Arial Black,sans-serif" font-weight="800" font-size="30" fill="#fff" text-anchor="middle">G</text><text x="42" y="49" font-family="Sedgwick Ave,Segoe Script,cursive" font-size="36" style="fill:var(--ice)" text-anchor="middle">S</text></symbol><symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2.8l7.5 3v5.6c0 4.6-3.1 8.4-7.5 9.8-4.4-1.4-7.5-5.2-7.5-9.8V5.8z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8.6 12.2l2.4 2.4 4.5-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol></svg>
 <header class="top scrolled"><div class="wrap">
   <a class="mark" href="/"><svg aria-hidden="true"><use href="#gs"/></svg><span>GoldenStraddler</span></a>
   <div class="r"><a class="signin" href="/account">Sign in</a><a class="btn sm" href="/#pricing">Compare plans</a></div>
@@ -77,9 +77,9 @@
       <p class="then" id="sThen"></p>
       <button class="btn pri" type="submit" id="payBtn">Continue to payment</button>
       <p class="err" id="coErr" aria-live="polite"></p>
+      <div class="sum-guar"><svg aria-hidden="true"><use href="#i-shield"/></svg><span><b>{{REFUND_DAYS}}-day money-back guarantee</b> Not for you? Ask from your account page within {{REFUND_DAYS}} days of your first payment. No reason needed.</span></div>
       <div class="safe">
         <span id="safeProc">Card and wallet payments are handled by Stripe. We never see your card details.</span>
-        <span>Refund within {{REFUND_DAYS}} days of your first payment if it isn't for you.</span>
         <span id="oneAcc">One licence runs on one MT5 account.</span>
       </div>
     </aside>

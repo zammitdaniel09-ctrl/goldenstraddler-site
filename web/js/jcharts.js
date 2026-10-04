@@ -254,5 +254,78 @@ function fan(el, paths, o = {}) {
   });
 }
 
-window.JCharts = { line, bars, hist, heat, scatter, fan, showTip, hideTip, nice };
+// ---------------------------------------------------------------- candles around one trade, with entry, exit, stop, target and releases
+// bars: [{ t, o, h, l, c }], opts: { side, entry: {t, p}, exit: {t, p}, sl, tp, events: [{ t, label }], upto (replay: last bar shown), fmt, tf }
+function candles(el, bars, o = {}) {
+  return mount(el, (el, W) => {
+    const P = pal(el), H = o.h || (W < 520 ? 250 : 300), L = 6, R = 66, T = 18, B = 24;
+    if (!bars || bars.length < 2) { el.innerHTML = `<p class="jc-empty">No chart for this trade.</p>`; return; }
+    const n = bars.length, upto = Math.max(0, Math.min(n - 1, o.upto == null ? n - 1 : o.upto)), shownT = bars[upto].t + (o.tf || 60000);
+    let lo = Math.min(...bars.map((b) => b.l)), hi = Math.max(...bars.map((b) => b.h));
+    // the stop and target belong on the chart unless they sit far outside the action
+    const span0 = hi - lo || 1;
+    for (const v of [o.sl, o.tp, o.entry && o.entry.p, o.exit && o.exit.p]) if (Number.isFinite(v) && v > 0 && v > lo - span0 * 2 && v < hi + span0 * 2) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+    const pad = (hi - lo) * 0.06 || 1; lo -= pad; hi += pad;
+    const t0 = bars[0].t, t1 = bars[n - 1].t + (o.tf || 60000), pw = W - L - R;
+    const X = (t) => L + ((t - t0) / (t1 - t0 || 1)) * pw, Y = (v) => T + (1 - (v - lo) / (hi - lo || 1)) * (H - T - B);
+    const fmt = o.fmt || ((v) => v.toFixed(2));
+    const svg = S("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H, class: "jc jc-candles", role: "img", "aria-label": o.label || "Price chart around the trade" }, el);
+    const y = nice(lo, hi, 4);
+    const tags = [o.sl, o.tp].filter((v) => Number.isFinite(v) && v > 0 && v >= lo && v <= hi).map(Y);   // price labels give way to the stop and target tags
+    for (const v of y.ticks) { if (v < lo || v > hi) continue; S("line", { x1: L, x2: W - R, y1: Y(v), y2: Y(v), stroke: P.grid }, svg); if (tags.some((ty) => Math.abs(ty - Y(v)) < 16)) continue; const tx = S("text", { x: W - R + 8, y: Y(v) + 4, class: "ax" }, svg); tx.textContent = fmt(v); }
+    // time axis
+    const tl = (t) => new Date(t).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }), multiDay = t1 - t0 > 36e5 * 20;
+    const nT = Math.max(2, Math.min(6, Math.floor(pw / 100)));
+    for (let i = 0; i < nT; i++) { const t = t0 + ((t1 - t0) * i) / (nT - 1), tx = S("text", { x: X(t), y: H - 6, class: "ax", "text-anchor": i === 0 ? "start" : i === nT - 1 ? "end" : "middle" }, svg); tx.textContent = multiDay ? new Date(t).toLocaleDateString(undefined, { day: "numeric", month: "short" }) : tl(t); }
+    // the time in the trade
+    if (o.entry && o.exit) { const a = X(o.entry.t), b = Math.min(X(o.exit.t), X(shownT)); if (b > a) S("rect", { x: a, y: T, width: b - a, height: H - T - B, fill: `rgba(${P.iceRgb},.08)` }, svg); }
+    // releases
+    for (const e of o.events || []) {
+      if (e.t < t0 || e.t > t1) continue;
+      const x = X(e.t); S("line", { x1: x, x2: x, y1: T - 4, y2: H - B, stroke: P.gold, "stroke-width": 1, "stroke-dasharray": "3 3", opacity: 0.9 }, svg);
+      const tx = S("text", { x: x + 4, y: T - 6, class: "ax", style: `fill:${P.gold};paint-order:stroke;stroke:${P.surf};stroke-width:3px` }, svg); tx.textContent = e.label;
+    }
+    // stop and target
+    const hl = (v, col, txt) => { if (!(Number.isFinite(v) && v > 0 && v >= lo && v <= hi)) return; S("line", { x1: L, x2: W - R, y1: Y(v), y2: Y(v), stroke: col, "stroke-width": 1.2, "stroke-dasharray": "5 4" }, svg);
+      S("rect", { x: W - R + 2, y: Y(v) - 9, width: R - 4, height: 18, rx: 4, fill: col }, svg); const t = S("text", { x: W - R + 8, y: Y(v) + 4, class: "ax", style: `fill:${P.surf};font-weight:600` }, svg); t.textContent = txt; };
+    hl(o.sl, P.dn, "Stop"); hl(o.tp, P.up, "Target");
+    // candles
+    const cw = Math.max(1, Math.min(14, (pw / n) * 0.66));
+    const g = S("g", {}, svg);
+    for (let i = 0; i <= upto; i++) {
+      const b = bars[i], x = X(b.t + (o.tf || 60000) / 2), up = b.c >= b.o, col = up ? P.up : P.dn;
+      S("line", { x1: x, x2: x, y1: Y(b.h), y2: Y(b.l), stroke: col, "stroke-width": 1 }, g);
+      const top = Y(Math.max(b.o, b.c)), bot = Y(Math.min(b.o, b.c));
+      S("rect", { x: x - cw / 2, y: top, width: cw, height: Math.max(1, bot - top), fill: col, rx: cw > 4 ? 1 : 0 }, g);
+    }
+    // entry and exit, once the replay reaches them
+    const mark = (pt, kind) => {
+      if (!pt || !Number.isFinite(pt.p) || pt.t > shownT) return;
+      const x = X(pt.t), yy = Y(pt.p), long = o.side > 0, isEntry = kind === "entry";
+      const pointsUp = isEntry ? long : !long, s = 7;
+      const d = pointsUp ? `M${x} ${yy - 2}l${s} ${s + 4}h${-2 * s}z` : `M${x} ${yy + 2}l${s} ${-s - 4}h${-2 * s}z`;
+      S("path", { d, fill: isEntry ? P.ice : P.ink, stroke: P.surf, "stroke-width": 1.5 }, svg);
+      // entry's label sits to the left of its marker and exit's to the right, so a short trade's two labels don't collide
+      const left = isEntry ? x > L + 110 : x > W - R - 110;
+      const tx = S("text", { x: x + (left ? -10 : 10), y: pointsUp ? yy + 22 : yy - 14, class: "ax", "text-anchor": left ? "end" : "start", style: `fill:${P.ink};font-weight:600;paint-order:stroke;stroke:${P.surf};stroke-width:3px;stroke-linejoin:round` }, svg);
+      tx.textContent = (isEntry ? "Entry " : "Exit ") + fmt(pt.p);
+    };
+    mark(o.entry, "entry"); mark(o.exit, "exit");
+    // the latest price during a replay
+    if (upto < n - 1) { const c = bars[upto].c; S("line", { x1: L, x2: W - R, y1: Y(c), y2: Y(c), stroke: P.axis, "stroke-width": 1, opacity: 0.5 }, svg); }
+    // crosshair readout
+    const xh = S("line", { y1: T, y2: H - B, stroke: P.axis, "stroke-width": 1, visibility: "hidden" }, svg);
+    const hit = S("rect", { x: L, y: T, width: pw, height: H - T - B, fill: "transparent" }, svg);
+    const move = (e) => {
+      const r = svg.getBoundingClientRect(), mx = ((e.clientX - r.left) / r.width) * W, t = t0 + ((mx - L) / pw) * (t1 - t0);
+      let k = 0; for (let i = 0; i <= upto; i++) if (Math.abs(bars[i].t - t) < Math.abs(bars[k].t - t)) k = i;
+      const b = bars[k], x = X(b.t + (o.tf || 60000) / 2); xh.setAttribute("x1", x); xh.setAttribute("x2", x); xh.setAttribute("visibility", "visible");
+      showTip(e.clientX, e.clientY, [{ value: fmt(b.o), label: "open" }, { value: fmt(b.h), label: "high" }, { value: fmt(b.l), label: "low" }, { value: fmt(b.c), label: "close" }],
+        new Date(b.t).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }));
+    };
+    hit.addEventListener("pointermove", move); hit.addEventListener("pointerdown", move); hit.addEventListener("pointerleave", () => { xh.setAttribute("visibility", "hidden"); hideTip(); });
+  });
+}
+
+window.JCharts = { line, bars, hist, heat, scatter, fan, candles, showTip, hideTip, nice };
 })();

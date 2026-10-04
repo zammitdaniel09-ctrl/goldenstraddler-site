@@ -47,6 +47,9 @@ CREATE INDEX IF NOT EXISTS j_ai_c ON j_ai(customer_id, created_at);
 // releases: the public calendar (cid '') for everyone, and each customer's own from their MT5 connector (seen only by them)
 if (all<any>("PRAGMA table_info(j_events)").some((c) => c.name === "t") && !all<any>("PRAGMA table_info(j_events)").some((c) => c.name === "cid")) db.exec("DROP TABLE j_events");
 db.exec("CREATE TABLE IF NOT EXISTS j_events ( t INTEGER NOT NULL, c TEXT NOT NULL, n TEXT NOT NULL, cid TEXT NOT NULL DEFAULT '', PRIMARY KEY (t, c, n, cid) )");
+// price bars around each trade, sent by the MT5 connector: the per-trade chart and replay
+db.exec(`CREATE TABLE IF NOT EXISTS j_bars ( trade_id TEXT PRIMARY KEY, customer_id TEXT NOT NULL, tf INTEGER NOT NULL, t0 INTEGER NOT NULL, base REAL NOT NULL, pt REAL NOT NULL,
+  data TEXT NOT NULL, ct INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL ); CREATE INDEX IF NOT EXISTS j_bars_c ON j_bars(customer_id, ct);`);
 // accounts gained prop-firm style limits after the first release of this table
 if (!all<any>("PRAGMA table_info(j_accounts)").some((c) => c.name === "limits")) db.exec("ALTER TABLE j_accounts ADD COLUMN limits TEXT DEFAULT '{}'");
 
@@ -334,6 +337,30 @@ function syncEaTrades(cid: string) {
   }
 }
 
+// ---------------------------------------------------------------- candles around a trade
+// sent as { tf: seconds per bar, t: first bar (server time, s), base, pt, b: [[bars from t, open, high, low, close] in points from base] }
+const TFS = new Set([60, 300, 900, 1800, 3600, 14400, 86400]);
+const putBars = db.query(`INSERT INTO j_bars (trade_id, customer_id, tf, t0, base, pt, data, ct, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  ON CONFLICT(trade_id) DO UPDATE SET tf = excluded.tf, t0 = excluded.t0, base = excluded.base, pt = excluded.pt, data = excluded.data, ct = excluded.ct, created_at = excluded.created_at`);
+export function barsOf(x: any, utc: (sec: any) => number) {
+  const tf = Number(x?.tf), pt = Number(x?.pt), base = Number(x?.base), t0 = utc(x?.t);
+  if (!TFS.has(tf) || !(pt > 0 && pt < 1000) || !(base > 0 && Number.isFinite(base)) || !Number.isFinite(t0) || t0 <= 0 || !Array.isArray(x.b)) return null;
+  const out: number[][] = []; let last = -1;
+  for (const r of x.b.slice(0, 800)) {
+    if (!Array.isArray(r) || r.length < 5) return null;
+    const [d, o, h, l, c] = r.slice(0, 5).map((v: any) => Math.round(Number(v)));
+    if (![d, o, h, l, c].every((v) => Number.isFinite(v) && Math.abs(v) <= 1e8) || d <= last || d > 1e6) return null;
+    out.push([d, o, Math.max(h, o, c, l), Math.min(l, o, c, h), c]); last = d;
+  }
+  return out.length >= 2 ? { tf, t0, base, pt, b: out } : null;
+}
+// keep the newest 3,000 charts per customer
+function trimBars(cid: string) {
+  const n = one<{ n: number }>("SELECT COUNT(*) n FROM j_bars WHERE customer_id = ?", cid)!.n;
+  if (n > 3000) run("DELETE FROM j_bars WHERE trade_id IN (SELECT trade_id FROM j_bars WHERE customer_id = ? ORDER BY ct ASC LIMIT ?)", cid, n - 3000);
+}
+const dropBars = (where: string, ...args: any[]) => run(`DELETE FROM j_bars WHERE trade_id IN (SELECT id FROM j_trades WHERE ${where})`, ...args);
+
 // ---------------------------------------------------------------- the MT5 connector: an EA that sends the account's closed positions
 export function connectorSync(b: any) {
   const tok = str(b.token, 80);
@@ -368,11 +395,22 @@ export function connectorSync(b: any) {
     }
   })();
   const r = storeRows(acc.customer_id, acc.id, rows, "connector");
+  // candles around each trade (sent once the window after the close has passed)
+  let charts = 0;
+  db.transaction(() => {
+    for (const p of (Array.isArray(b.positions) ? b.positions : []).slice(0, 5000)) {
+      if (!p || !p.bars) continue;
+      const bars = barsOf(p.bars, utc); if (!bars) continue;
+      const t = one<{ id: string; close_time: number }>("SELECT id, close_time FROM j_trades WHERE account_id = ? AND ext_id = ?", acc.id, str(p.id, 40)); if (!t) continue;
+      putBars.run(t.id, acc.customer_id, bars.tf, bars.t0, bars.base, bars.pt, JSON.stringify(bars.b), t.close_time, now()); charts++;
+    }
+  })();
+  if (charts) trimBars(acc.customer_id);
   run(`UPDATE j_accounts SET last_sync = ?, login = CASE WHEN login = '' THEN ? ELSE login END, server = CASE WHEN ? != '' THEN ? ELSE server END,
        broker = CASE WHEN broker = '' THEN ? ELSE broker END, currency = CASE WHEN ? != '' THEN ? ELSE currency END, demo = ?, balance = ?, equity = ?, source = 'connector' WHERE id = ?`,
     now(), login, str(b.server, 96), str(b.server, 96), str(b.company, 96), str(b.currency, 8), str(b.currency, 8), b.demo ? 1 : 0, num(b.balance), num(b.equity), acc.id);
   const c2 = one<{ n: number; last: number }>("SELECT COUNT(*) n, MAX(close_time) last FROM j_trades WHERE account_id = ?", acc.id)!;
-  return { code: 200, body: { ok: true, ...r, have: c2.n, last_close: c2.last ? Math.floor((c2.last + offMin * 60000) / 1000) : 0 } };
+  return { code: 200, body: { ok: true, ...r, charts, have: c2.n, last_close: c2.last ? Math.floor((c2.last + offMin * 60000) / 1000) : 0 } };
 }
 
 // ---------------------------------------------------------------- media (screenshots)
@@ -414,6 +452,7 @@ export function journalState(c: Customer) {
     tags: all("SELECT id, name, kind, color FROM j_tags WHERE customer_id = ? ORDER BY kind, name", c.id),
     playbooks: all<any>("SELECT id, name, description, rules, color, archived FROM j_playbooks WHERE customer_id = ? ORDER BY name", c.id).map((p) => ({ ...p, rules: J(p.rules) || [], archived: !!p.archived })),
     trades, days, events: eventsFor(c.id, trades),
+    charts: all<{ trade_id: string }>("SELECT trade_id FROM j_bars WHERE customer_id = ?", c.id).map((r) => r.trade_id),
   };
 }
 
@@ -472,6 +511,7 @@ export async function journalApi(req: Request, p: string, c: Customer | null, b:
     if (del) {
       const media = all<any>("SELECT media FROM j_trades WHERE account_id = ?", a.id).flatMap((t) => J(t.media) || []);
       dropMedia(cid, media);
+      dropBars("account_id = ? AND customer_id = ?", a.id, cid);
       run("DELETE FROM j_trades WHERE account_id = ? AND customer_id = ?", a.id, cid);
       if (String(a.ref).startsWith("lic:")) run("UPDATE j_accounts SET archived = 1 WHERE id = ?", a.id); else run("DELETE FROM j_accounts WHERE id = ?", a.id);
       return json(200, { ok: true });
@@ -527,15 +567,20 @@ export async function journalApi(req: Request, p: string, c: Customer | null, b:
         run("UPDATE j_trades SET tags = ?, playbook_id = CASE WHEN ? = 1 THEN ? ELSE playbook_id END, reviewed = CASE WHEN ? = 1 THEN 1 ELSE reviewed END, updated_at = ? WHERE id = ? AND customer_id = ?",
           JSON.stringify(tags), pb === undefined ? 0 : 1, pb ?? null, x.reviewed ? 1 : 0, now(), id, cid);
       }
-      if (x.delete === true) for (const id of ids) { const t = one<any>("SELECT media FROM j_trades WHERE id = ? AND customer_id = ?", id, cid); if (t) { dropMedia(cid, J(t.media) || []); run("DELETE FROM j_trades WHERE id = ? AND customer_id = ?", id, cid); } }
+      if (x.delete === true) for (const id of ids) { const t = one<any>("SELECT media FROM j_trades WHERE id = ? AND customer_id = ?", id, cid); if (t) { dropMedia(cid, J(t.media) || []); run("DELETE FROM j_bars WHERE trade_id = ?", id); run("DELETE FROM j_trades WHERE id = ? AND customer_id = ?", id, cid); } }
     })();
     return json(200, { ok: true, trades: tradesOf(cid) });
+  }
+  m = /^\/api\/journal\/trades\/(jt_[a-z0-9]+)\/bars$/.exec(p);
+  if (m) {
+    const r = one<any>("SELECT tf, t0, base, pt, data FROM j_bars WHERE trade_id = ? AND customer_id = ?", m[1], cid);
+    return json(200, { ok: true, bars: r ? { tf: r.tf, t0: r.t0, base: r.base, pt: r.pt, b: J(r.data) || [] } : null });
   }
   m = /^\/api\/journal\/trades\/(jt_[a-z0-9]+)$/.exec(p);
   if (m) {
     const t = one<any>("SELECT * FROM j_trades WHERE id = ? AND customer_id = ?", m[1], cid);
     if (!t) return bad("Trade not found.", 404);
-    if (del) { dropMedia(cid, J(t.media) || []); run("DELETE FROM j_trades WHERE id = ?", t.id); return json(200, { ok: true }); }
+    if (del) { dropMedia(cid, J(t.media) || []); run("DELETE FROM j_bars WHERE trade_id = ?", t.id); run("DELETE FROM j_trades WHERE id = ?", t.id); return json(200, { ok: true }); }
     if (post) {
       const x = await b(), set: string[] = [], val: any[] = [];
       const put = (col: string, v: any) => { set.push(col + " = ?"); val.push(v); };

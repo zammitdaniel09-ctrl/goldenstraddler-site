@@ -67,6 +67,7 @@ function load(d) {
   ST.trades = JS.enrich(d.trades.map((t) => ({ ...t, pb: t.pb && pbName.has(t.pb) ? t.pb : t.pb ? t.pb : null })), { tz: d.prefs.tz, dayStart: d.prefs.dayStart, be: d.prefs.be, events: d.events || [] });
   ST.newsFrom = d.events && d.events.length ? d.events[0].t : null;
   ST.byId = new Map(ST.trades.map((t) => [t.id, t]));
+  ST.charts = new Set(d.charts || []); ST.barCache = ST.barCache || new Map();
   ST.memo = null;
   $("#whoEmail").textContent = DEMO ? "Sample journal" : d.email;
   const toReview = ST.trades.filter((t) => !t.reviewed).length, nr = $("#navReview");
@@ -387,16 +388,79 @@ function tradeMap(t) {
   const bar = h("div.track");
   if (Number.isFinite(t.mae) && Number.isFinite(t.mfe)) bar.appendChild(h("i.exc", { style: { left: P(Math.min(t.mae, t.mfe)) + "%", width: Math.abs(P(t.mfe) - P(t.mae)) + "%" } }));
   bar.appendChild(h("i.run." + (t.net >= 0 ? "pos" : "neg"), { style: { left: Math.min(P(t.op), P(t.cp)) + "%", width: Math.abs(P(t.cp) - P(t.op)) + "%" } }));
-  // labels above (entry, stop, worst) and below (exit, target, best); a label too close to its neighbour steps further out
-  const UP = new Set(["Entry", "Stop", "Worst"]), lastAt = { up: -99, dn: -99 };
-  for (const [l, v] of [...pts].sort((a, b) => P(a[1]) - P(b[1]))) {
-    const row = UP.has(l) ? "up" : "dn", far = P(v) - lastAt[row] < 13; lastAt[row] = far ? -99 : P(v);
+  // labels above (entry, stop, worst) and below (exit, target, best), each row on a near and a far line.
+  // The important ones are placed first; worst and best give way when both lines are crowded (their numbers stay in Details)
+  const UP = new Set(["Entry", "Stop", "Worst"]), ORDER = ["Entry", "Exit", "Stop", "Target", "Worst", "Best"], lines = { up: [[], []], dn: [[], []] };
+  const gap = (arr, x) => arr.reduce((m, y) => Math.min(m, Math.abs(x - y)), 99);
+  for (const [l, v] of [...pts].sort((a, b) => ORDER.indexOf(a[0]) - ORDER.indexOf(b[0]))) {
+    const row = UP.has(l) ? "up" : "dn", x = P(v), gN = gap(lines[row][0], x), gF = gap(lines[row][1], x);
+    let far = gN < 13 && gF > gN;
+    if (gN < 13 && gF < 13 && (l === "Worst" || l === "Best")) { bar.appendChild(h("span.m." + l.toLowerCase(), { style: { left: x + "%" }, title: `${l} ${priceFmt(v)}` })); continue; }
+    lines[row][far ? 1 : 0].push(x);
     if (far) box.classList.add(row === "up" ? "fu" : "fd");
-    const edge = P(v) < 8 ? ".l" : P(v) > 92 ? ".r" : "";
-    bar.appendChild(h("span.m." + l.toLowerCase() + (far ? ".far" : "") + edge, { style: { left: P(v) + "%" }, title: `${l} ${priceFmt(v)}` }, h("em", [l, h("b", priceFmt(v))])));
+    const edge = x < 8 ? ".l" : x > 92 ? ".r" : "";
+    bar.appendChild(h("span.m." + l.toLowerCase() + (far ? ".far" : "") + edge, { style: { left: x + "%" }, title: `${l} ${priceFmt(v)}` }, h("em", [l, h("b", priceFmt(v))])));
   }
   box.appendChild(bar);
   return box;
+}
+// ---------------------------------------------------------------- the price around a trade (from the MT5 connector), with a replay
+const TF_NAME = { 60: "1-minute", 300: "5-minute", 900: "15-minute", 1800: "30-minute", 3600: "1-hour", 14400: "4-hour", 86400: "Daily" };
+const barsFrom = (raw) => raw && Array.isArray(raw.b) && raw.b.length >= 2 ? { tf: raw.tf, bars: raw.b.map(([d, o, hh, l, c]) => ({ t: raw.t0 + d * raw.tf * 1000, o: raw.base + o * raw.pt, h: raw.base + hh * raw.pt, l: raw.base + l * raw.pt, c: raw.base + c * raw.pt })) } : null;
+function tradeChart(t) {
+  if (!DEMO && !ST.charts.has(t.id)) return null;
+  const box = h("div.j-chart.j-tc"), head = h("div.j-tch", h("h3", "Price around the trade")), wrap = h("section.j-tcs", [head, box]);
+  const show = (got) => {
+    if (!got) { wrap.remove(); return; }
+    const { tf, bars } = got, tfMs = tf * 1000, ccys = JS.symbolCcys(t.s);
+    const evs = (ST.data.events || []).filter((e) => e.t >= bars[0].t && e.t <= bars[bars.length - 1].t + tfMs && ccys.includes(e.c)).map((e) => ({ t: e.t, label: JS.eventName(e.n, e.c) }));
+    const o = { side: t.d, entry: { t: t.ot, p: t.op }, exit: { t: t.ct, p: t.cp }, sl: t.sl, tp: t.tp, events: evs, tf: tfMs, fmt: priceFmt, label: `${t.s} price around the trade` };
+    const chart = JC.candles(box, bars, o);
+    let timer = 0;
+    const slider = h("input.j-tcs-r", { type: "range", min: 0, max: bars.length - 1, value: bars.length - 1, step: 1, "aria-label": "Replay position", on: { input: () => { stop(); o.upto = +slider.value; chart.draw(); } } });
+    const btn = h("button.btn.xs", { type: "button", on: { click: () => (timer ? stop() : play()) } });
+    const stop = () => { clearInterval(timer); timer = 0; btn.replaceChildren(icon("j-play"), "Replay"); };
+    const play = () => {
+      let i = +slider.value >= bars.length - 1 ? 0 : +slider.value;
+      const by = Math.max(1, Math.round(bars.length / 250));
+      btn.replaceChildren(icon("j-pause"), "Pause");
+      timer = setInterval(() => { if (!box.isConnected) return stop(); i = Math.min(bars.length - 1, i + by); o.upto = i; slider.value = i; chart.draw(); if (i >= bars.length - 1) stop(); }, 40);
+    };
+    stop();
+    head.replaceChildren(h("div", [h("h3", "Price around the trade"), h("span.fine", `${TF_NAME[tf] || ""} candles${DEMO ? ", simulated for the sample" : " from your broker"}${evs.length ? ". Gold lines mark high-impact releases" : ""}.`)]), h("div.j-tcr", [btn, slider]));
+  };
+  if (DEMO) show(synthBars(t));
+  else if (ST.barCache.has(t.id)) show(ST.barCache.get(t.id));
+  else { box.appendChild(h("p.jc-empty", "Loading the chart…")); api(`trades/${t.id}/bars`).then((j) => { const g = barsFrom(j.bars); ST.barCache.set(t.id, g); if (wrap.isConnected) show(g); }).catch(() => wrap.remove()); }
+  return wrap;
+}
+// the sample journal has no broker data, so its charts are drawn to fit each made-up trade
+function synthBars(t) {
+  const dur = Math.max(60000, t.ct - t.ot);
+  let tf = 60; for (const s of [60, 300, 900, 3600, 14400]) { tf = s; if ((dur + 60 * s * 1000) / (s * 1000) <= 260) break; }
+  const tfMs = tf * 1000, start = Math.floor((t.ot - 30 * tfMs) / tfMs) * tfMs, end = t.ct + 30 * tfMs;
+  let seed = [...t.id].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) >>> 0, 7);
+  const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296, gauss = () => (rnd() + rnd() + rnd() - 1.5) * 1.15;
+  const long = t.d > 0, worst = Number.isFinite(t.mae) ? t.mae : t.op - (long ? 1 : -1) * Math.abs(t.cp - t.op) * 0.4, best = Number.isFinite(t.mfe) ? t.mfe : Math.max(t.op, t.cp);
+  const span = Math.max(Math.abs(best - worst), Math.abs(t.cp - t.op), t.op * 0.0004);
+  const win = t.net >= 0, a = t.ot + dur * (0.2 + rnd() * 0.2), b = t.ot + dur * (0.55 + rnd() * 0.3);
+  const pts = [[start, t.op + gauss() * span * 0.6], [t.ot, t.op], ...(win ? [[a, worst], [b, best]] : [[a, best], [b, worst]]), [t.ct, t.cp], [end, t.cp + gauss() * span * 0.5]];
+  const n = Math.ceil((end - start) / tfMs), sig = span / Math.sqrt(Math.max(4, dur / tfMs)) * 0.55, out = [];
+  // a bridge between each pair of points, so the path passes through entry, the extremes and exit
+  const path = []; for (let k = 0; k < pts.length - 1; k++) {
+    const [ta, pa] = pts[k], [tb, pb] = pts[k + 1], m = Math.max(1, Math.round((tb - ta) / tfMs)); let w = 0; const ws = [0];
+    for (let i = 1; i <= m; i++) ws.push(w += gauss() * sig);
+    for (let i = k ? 1 : 0; i <= m; i++) path.push(pa + (pb - pa) * (i / m) + ws[i] - ws[m] * (i / m));
+  }
+  const lo = Math.min(worst, best), hi = Math.max(worst, best);
+  let prev = path[0];
+  for (let i = 0; i < Math.min(n, path.length - 1); i++) {
+    const bt = start + i * tfMs, inTrade = bt + tfMs > t.ot && bt < t.ct;
+    let o = prev, c = path[i + 1], hh = Math.max(o, c) + Math.abs(gauss()) * sig * 0.5, l = Math.min(o, c) - Math.abs(gauss()) * sig * 0.5;
+    if (inTrade) { hh = Math.min(hh, hi); l = Math.max(l, lo); c = Math.min(hi, Math.max(lo, c)); o = Math.min(hi, Math.max(lo, o)); }
+    out.push({ t: bt, o, h: Math.max(hh, o, c), l: Math.min(l, o, c), c }); prev = c;
+  }
+  return { tf, bars: out };
 }
 function drawTrade(t) {
   clearTimeout(dTimer);
@@ -432,6 +496,7 @@ function drawTrade(t) {
         h("button.btn.xs.ghost", { type: "button", "aria-label": "Close", on: { click: closeDrawer } }, icon("j-x"))]),
     ]),
     h("div.j-dres", [h("b." + cls(t.net), money(t.net, { sign: true })), t.r != null ? h("span." + cls(t.r), rr(t.r)) : null, h("span.fine", `${fx(t.v)} lots, held ${dur(t.dur)}`)]),
+    tradeChart(t),
     tradeMap(t),
     h("section", [h("h3", "Your review"), h("div.j-dgrid", [h("label", [h("span.lab", "Setup"), pbSel]), h("div", [h("span.lab", "Rating"), stars(t.rt, (n) => upd(t, { rating: n }).then(() => drawTrade(ST.byId.get(t.id))))])]), checks,
       h("div.j-notehd", [h("span.lab", "Notes"), stat]), note, tagBox,

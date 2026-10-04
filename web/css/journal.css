@@ -222,6 +222,14 @@ button.j-tag.add:hover{color:var(--white);border-color:var(--edge3)}
 .j-dres b{font:800 30px var(--disp);letter-spacing:-.03em}
 .j-dres>span:not(.fine){font-size:18px;font-weight:600}
 .j-map{padding:40px 4px 46px}
+.j-drawer .j-tcs{padding:16px 0 8px}
+.j-tch{display:flex;align-items:flex-end;justify-content:space-between;gap:10px 16px;flex-wrap:wrap;margin-bottom:10px}
+.j-drawer .j-tch h3{margin:0 0 2px}
+.j-tcr{display:flex;align-items:center;gap:10px;flex:1 1 200px;max-width:300px}
+.j-tcr .btn{flex:none}.j-tcr .btn svg{width:13px;height:13px}
+.j-tcs-r{flex:1;min-width:0;accent-color:var(--ice)}
+.j-tc{min-height:250px;margin:0 -4px}
+.j-tcs+.j-map{padding-top:34px}
 .j-map .track{position:relative;height:6px;border-radius:3px;background:rgba(var(--fg-rgb),.07);overflow:visible}
 .j-map .exc{position:absolute;top:0;height:6px;border-radius:3px;background:rgba(var(--fg-rgb),.12)}
 .j-map .run{position:absolute;top:-1px;height:8px;border-radius:4px}

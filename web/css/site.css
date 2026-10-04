@@ -316,6 +316,9 @@ html{scroll-padding-top:128px}
 .sum .btn.pri{width:100%;margin-top:22px;padding:15px 22px;font-size:16px}
 .sum .err{margin-top:12px;font-size:14px;min-height:1.3em}
 .sum .safe{margin-top:16px;font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:6px}
+.sum-guar{display:flex;gap:12px;align-items:flex-start;margin-top:16px;padding:12px 14px;border-radius:14px;border:1px solid rgba(var(--ice-rgb),.32);background:rgba(var(--ice-rgb),.07);font-size:13.5px;color:var(--txt2);line-height:1.45}
+.sum-guar svg{width:22px;height:22px;flex:none;color:var(--ice);margin-top:1px}
+.sum-guar b{display:block;color:var(--white);font-weight:600;font-size:14px;margin-bottom:2px}
 .consent{display:flex;flex-direction:column;gap:12px;margin-top:6px}
 .note{padding:14px 16px;border:1px solid var(--edge2);border-radius:14px;background:var(--carbon);color:var(--txt2);font-size:15px}
 .note.warn{border-color:rgba(var(--gold-rgb),.45);background:rgba(var(--gold-rgb),.06)}
