@@ -525,3 +525,18 @@ svg.jc g.pt:hover circle:last-child{r:6}
 .j-accbtn .btn.on{color:var(--ice);border-color:rgba(var(--ice-rgb),.45)}
 .j-mfr{display:flex;gap:10px;justify-content:flex-end;width:100%;flex-wrap:wrap}
 .j-alerts{margin-top:18px;max-width:72ch}
+/* is the edge real? */
+.j-edge p{color:var(--txt2);max-width:78ch}
+.j-edge p b{color:var(--white)}.j-edge p b.up{color:var(--up)}.j-edge p b.dn{color:var(--loss)}
+.j-edgev{font:700 20px var(--disp);letter-spacing:-.02em;margin-bottom:8px;color:var(--white)!important}
+.j-edgev.positive{color:var(--up)!important}.j-edgev.negative{color:var(--loss)!important}
+.j-ci{position:relative;height:56px;margin:18px 6px 6px}
+.j-ci::before{content:"";position:absolute;left:0;right:0;top:24px;height:2px;background:var(--edge2);border-radius:2px}
+.j-ci .band{position:absolute;top:18px;height:14px;border-radius:7px;background:rgba(var(--ice-rgb),.28);border:1px solid rgba(var(--ice-rgb),.6)}
+.j-ci .band.positive{background:rgba(var(--up-rgb,63,196,252),.25);border-color:var(--up)}.j-ci .band.negative{background:rgba(var(--loss-rgb,242,97,111),.22);border-color:var(--loss)}
+.j-ci .zero{position:absolute;top:10px;width:2px;height:30px;margin-left:-1px;background:var(--muted)}
+.j-ci .dot{position:absolute;top:19px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:var(--white);border:2px solid var(--carbon)}
+.j-ci span{position:absolute;top:40px;font-size:12px;color:var(--muted);transform:translateX(-50%);white-space:nowrap;font-variant-numeric:tabular-nums}
+.j-ci .zl{top:-8px}
+.j-edgechip{display:inline-block;align-self:flex-start;margin:2px 0 8px;padding:3px 10px;border-radius:999px;font-size:12.5px;border:1px solid var(--edge2);color:var(--txt2)}
+.j-edgechip.positive{border-color:var(--up);color:var(--up)}.j-edgechip.negative{border-color:var(--loss);color:var(--loss)}

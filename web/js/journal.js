@@ -647,6 +647,7 @@ A.overview = (main, ts) => {
     ["Consistency", [["Trading days", `${s.days} (${s.greenDays} green)`], ["Green days", pct(s.dayWinRate, 0)], ["Average day", money(s.avgDay, { sign: true })], ["Best day", s.bestDay ? `${money(s.bestDay.net, { sign: true })} on ${dayName(s.bestDay.day, { day: "numeric", month: "short" })}` : "–"], ["Worst day", s.worstDay ? `${money(s.worstDay.net)} on ${dayName(s.worstDay.day, { day: "numeric", month: "short" })}` : "–"], ["Best day's share of profit", pct(s.consistency, 0), "How much of your green-day profit came from the single best day. Many prop firms cap this at 30 to 50%."], ["Sharpe (daily)", fx(s.sharpe), "Annualised from daily results."], ["Sortino (daily)", fx(s.sortino)]]],
     ["Habits and costs", [["Trades per day", fx(s.tradesPerDay, 1)], ["Trades per week", fx(s.perWeek, 1)], ["Average hold", dur(s.avgHold)], ["Hold, winners / losers", `${dur(s.holdWin)} / ${dur(s.holdLoss)}`], ["Longest winning streak", String(s.streak.maxWin)], ["Longest losing streak", String(s.streak.maxLoss)], ["Streak dependency (Z)", fx(s.z), "Below −1.96: wins and losses cluster. Above +1.96: they alternate. In between: no pattern."], ["Costs (commission, swap, fees)", `${money(-s.costs)} (${pct(s.costShare, 1)} of gross)`], ["Kept of the best price", pct(s.captured, 0), "On winning trades with excursion data: how much of the best open profit you kept, on average."]]],
   ];
+  main.appendChild(edgeCard(ts));
   main.appendChild(h("div.j-metrics", groups.map(([g, rows]) => card(g, h("dl.j-dl", rows.map((r) => row(...r)))))));
   const d = JS.days(ts), c1 = h("div.j-chart"), c2 = h("div.j-chart");
   main.appendChild(h("div.j-grid2", [card("Daily results", c1), card("How your days are spread", c2)]));
@@ -654,6 +655,33 @@ A.overview = (main, ts) => {
   JC.hist(c2, JS.histogram(d.map((x) => x.net), 16), { h: 220, fmt: (v) => money(v, { compact: true }) });
   main.appendChild(card("Month by month", monthGrid(ts)));
 };
+// ---------------------------------------------------------------- is the edge real? luck against skill, in plain words
+const EDGE_WORDS = { positive: "Your edge looks real", unproven: "Not proven yet", negative: "These trades lose on average", few: "Too few trades to judge" };
+function edgeChip(e) {
+  const k = e.verdict, t = { positive: "Edge proven", unproven: "Edge not proven yet", negative: "Losing on average", few: "Too few trades" }[k];
+  return h("span.j-edgechip." + k, { title: e.ci ? `Average trade ${e.unit === "R" ? rr(e.mean) : money(e.mean, { sign: true })}, 95% range ${e.unit === "R" ? rr(e.ci[0]) + " to " + rr(e.ci[1]) : money(e.ci[0], { sign: true }) + " to " + money(e.ci[1], { sign: true })}, ${e.n} trades` : "" }, t);
+}
+function edgeCard(ts) {
+  const e = JS.edge(ts);
+  if (!e.ci) return card("Is the edge real?", h("p.fine", "Needs a few closed trades."));
+  const f = (v) => (e.unit === "R" ? rr(v) : money(v, { sign: true }));
+  const lo = Math.min(0, e.ci[0]), hi = Math.max(0, e.ci[1]), pad = (hi - lo) * 0.12 || 1, a = lo - pad, b = hi + pad, X = (v) => ((v - a) / (b - a)) * 100;
+  const bar = h("div.j-ci", { role: "img", "aria-label": `95% range of the average trade: ${f(e.ci[0])} to ${f(e.ci[1])}` }, [
+    h("i.zero", { style: { left: X(0) + "%" } }), h("span.zl", { style: { left: X(0) + "%" } }, "0"),
+    h("i.band." + e.verdict, { style: { left: X(e.ci[0]) + "%", width: Math.max(0.5, X(e.ci[1]) - X(e.ci[0])) + "%" } }),
+    h("i.dot", { style: { left: X(e.mean) + "%" } }),
+    h("span.lo", { style: { left: X(e.ci[0]) + "%" } }, f(e.ci[0])), h("span.hi", { style: { left: X(e.ci[1]) + "%" } }, f(e.ci[1]))]);
+  const next = e.verdict === "positive" ? `At this rate it takes about ${e.needed} trades for luck to be ruled out, and you have ${e.n}.`
+    : e.verdict === "unproven" && e.more != null ? `If trades keep coming at this average, about ${e.more} more would settle it.`
+    : e.verdict === "unproven" ? "The average is at or below zero, so more of the same won't prove an edge."
+    : e.verdict === "negative" ? "Even the hopeful end of the range is below zero. The setups and what-if pages show where it leaks."
+    : `${e.n} trades isn't enough to separate skill from luck. Keep journaling; this updates as trades arrive.`;
+  return card("Is the edge real?", h("div.j-edge", [
+    h("p.j-edgev." + e.verdict, EDGE_WORDS[e.verdict]),
+    h("p", [`Your average trade is `, h("b." + cls(e.mean), f(e.mean)), ` over ${e.n} trades. Reshuffling the same trades 2,000 times, the average lands between `, h("b", f(e.ci[0])), " and ", h("b", f(e.ci[1])), ` 95 times in 100, and comes out positive ${pct(e.pPos, 0)} of the time.`]),
+    bar, h("p.fine", [next, " This tests luck, not change: markets move on, so a real edge can still fade. It uses ", e.unit === "R" ? "R, from your stops." : "money, because too few trades have a stop for R.", " Filters apply."]),
+  ]));
+}
 function monthGrid(ts) {
   const byM = new Map(); for (const t of ts) byM.set(t.month, (byM.get(t.month) || 0) + t.net);
   const years = [...new Set([...byM.keys()].map((k) => k.slice(0, 4)))].sort().reverse(), MS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -805,7 +833,9 @@ VIEWS.playbooks = (main) => {
   main.appendChild(h("div.j-pbgrid", pbs.map((p) => {
     const xs = ts.filter((t) => t.pb === p.id), s = JS.lite(xs), rules = p.rules || [];
     const comp = xs.length && rules.length ? xs.reduce((a, t) => a + (t.checks || []).length / rules.length, 0) / xs.length : null;
+    const ed = xs.length >= 2 ? JS.edge(xs, { runs: 800 }) : null;
     return h("article.j-pb", [h("div.j-pbh", [h("h3", p.name), h("button.btn.xs.ghost", { type: "button", on: { click: () => editPlaybook(p) } }, "Edit")]), p.description ? h("p.fine", p.description) : null,
+      ed ? edgeChip(ed) : null,
       h("dl.j-pbs", [h("div", [h("dt", "Trades"), h("dd", String(s.n))]), h("div", [h("dt", "Win rate"), h("dd", pct(s.winRate, 0))]), h("div", [h("dt", "Net"), h("dd." + cls(s.net), money(s.net, { sign: true, compact: Math.abs(s.net) >= 10000 }))]), h("div", [h("dt", "Per trade"), h("dd." + cls(s.expR ?? s.expectancy), s.expR != null ? rr(s.expR) : money(s.expectancy, { sign: true }))]), h("div", [h("dt", "Rules followed"), h("dd", comp == null ? "–" : pct(comp, 0))])]),
       rules.length ? h("ol.j-rules", rules.map((r) => h("li", r))) : null, h("a.btn.xs", { href: "#/trades", on: { click: () => { ST.f.pb = p.id; persistF(); } } }, "See its trades")]);
   })));

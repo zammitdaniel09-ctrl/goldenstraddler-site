@@ -48,7 +48,7 @@ const FILTERS = { type: "object", description: "Optional filters. Dates are YYYY
   side: { type: "string", enum: ["long", "short"] }, outcome: { type: "string", enum: ["win", "loss"] }, tags: { type: "array", items: { type: "string" }, description: "Tag names" },
   setup: { type: "string", description: "Setup (playbook) name" }, weekday: { type: "integer", description: "0 = Monday ... 6 = Sunday" }, hourFrom: { type: "integer" }, hourTo: { type: "integer" } } };
 const TOOLS = [
-  { name: "summary", description: "Headline statistics for a set of trades: count, win rate, net, profit factor, average win and loss, expectancy in money and R, drawdown, streaks, Sharpe, SQN, Kelly, costs, best and worst day, consistency.", input_schema: { type: "object", properties: { filters: FILTERS } } },
+  { name: "summary", description: "Headline statistics for a set of trades: count, win rate, net, profit factor, average win and loss, expectancy in money and R, drawdown, streaks, Sharpe, SQN, Kelly, costs, best and worst day, consistency, and an edge check: the average trade resampled 2,000 times, its 95% range, and whether the edge is proven, unproven, negative or has too few trades.", input_schema: { type: "object", properties: { filters: FILTERS } } },
   { name: "breakdown", description: "The same statistics split by one dimension, to find where results come from and where they leak.", input_schema: { type: "object", required: ["dimension"], properties: {
     dimension: { type: "string", enum: Object.keys(JS.DIMS) }, filters: FILTERS } } },
   { name: "trades", description: "List individual trades with their notes, tags, setup and R. Use to look at examples behind a pattern.", input_schema: { type: "object", properties: {
@@ -62,7 +62,11 @@ const TOOLS = [
 function runTool(cx: Ctx, name: string, input: any) {
   const ts = applyFilters(cx, input?.filters);
   switch (name) {
-    case "summary": return ts.length ? summaryOut(JS.summary(ts, { start: cx.start })) : { n: 0, note: "No trades match." };
+    case "summary": {
+      if (!ts.length) return { n: 0, note: "No trades match." };
+      const e = JS.edge(ts);
+      return { ...summaryOut(JS.summary(ts, { start: cx.start })), edge: { unit: e.unit, trades: e.n, averageTrade: r2(e.mean), range95: e.ci ? e.ci.map(r2) : null, shareOfResamplesPositive: r2(e.pPos), tradesNeededToProve: e.needed, verdict: e.verdict } };
+    }
     case "breakdown": { const g = JS.group(ts, input.dimension); return { dimension: g.label, rows: g.rows.slice(0, 40).map((r: any) => ({ key: r.key, trades: r.n, winRate: r2(r.winRate), net: r2(r.net), pf: r2(r.pf), expectancy: r2(r.expectancy), expR: r2(r.expR), avgWin: r2(r.avgWin), avgLoss: r2(r.avgLoss) })) }; }
     case "trades": {
       const s = input.sort || "recent", k: Record<string, (a: any, b: any) => number> = { recent: (a, b) => b.ct - a.ct, best: (a, b) => b.net - a.net, worst: (a, b) => a.net - b.net,
@@ -94,7 +98,7 @@ const RULES = (cx: Ctx) => `You are the performance coach inside GoldenStraddler
 How you work:
 - Get every number from the tools. Never estimate, round loosely or make up a figure, a trade or a date. If the data can't answer, say what's missing (for example R needs stop losses, MAE/MFE needs the MT5 connector).
 - Look before you conclude: check a pattern with a breakdown, then look at a few example trades with their notes.
-- Small samples mislead. Say how many trades a finding rests on, and call anything under about 20 trades a hint, not a finding.
+- Small samples mislead. Say how many trades a finding rests on, and call anything under about 20 trades a hint, not a finding. When you judge whether a setup or the whole account has an edge, use the summary tool's edge check: if its verdict is "unproven", say the range still includes zero and roughly how many more trades would settle it.
 - Coach the process, not the market: entries, exits, stops, size, timing, rules, emotions and habits. Never say what a market will do, never recommend buying or selling anything, and don't give personal financial advice.
 - Be direct and specific, like a good trading mentor: name the leak, put a number on it, and give one concrete thing to do about it.
 - Money is in ${cx.accs[0]?.currency || "USD"}. Times are in ${cx.prefs.tz}. Today is ${new Date().toISOString().slice(0, 10)}.

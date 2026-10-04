@@ -266,6 +266,23 @@ function excursions(trades) {
 
 // ---------------------------------------------------------------- the future, resampled: Monte Carlo on your own trades
 function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
+// ---------------------------------------------------------------- is the edge real? the average trade, resampled
+// Resamples the trades thousands of times to see how far the average could move by luck alone. In R when most trades
+// have a stop, otherwise in money. "needed" is roughly how many trades it takes for the range to clear zero at this rate.
+function edge(trades, opts = {}) {
+  const withR = trades.filter((t) => t.r != null), useR = withR.length >= 10 && withR.length >= trades.length * 0.8;
+  const xs = useR ? withR.map((t) => t.r) : trades.map((t) => t.net), n = xs.length, unit = useR ? "R" : "money";
+  if (n < 2) return { n, unit, verdict: "few" };
+  const m = mean(xs), s = sd(xs), se = s / Math.sqrt(n);
+  const runs = Math.max(400, Math.min(opts.runs || 2000, Math.floor(4e6 / n))), rand = rng(opts.seed || 11), means = new Float64Array(runs);
+  for (let k = 0; k < runs; k++) { let acc = 0; for (let i = 0; i < n; i++) acc += xs[Math.floor(rand() * n)]; means[k] = acc / n; }
+  means.sort();
+  const lo = means[Math.floor(runs * 0.025)], hi = means[Math.min(runs - 1, Math.floor(runs * 0.975))];
+  let pos = 0; for (const v of means) if (v > 0) pos++;
+  const needed = m > 0 && s > 0 ? Math.ceil(((1.96 * s) / m) ** 2) : null;
+  return { n, unit, mean: m, sd: s, t: se ? m / se : null, ci: [lo, hi], pPos: pos / runs, needed, more: needed != null ? Math.max(0, needed - n) : null,
+    verdict: n < 20 ? "few" : lo > 0 ? "positive" : hi < 0 ? "negative" : "unproven" };
+}
 function monteCarlo(trades, opts = {}) {
   const nets = trades.map((t) => t.net); if (nets.length < 10) return null;
   const runs = opts.runs || 1000, len = opts.len || Math.min(500, Math.max(50, nets.length)), start = opts.start || 0, rand = rng(opts.seed || 7);
@@ -360,6 +377,6 @@ function limits(trades, L = {}, start = 0, tz = "UTC") {
     out.push({ k: "cons", label: "Best day's share of profit", cap: L.consistency / 100, now: share, used: share / (L.consistency / 100), breached: share > L.consistency / 100 && tot > 0 }); }
   return out;
 }
-const API = { DAY, DIMS, WD, RULE_NAMES, nz, sum, mean, sd, median, quantile, round, parts, dayOf, session, symbolCcys, eventName, enrich, summary, equity, days, streaks, group, lite, heat, histogram, excursions, monteCarlo, rules, limits, filter, valueModel };
+const API = { DAY, DIMS, WD, RULE_NAMES, nz, sum, mean, sd, median, quantile, round, parts, dayOf, session, symbolCcys, eventName, enrich, summary, equity, days, streaks, group, lite, heat, histogram, excursions, monteCarlo, edge, rules, limits, filter, valueModel };
 if (typeof module !== "undefined" && module.exports) module.exports = API; else root.JStats = API;
 })(typeof window !== "undefined" ? window : globalThis);
