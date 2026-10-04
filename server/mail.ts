@@ -121,6 +121,16 @@ export function mailChatReply(email: string, who: string, text: string) {
   ].join("")), `${who} from GoldenStraddler wrote:\n\n${text}\n\nContinue the chat: ${siteUrl()}/?chat=1`);
 }
 
+// a prop-firm limit getting close, hit, or the target reached (from the journal, after a connector sync)
+export function mailLimit(email: string, account: string, cur: string, k: string, level: string, r: any) {
+  const m = (v: number) => (cur === "USD" ? "$" : cur === "EUR" ? "€" : cur === "GBP" ? "£" : cur + " ") + Math.abs(v).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const pc = (v: number) => Math.round(v * 100) + "%";
+  const subj = k === "target" ? `${account}: profit target reached` : level === "hit" ? `${account}: ${k === "daily" ? "daily loss limit" : "drawdown limit"} reached` : `${account}: ${pc(r.used)} of your ${k === "daily" ? "daily loss limit" : "drawdown limit"} used`;
+  const body = k === "target" ? [p(`Your closed trades on <b>${esc(account)}</b> have reached the profit target you set: ${m(r.now)} of ${m(r.cap)}.`), p("Check the other rules (minimum trading days, consistency) in your journal before you request a review from your firm.")]
+    : k === "daily" ? [p(`Today's closed trades on <b>${esc(account)}</b> have lost ${m(-r.today)} against your daily loss limit of ${m(r.cap)} (${pc(r.used)} used).`), p(level === "hit" ? "That's the limit you set. Your firm also counts open positions and uses its own day boundary, so check its dashboard too." : "You still have " + m(r.cap + r.today) + " of room today on closed trades. Open positions count with most firms too.")]
+    : [p(`<b>${esc(account)}</b> is ${m(r.now)} below its ${r.label.toLowerCase().includes("trailing") ? "highest closed balance" : "starting balance"}, against a limit of ${m(r.cap)} (${pc(r.used)} used).`), p(level === "hit" ? "That's the limit you set. Check your firm's dashboard for its own figure." : `Room left on closed trades: ${m(r.room)}.`)];
+  return sendMail(email, subj, layout(subj, [...body, btn(siteUrl() + "/journal/app#/accounts", "Open your journal"), p('<span style="font-size:13px;color:#6b7383">Turn these emails off in your journal under Settings.</span>')].join("")));
+}
 export async function notifyAdmins(subject: string, text: string) {
   const extra = getS("notify_emails").split(/[,\s]+/).filter(Boolean);
   const admins = all<{ email: string }>("SELECT email FROM admins WHERE active = 1").map((a) => a.email);

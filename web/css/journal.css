@@ -524,3 +524,4 @@ svg.jc g.pt:hover circle:last-child{r:6}
 .j-accbtn .btn svg{width:13px;height:13px}
 .j-accbtn .btn.on{color:var(--ice);border-color:rgba(var(--ice-rgb),.45)}
 .j-mfr{display:flex;gap:10px;justify-content:flex-end;width:100%;flex-wrap:wrap}
+.j-alerts{margin-top:18px;max-width:72ch}

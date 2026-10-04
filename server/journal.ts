@@ -7,6 +7,9 @@ import { join } from "node:path";
 import { all, audit, db, DB_PATH, now, one, run } from "./db";
 import { DAY, bad, getN, getS, json, limited, newId, sha256, str, token } from "./util";
 import { effective, type Customer, type Licence } from "./licence";
+import { mailLimit } from "./mail";
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const JS = require("../web/js/jstats.js");
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS j_accounts (
@@ -55,6 +58,8 @@ if (!all<any>("PRAGMA table_info(j_accounts)").some((c) => c.name === "limits"))
 // an account can be shared as a public results page at /j/<share>
 if (!all<any>("PRAGMA table_info(j_accounts)").some((c) => c.name === "share")) { db.exec("ALTER TABLE j_accounts ADD COLUMN share TEXT DEFAULT ''"); db.exec("ALTER TABLE j_accounts ADD COLUMN share_opts TEXT DEFAULT '{}'"); }
 db.exec("CREATE INDEX IF NOT EXISTS j_accounts_s ON j_accounts(share)");
+// which limit emails were sent, so each level is announced once
+if (!all<any>("PRAGMA table_info(j_accounts)").some((c) => c.name === "alerted")) db.exec("ALTER TABLE j_accounts ADD COLUMN alerted TEXT DEFAULT '{}'");
 
 const MEDIA_DIR = join(DB_PATH, "..", "journal-media");
 mkdirSync(MEDIA_DIR, { recursive: true });
@@ -83,7 +88,7 @@ export function aiUsage(cid: string) {
 }
 
 // ---------------------------------------------------------------- preferences
-const PREF_DEFAULTS = { tz: "UTC", dayStart: 0, currency: "USD", be: 0, rules: { maxDailyLoss: null, maxTrades: null, maxRisk: null, requireStop: false, stopAfterLosses: null, hours: "", revengeMin: 15 }, goals: { monthly: null, weekly: null }, onboarded: false };
+const PREF_DEFAULTS = { tz: "UTC", dayStart: 0, currency: "USD", be: 0, rules: { maxDailyLoss: null, maxTrades: null, maxRisk: null, requireStop: false, stopAfterLosses: null, hours: "", revengeMin: 15 }, goals: { monthly: null, weekly: null }, onboarded: false, alerts: true };
 export function prefsOf(cid: string) {
   const r = one<{ data: string }>("SELECT data FROM j_prefs WHERE customer_id = ?", cid);
   const p = { ...PREF_DEFAULTS, ...(r ? J(r.data) || {} : {}) };
@@ -103,6 +108,7 @@ function setPrefs(cid: string, b: any) {
   }
   if (b.goals && typeof b.goals === "object") p.goals = { monthly: n(b.goals.monthly, -1e9, 1e9), weekly: n(b.goals.weekly, -1e9, 1e9) };
   if (b.onboarded !== undefined) p.onboarded = !!b.onboarded;
+  if (b.alerts !== undefined) p.alerts = !!b.alerts;
   run("INSERT INTO j_prefs (customer_id, data, updated_at) VALUES (?, ?, ?) ON CONFLICT(customer_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at", cid, JSON.stringify(p), now());
   return p;
 }
@@ -409,6 +415,7 @@ export function connectorSync(b: any) {
     }
   })();
   if (charts) trimBars(acc.customer_id);
+  if (r.added) try { limitAlerts(acc.id); } catch (e: any) { console.error("limit alerts:", e.message); }
   run(`UPDATE j_accounts SET last_sync = ?, login = CASE WHEN login = '' THEN ? ELSE login END, server = CASE WHEN ? != '' THEN ? ELSE server END,
        broker = CASE WHEN broker = '' THEN ? ELSE broker END, currency = CASE WHEN ? != '' THEN ? ELSE currency END, demo = ?, balance = ?, equity = ?, source = 'connector' WHERE id = ?`,
     now(), login, str(b.server, 96), str(b.server, 96), str(b.company, 96), str(b.currency, 8), str(b.currency, 8), b.demo ? 1 : 0, num(b.balance), num(b.equity), acc.id);
@@ -439,6 +446,35 @@ function mediaFile(cid: string, id: string) {
 }
 function dropMedia(cid: string, ids: string[]) {
   for (const id of ids) { const m = mediaFile(cid, id); if (m) try { unlinkSync(m.f); } catch {} run("DELETE FROM j_media WHERE id = ? AND customer_id = ?", id, cid); }
+}
+
+// ---------------------------------------------------------------- an email when a prop-firm limit gets close, is hit, or the target is reached
+// Each level is sent once: the daily limit once per day per level, the drawdown again only after it has eased below 60%.
+export function limitAlerts(accountId: string) {
+  const a = one<any>("SELECT * FROM j_accounts WHERE id = ?", accountId);
+  const L = a && J(a.limits); if (!a || !L || !Object.keys(L).some((k) => k !== "firm")) return [];
+  const c = one<Customer>("SELECT * FROM customers WHERE id = ?", a.customer_id); if (!c) return [];
+  const prefs = prefsOf(c.id); if (prefs.alerts === false) return [];
+  const ts = JS.enrich(all(OUT + " WHERE account_id = ? ORDER BY close_time", a.id).map(shape), { tz: prefs.tz, dayStart: prefs.dayStart, be: prefs.be });
+  const rows = JS.limits(ts, L, a.balance_start || 0, prefs.tz) || [], st = J(a.alerted) || {}, today = JS.dayOf(Date.now(), prefs.tz), out: { k: string; level: string; row: any }[] = [];
+  const rank: Record<string, number> = { "": 0, warn: 1, hit: 2 };
+  for (const r of rows) {
+    if (r.k === "daily") {
+      const level = r.today <= -r.cap ? "hit" : r.used >= 0.8 ? "warn" : "";
+      const [d, was] = String(st.daily || ":").split(":");
+      if (level && (d !== today || rank[level] > rank[was || ""])) { out.push({ k: "daily", level, row: r }); st.daily = today + ":" + level; }
+    } else if (r.k === "dd") {
+      const level = r.used >= 1 ? "hit" : r.used >= 0.8 ? "warn" : "";
+      if (level && rank[level] > rank[st.dd || ""]) { out.push({ k: "dd", level, row: r }); st.dd = level; }
+      else if (r.used < 0.6) st.dd = "";
+    } else if (r.k === "target") {
+      if (r.done && !st.target) { out.push({ k: "target", level: "done", row: r }); st.target = "done"; }
+      else if (!r.done) st.target = "";
+    }
+  }
+  run("UPDATE j_accounts SET alerted = ? WHERE id = ?", JSON.stringify(st), a.id);
+  for (const x of out) mailLimit(c.email, a.name, a.currency || "USD", x.k, x.level, x.row).catch(() => {});
+  return out;
 }
 
 // ---------------------------------------------------------------- a shared results page: one account, read-only, for anyone with the link

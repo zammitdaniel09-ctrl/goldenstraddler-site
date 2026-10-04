@@ -1065,8 +1065,9 @@ VIEWS.settings = (main) => {
     h("label", [h("span", "A trading day starts at"), (f.dayStart = h("select.field", Array.from({ length: 24 }, (_, i) => h("option", { value: i, selected: i === p.dayStart }, String(i).padStart(2, "0") + ":00")))), h("span.fine", nyHint(p.tz))]),
     h("label", [h("span", "Count as breakeven within"), h("span.j-unit", [(f.be = h("input.field", { type: "number", step: "any", min: 0, value: p.be || 0 })), h("em", cur())]), h("span.fine", "Results this close to zero aren't wins or losses.")]),
     h("label", [h("span", "Currency for totals"), (f.currency = h("input.field", { value: p.currency, maxlength: 3 }))]),
-  ]), h("div.j-mf", [h("button.btn.pri", { type: "button", on: { click: async () => {
-    const body = { tz: f.tz.value, dayStart: Number(f.dayStart.value), be: f.be.value, currency: f.currency.value.toUpperCase() };
+  ]), h("label.check.j-alerts", [(f.alerts = h("input", { type: "checkbox", checked: p.alerts !== false })), h("span", ["Email me when an account's daily loss or drawdown limit is 80% used or reached, and when its profit target is reached. ", h("span.fine", "Checked each time the MT5 connector sends a trade. Set the limits on each account.")])]),
+  h("div.j-mf", [h("button.btn.pri", { type: "button", on: { click: async () => {
+    const body = { tz: f.tz.value, dayStart: Number(f.dayStart.value), be: f.be.value, currency: f.currency.value.toUpperCase(), alerts: f.alerts.checked };
     if (DEMO) { Object.assign(ST.data.prefs, body); load(ST.data); render(); return; }
     const j = await save("prefs", body); ST.data.prefs = j.prefs; load(ST.data); render(); toast("Settings saved.");
   } } }, "Save settings")])]));
