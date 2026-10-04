@@ -25,6 +25,8 @@ const WEB = join(import.meta.dir, "..", "web");
 const STARTED = now();
 const ASSET_V = (E.RAILWAY_GIT_COMMIT_SHA || String(STARTED)).slice(0, 10);
 const EA_FILE = join(DB_PATH, "..", "GoldenStraddler.ex5");     // uploaded from admin, lives on the volume (not in git)
+const CONNECTOR_FILE = join(DB_PATH, "..", "GoldenStraddler-Journal.ex5"), ABOUT_FILE = join(DB_PATH, "..", "about-photo");
+const connectorPath = () => (existsSync(CONNECTOR_FILE) ? CONNECTOR_FILE : existsSync(join(WEB, "dl", "GoldenStraddler-Journal.ex5")) ? join(WEB, "dl", "GoldenStraddler-Journal.ex5") : "");
 const eaPath = () => (existsSync(EA_FILE) ? EA_FILE : existsSync(join(WEB, "dl", "GoldenStraddler.ex5")) ? join(WEB, "dl", "GoldenStraddler.ex5") : "");
 // A build can also ship the EA encrypted in assets/ea (AES-256-GCM: iv[12] tag[16] data, key in EA_BLOB_KEY).
 // It's installed once per new file, so a later upload from admin isn't overwritten on restart.
@@ -91,6 +93,18 @@ function legalVars(s: string) {
 }
 
 // structured data for search engines: the product with both plans, and the questions on the page
+// "Who's behind it": shown once the owner fills in a name and a few lines in Admin settings
+function aboutHtml() {
+  const name = getS("about_name").trim(), text = getS("about_text").trim();
+  if (!name || !text) return "";
+  const ph = getS("about_photo"), initials = name.split(/\s+/).map((w) => w[0] || "").join("").slice(0, 2).toUpperCase();
+  const pic = ph && existsSync(ABOUT_FILE) ? `<img src="/about-photo?v=${esc(ph.split(":")[1] || "1")}" alt="${esc(name)}" width="160" height="160" loading="lazy">` : `<span class="ab-ini" aria-hidden="true">${esc(initials)}</span>`;
+  const seller = getS("seller_name");
+  return `<section class="sec rule" id="about"><div class="wrap about"><div class="ab-pic">${pic}</div><div class="ab-txt"><h2>Who's behind it</h2>
+<p class="ab-name"><b>${esc(name)}</b>${getS("about_role") ? `<span>${esc(getS("about_role"))}</span>` : ""}</p>
+${text.split(/\n{2,}/).map((para) => `<p class="lede">${esc(para)}</p>`).join("")}
+<p class="fine">${seller ? `GoldenStraddler is sold by ${esc(seller)}. ` : ""}Company details are on the <a href="/imprint">imprint</a>, and you can ask us anything from the chat or your account page.</p></div></div></section>`;
+}
 function jsonLd(s: string) {
   const strip = (h: string) => h.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/\s+/g, " ").replace(/\s+([.,])/g, "$1").trim();
   const faq = [...s.matchAll(/<details><summary>([\s\S]*?)<\/summary><div class="a">([\s\S]*?)<\/div><\/details>/g)].map((m) => ({ "@type": "Question", name: strip(m[1]), acceptedAnswer: { "@type": "Answer", text: strip(m[2]) } }));
@@ -524,7 +538,34 @@ async function handle(req: Request): Promise<Response> {
       audit(a.email, "uploaded a new EA", version || "", `${Math.round(buf.length / 1024)} KB`);
       return json(200, { ok: true, size: buf.length, version: getS("ea_version") });
     }
+    // the journal's MT5 connector, compiled in MetaEditor and uploaded here (it lives on the volume, not in git)
+    if (p === "/api/admin/connector") {
+      if (!post) { const f = connectorPath(); return json(200, { ok: true, present: !!f, size: f ? statSync(f).size : 0, at: f ? statSync(f).mtimeMs : null }); }
+      if (a.role !== "owner") return bad("Only the owner can upload the connector.", 403);
+      const buf = new Uint8Array(await req.arrayBuffer());
+      if (buf.length < 2048 || buf.length > 8 << 20) return bad("That doesn't look like a compiled connector (.ex5) file.");
+      await Bun.write(CONNECTOR_FILE + ".tmp", buf); renameSync(CONNECTOR_FILE + ".tmp", CONNECTOR_FILE);
+      audit(a.email, "uploaded the journal connector", "", `${Math.round(buf.length / 1024)} KB`);
+      return json(200, { ok: true, size: buf.length });
+    }
+    // a photo for the "Who's behind it" block on the home page
+    if (p === "/api/admin/about-photo" && (post || req.method === "DELETE")) {
+      if (a.role !== "owner") return bad("Only the owner can change this.", 403);
+      if (req.method === "DELETE") { try { (await import("node:fs")).unlinkSync(ABOUT_FILE); } catch {} setS("about_photo", ""); return json(200, { ok: true }); }
+      const buf = new Uint8Array(await req.arrayBuffer());
+      const type = buf[0] === 0xff && buf[1] === 0xd8 ? "jpg" : buf[0] === 0x89 && buf[1] === 0x50 ? "png" : buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50 ? "webp" : "";
+      if (!type) return bad("Use a JPEG, PNG or WebP photo.");
+      if (buf.length > 3 << 20) return bad("Photos can be up to 3 MB.");
+      await Bun.write(ABOUT_FILE, buf); setS("about_photo", type + ":" + now());
+      audit(a.email, "changed the home page photo");
+      return json(200, { ok: true });
+    }
     return adminRoute(req, url, p.slice(10), a);
+  }
+  if (p === "/about-photo") {
+    const t = getS("about_photo").split(":")[0];
+    if (!t || !existsSync(ABOUT_FILE)) return notFound(req);
+    return new Response(Bun.file(ABOUT_FILE), { headers: { "Content-Type": t === "jpg" ? "image/jpeg" : "image/" + t, "Cache-Control": "public, max-age=86400", ...SEC_H } });
   }
 
   // ---------------------------------------------------------------- dev helpers
@@ -562,6 +603,7 @@ async function handle(req: Request): Promise<Response> {
     if (p === "/") {
       const td = getN("trial_days");
       if (td > 0) o = o.replace(/(<p id="faqTrial">)[\s\S]*?(<\/p>)/, (_, a, b) => `${a}Yes: ${td} days on a demo account, free and without a card. Ask for a key in the pricing section and it arrives by email. The trial doesn't run on live accounts. When you buy, there's also a ${getN("refund_days")}-day money-back guarantee on the first payment.${b}`);
+      o = o.replace("<!--ABOUT-->", () => aboutHtml());
       o = jsonLd(o); if (getS("record_public") !== "1") o = o.replace(/<a href="#record">/g, '<a href="#record" hidden>'); }
     return o;
   } });
@@ -590,8 +632,12 @@ async function handle(req: Request): Promise<Response> {
   if (p === "/dl/GoldenStraddler-Journal.ex5" || p === "/dl/GoldenStraddler-Journal.mq5") {
     const c = meCustomer(req);
     if (!c || !journalAccess(c).ok) return Response.redirect(siteUrl() + "/journal/app", 302);
-    // until the compiled connector is shipped, send people back with a note rather than a bare 404
-    if (!existsSync(join(WEB, p.slice(1)))) return Response.redirect(siteUrl() + "/journal/app?soon=connector#/accounts", 302);
+    if (p.endsWith(".ex5")) {
+      // until the compiled connector is uploaded, send people back with a note rather than a bare 404
+      const f = connectorPath();
+      if (!f) return Response.redirect(siteUrl() + "/journal/app?soon=connector#/accounts", 302);
+      return new Response(Bun.file(f), { headers: { "Content-Type": "application/octet-stream", "Content-Disposition": 'attachment; filename="GoldenStraddler-Journal.ex5"', "Cache-Control": "no-store", ...SEC_H } });
+    }
     return file(req, p.slice(1), { download: p.slice(4), cache: 0 });
   }
   if (["/terms", "/refunds", "/privacy", "/risk", "/imprint"].includes(p)) return file(req, "legal" + p + ".html", { replace: legalVars });
@@ -793,13 +839,13 @@ async function adminRoute(req: Request, url: URL, p: string, a: Admin): Promise<
   if (p === "/settings") {
     const editable = ["price_lifetime", "price_monthly", "mail_from", "support_email", "notify_emails", "bank_name", "bank_holder", "bank_iban", "bank_bic",
       "seller_name", "seller_address", "seller_vat", "seller_reg", "record_public", "record_min_trades", "stripe_tax", "methods_card", "methods_crypto", "methods_bank",
-      "refund_days", "move_days", "trial_days", "announcement", "site_url", "ea_version", "promo_code", "record_verify_url",
+      "refund_days", "move_days", "trial_days", "announcement", "about_name", "about_role", "about_text", "site_url", "ea_version", "promo_code", "record_verify_url",
       "chat_enabled", "chat_ai", "chat_model", "chat_daily_cap", "chat_greeting", "hub_public",
       "journal_public", "journal_ai_credits", "journal_ai_model", "price_journal"];
     if (post) {
       if (!owner) return bad("Only the owner can change settings.", 403);
       for (const k of editable) if (b[k] !== undefined) {
-        let v = str(b[k], 600);
+        let v = k === "about_text" ? String(b[k] ?? "").replace(/\r/g, "").slice(0, 1200).trim() : str(b[k], 600);
         if (k.startsWith("price_")) { const n = Math.round(Number(v) * 100); if (!(n >= 100)) return bad("Prices must be at least €1."); v = String(n); }
         if (k === "promo_code") v = v.toUpperCase().replace(/\s+/g, "");
         setS(k, v);
@@ -808,6 +854,7 @@ async function adminRoute(req: Request, url: URL, p: string, a: Admin): Promise<
     }
     const out: Record<string, string> = {};
     for (const k of editable) out[k] = getS(k);
+    out.about_photo = getS("about_photo");
     return json(200, { ok: true, settings: out, connected: { stripe: !!getS("stripe_secret"), stripe_webhook: !!getS("stripe_webhook_secret"), np: !!getS("np_api_key"),
       np_ipn: !!getS("np_ipn_secret"), resend: mailConfigured(), anthropic: !!getS("anthropic_key") }, webhooks: { stripe: siteUrl() + "/webhooks/stripe", nowpayments: siteUrl() + "/webhooks/nowpayments" } });
   }

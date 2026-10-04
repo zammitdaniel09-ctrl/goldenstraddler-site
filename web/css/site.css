@@ -824,3 +824,13 @@ body.lock{overflow:hidden}
 .trial-done{grid-column:1/-1;color:var(--white)}
 @media (max-width:860px){.trial{grid-template-columns:minmax(0,1fr)}.trial .check,.trial-msg{grid-column:1}}
 @media (max-width:480px){.trial-f{flex-direction:column}}
+/* who's behind it, filled in from Admin settings */
+.about{display:grid;grid-template-columns:auto minmax(0,1fr);gap:24px 40px;align-items:start;max-width:980px}
+.ab-pic img,.ab-ini{display:block;width:160px;height:160px;border-radius:50%;object-fit:cover;border:1px solid var(--edge2)}
+.ab-ini{display:grid;place-items:center;background:rgba(var(--ice-rgb),.1);color:var(--ice);font:800 52px var(--disp);letter-spacing:-.04em}
+.ab-name{margin-top:16px;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.ab-name b{font-size:18px;color:var(--white)}.ab-name span{color:var(--muted);font-size:14.5px}
+.ab-txt .lede{margin-top:12px;max-width:62ch}
+.ab-txt .fine{margin-top:16px}
+.ab-txt .fine a{color:var(--frost,var(--white))}
+@media (max-width:640px){.about{grid-template-columns:minmax(0,1fr)}.ab-pic img,.ab-ini{width:112px;height:112px}.ab-ini{font-size:38px}}

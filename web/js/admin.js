@@ -555,6 +555,20 @@ VIEWS.settings = async () => {
     inp("record_verify_url", "Verified record link, e.g. your public Myfxbook page (blank = none)", { full: 1, ph: "https://www.myfxbook.com/members/..." }),
     inp("promo_code", "Code shown in the bar at the top of the home page (blank = no bar). Give it an end date under Codes and the bar counts down to it", { full: 1 }),
     inp("announcement", "Banner on the sales page (blank = none)", { full: 1 }), inp("ea_version", "Current EA version"), inp("site_url", "Site address")));
+  out.push(form("Who's behind it", "A short block on the home page with your name, a line about you and a photo. Buyers of trading software look for a real person behind it. It appears once a name and some text are filled in.",
+    inp("about_name", "Your name as shown"), inp("about_role", "Role, e.g. Founder and developer"),
+    inp("about_text", "A few sentences: your trading background, why you built it, how you run it. A blank line starts a new paragraph.", { full: 1, area: 1 })));
+  if (owner) {
+    const pf = el("input", "field"); pf.type = "file"; pf.accept = "image/jpeg,image/png,image/webp";
+    const pup = act(btn("Upload photo", "btn sm pri"), async () => {
+      const file = pf.files[0]; if (!file) throw new Error("Choose a photo first.");
+      const r = await fetch("/api/admin/about-photo", { method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: file });
+      const j = await r.json().catch(() => ({})); if (!r.ok || j.ok === false) throw new Error(j.error || "Upload failed.");
+    }, "Photo saved. It shows on the home page next to your name.");
+    const prm = act(btn("Remove photo", "btn sm"), async () => { await fetch("/api/admin/about-photo", { method: "DELETE" }); }, "Photo removed. Your initials show instead.");
+    const pg = el("div", "formgrid"), pl = el("label"); pl.append("Photo (square works best, up to 3 MB)", pf); pg.append(pl, pup, prm);
+    out.push(card("Photo for that block", el("p", "fine", s.about_photo ? "A photo is set." : "No photo yet: your initials show in a circle."), pg));
+  }
   // the Markets page: publish switch and the health of each free data source
   const hub = await api("/api/admin/hub").catch(() => null);
   if (hub) {
@@ -584,6 +598,17 @@ VIEWS.settings = async () => {
       inp("journal_public", "Publish the journal", { select: yn }), inp("price_journal", "Journal plan (EUR a month)", { type: "number", step: "0.01", money: 1 }),
       inp("journal_ai_credits", "AI coach credits per customer each month (a question or trade review is 1, a review is 4)", { type: "number" }), inp("journal_ai_model", "AI coach model", { select: modelOpts2 })));
     out.push(card("Open the journal", el("p", "fine", "To use it yourself, sign in to your customer account in this browser as well (any email with a licence), then open it."), row));
+    if (owner) {
+      const cn = await api("/api/admin/connector").catch(() => ({})), cf = el("input", "field"); cf.type = "file"; cf.accept = ".ex5";
+      const cst = el("p", "fine", cn.present ? `Customers download the connector (${Math.round(cn.size / 1024)} KB${cn.at ? ", uploaded " + dateFmt(cn.at) : ""}).` : "No compiled connector yet: customers are asked to import a report instead. Compile web/dl/GoldenStraddler-Journal.mq5 in MetaEditor (F7) and upload the .ex5 here.");
+      const cup = act(btn("Upload connector", "btn sm pri"), async () => {
+        const file = cf.files[0]; if (!file) throw new Error("Choose the compiled GoldenStraddler-Journal.ex5 first.");
+        const r = await fetch("/api/admin/connector", { method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: file });
+        const j = await r.json().catch(() => ({})); if (!r.ok || j.ok === false) throw new Error(j.error || "Upload failed."); render("settings");
+      }, "Uploaded. Customers can download the connector now.");
+      const cg = el("div", "formgrid"), cl = el("label"); cl.append("Compiled connector (.ex5)", cf); cg.append(cl, cup);
+      out.push(card("Journal connector for MT5", cst, cg));
+    }
   }
   if (owner) { const b = el("a", "btn sm", "Download a backup of the database"); b.href = "/api/admin/export"; out.push(card("Backup", el("p", "fine", "Everything: customers, licences, orders, codes, trades."), b)); }
   view.replaceChildren(...out);
