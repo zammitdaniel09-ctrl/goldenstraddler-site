@@ -43,8 +43,10 @@ CREATE TABLE IF NOT EXISTS j_ai (
   scope TEXT DEFAULT '{}', credits INTEGER DEFAULT 0, cost_micro INTEGER DEFAULT 0, created_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS j_ai_c ON j_ai(customer_id, created_at);
-CREATE TABLE IF NOT EXISTS j_events ( t INTEGER NOT NULL, c TEXT NOT NULL, n TEXT NOT NULL, PRIMARY KEY (t, c, n) );
 `);
+// releases: the public calendar (cid '') for everyone, and each customer's own from their MT5 connector (seen only by them)
+if (all<any>("PRAGMA table_info(j_events)").some((c) => c.name === "t") && !all<any>("PRAGMA table_info(j_events)").some((c) => c.name === "cid")) db.exec("DROP TABLE j_events");
+db.exec("CREATE TABLE IF NOT EXISTS j_events ( t INTEGER NOT NULL, c TEXT NOT NULL, n TEXT NOT NULL, cid TEXT NOT NULL DEFAULT '', PRIMARY KEY (t, c, n, cid) )");
 // accounts gained prop-firm style limits after the first release of this table
 if (!all<any>("PRAGMA table_info(j_accounts)").some((c) => c.name === "limits")) db.exec("ALTER TABLE j_accounts ADD COLUMN limits TEXT DEFAULT '{}'");
 
@@ -139,7 +141,7 @@ export function parseTime(v: any, dayFirst = true): number {
 
 // ---------------------------------------------------------------- high-impact releases, kept so trades can be matched to the news around them
 const MAJORS = new Set(["USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "NZD", "CNY"]);
-const putEvent = db.query("INSERT OR IGNORE INTO j_events (t, c, n) VALUES (?, ?, ?)");
+const putEvent = db.query("INSERT OR IGNORE INTO j_events (t, c, n, cid) VALUES (?, ?, ?, ?)");
 // ForexFactory's weekly list, as fetched for the EA: keep the high-impact ones
 export function archiveEvents(list: any[]) {
   let n = 0;
@@ -147,16 +149,17 @@ export function archiveEvents(list: any[]) {
     for (const e of Array.isArray(list) ? list : []) {
       if (!e || e.impact !== "High" || !MAJORS.has(e.country) || typeof e.date !== "string" || /T00:00:00/.test(e.date)) continue;
       const t = Date.parse(e.date); if (!Number.isFinite(t)) continue;
-      putEvent.run(t, e.country, str(e.title, 80)); n++;
+      putEvent.run(t, e.country, str(e.title, 80), ""); n++;
     }
   })();
   return n;
 }
-export const eventsBetween = (from: number, to: number) => all<{ t: number; c: string; n: string }>("SELECT t, c, n FROM j_events WHERE t >= ? AND t <= ? ORDER BY t LIMIT 30000", from, to);
-function eventsFor(trades: any[]) {
+export const eventsBetween = (cid: string, from: number, to: number) => all<{ t: number; c: string; n: string }>(
+  "SELECT DISTINCT t, c, n FROM j_events WHERE t >= ? AND t <= ? AND (cid = '' OR cid = ?) ORDER BY t LIMIT 30000", from, to, cid);
+function eventsFor(cid: string, trades: any[]) {
   if (!trades.length) return [];
   let lo = Infinity, hi = -Infinity; for (const t of trades) { if (t.ot < lo) lo = t.ot; if (t.ot > hi) hi = t.ot; }
-  return eventsBetween(lo - DAY, hi + DAY);
+  return eventsBetween(cid, lo - DAY, hi + DAY);
 }
 
 // ---------------------------------------------------------------- imports: MT5 and MT4 reports (HTML) and any CSV
@@ -342,12 +345,14 @@ export function connectorSync(b: any) {
   const login = str(b.login, 20);
   if (acc.login && login && acc.login !== login) return { code: 409, body: { ok: false, error: `This token belongs to account ${acc.login}. Make a separate token for each account.` } };
   const offMin = Math.max(-14 * 60, Math.min(14 * 60, Number(b.offset_min) || 0));
+  // the EA knows today's server offset; most MT5 brokers move between GMT+2 and GMT+3 with US daylight saving, so older trades follow that rule
+  const mode = offMin === 120 || offMin === 180 ? "mt4ny" : "fixed:" + offMin, utc = (sec: any) => toUtc(Number(sec) * 1000, mode);
   const rows: Row[] = [];
   for (const p of (Array.isArray(b.positions) ? b.positions : []).slice(0, 5000)) {
     const side = sideOf(p.side), sym = str(p.symbol, 24).toUpperCase(), ext = str(p.id, 40);
     if (side === null || !sym || !ext) continue;
     // times arrive as server time; the EA tells us its offset from UTC
-    const ot = Number(p.open_time) * 1000 - offMin * 60000, ct = Number(p.close_time) * 1000 - offMin * 60000;
+    const ot = utc(p.open_time), ct = utc(p.close_time);
     if (!Number.isFinite(ot) || !Number.isFinite(ct) || ct <= 0) continue;
     const n = (k: string) => num(p[k]);
     const comm = n("commission") || 0, swap = n("swap") || 0, fee = n("fee") || 0, profit = n("profit") || 0;
@@ -357,9 +362,9 @@ export function connectorSync(b: any) {
   // the connector also sends MT5's own high-impact calendar for the same period, so older trades can be matched to the news too
   if (Array.isArray(b.events)) db.transaction(() => {
     for (const e of b.events.slice(0, 20000)) {
-      const c = str(e.currency, 3).toUpperCase(), t = Number(e.time) * 1000 - offMin * 60000;
+      const c = str(e.currency, 3).toUpperCase(), t = utc(e.time);
       if (!MAJORS.has(c) || !Number.isFinite(t) || t <= 0) continue;
-      putEvent.run(t, c, str(e.name, 80));
+      putEvent.run(t, c, str(e.name, 80), acc.customer_id);
     }
   })();
   const r = storeRows(acc.customer_id, acc.id, rows, "connector");
@@ -408,7 +413,7 @@ export function journalState(c: Customer) {
     accounts: all<any>("SELECT * FROM j_accounts WHERE customer_id = ? ORDER BY created_at", c.id).map(pubAcc),
     tags: all("SELECT id, name, kind, color FROM j_tags WHERE customer_id = ? ORDER BY kind, name", c.id),
     playbooks: all<any>("SELECT id, name, description, rules, color, archived FROM j_playbooks WHERE customer_id = ? ORDER BY name", c.id).map((p) => ({ ...p, rules: J(p.rules) || [], archived: !!p.archived })),
-    trades, days, events: eventsFor(trades),
+    trades, days, events: eventsFor(c.id, trades),
   };
 }
 

@@ -2,3 +2,5 @@ data/
 node_modules/
 *.ex5
 *.mq5
+!web/dl/GoldenStraddler-Journal.mq5
+!web/dl/GoldenStraddler-Journal.ex5

@@ -22,7 +22,7 @@ function context(c: Customer) {
   const accs = all<any>("SELECT id, name, currency, balance_start FROM j_accounts WHERE customer_id = ?", c.id);
   const tagName = new Map(tags.map((t) => [t.id, t.name])), pbName = new Map(pbs.map((p) => [p.id, p.name])), accName = new Map(accs.map((a) => [a.id, a.name]));
   const span = raw.length ? [Math.min(...raw.map((t: any) => t.ot)), Math.max(...raw.map((t: any) => t.ot))] : [0, 0];
-  const events = raw.length ? eventsBetween(span[0] - 86400000, span[1] + 86400000) : [];
+  const events = raw.length ? eventsBetween(c.id, span[0] - 86400000, span[1] + 86400000) : [];
   const trades = JS.enrich(raw.map((t: any) => ({ ...t, tags: t.tags.map((g: string) => tagName.get(g) || g), pb: t.pb ? pbName.get(t.pb) || t.pb : null, a: accName.get(t.a) || t.a })), { tz: prefs.tz, dayStart: prefs.dayStart, be: prefs.be, events });
   return { cid: c.id, prefs, trades, tags, pbs, accs, start: accs.reduce((s, a) => s + (a.balance_start || 0), 0) };
 }

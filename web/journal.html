@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<script>try{var s=localStorage,d=document.documentElement,t=s.getItem("gs-theme"),v=s.getItem("gs-vars");if(s.getItem("gs-mode")==="light"){d.dataset.mode="light";var m=document.querySelector("meta[name=theme-color]");if(m)m.content="#F2F4F7"}if(t&&/^[a-z]+$/.test(t)){d.dataset.theme=t;if(t==="custom"&&v)d.style.cssText=v}}catch(e){}</script>
+<title>GoldenStraddler Journal | The trading journal for MT5, with an AI coach</title>
+<meta name="description" content="A trading journal for MetaTrader 5. Every trade synced with its stop loss and how far it went for and against you, analytics that show where your edge leaks, prop-firm limits and an AI coach that answers from your own numbers.">
+<link rel="canonical" href="{{SITE_URL}}/journal">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="GoldenStraddler">
+<meta property="og:title" content="GoldenStraddler Journal: find the leaks in your trading">
+<meta property="og:description" content="Every MT5 trade synced with its stop loss, analytics that show where your edge leaks, and an AI coach that answers from your own numbers.">
+<meta property="og:url" content="{{SITE_URL}}/journal">
+<meta property="og:image" content="{{SITE_URL}}/img/journal/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preload" href="/fonts/unbounded-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/fonts/space-grotesk-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/fonts.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/site.css"><link rel="stylesheet" href="/css/chat.css"><link rel="stylesheet" href="/css/jlanding.css">
+</head>
+<body class="jl">
+<a class="skip" href="#main">Skip to content</a>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="gs" viewBox="0 0 64 64"><rect x="1" y="1" width="62" height="62" rx="16" fill="#0E1116" stroke="#2e3644" stroke-width="2"/><text x="25" y="44" font-family="Unbounded,Arial Black,sans-serif" font-weight="800" font-size="30" fill="#fff" text-anchor="middle">G</text><text x="42" y="49" font-family="Sedgwick Ave,Segoe Script,cursive" font-size="36" style="fill:var(--ice)" text-anchor="middle">S</text></symbol>
+  <symbol id="i-check" viewBox="0 0 20 20"><path d="M4 10.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4.5 5.5h15a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 3.5V17.5h-1A1.5 1.5 0 0 1 3 16V7a1.5 1.5 0 0 1 1.5-1.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="8.5" cy="11.5" r="1.1" fill="currentColor"/><circle cx="12" cy="11.5" r="1.1" fill="currentColor"/><circle cx="15.5" cy="11.5" r="1.1" fill="currentColor"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M6.5 3.5h7l4 4v13h-11z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M13.5 3.5v4h4M9 12.5h6M9 16h6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 9.5h17M9.5 9.5v10" stroke="currentColor" stroke-width="1.7"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13.2 2.5L5 13.4h6l-1.2 8.1 8.2-10.9h-6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+</svg>
+
+<header class="top" id="top"><div class="wrap">
+  <a class="mark" href="/journal"><svg aria-hidden="true"><use href="#gs"/></svg><span>Journal</span></a>
+  <nav aria-label="Main"><a href="#trades">Trades</a><a href="#analytics">Analytics</a><a href="#coach">AI coach</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a><a href="/">The EA</a></nav>
+  <div class="r"><div class="thm"><button class="thm-btn" id="thmBtn" type="button" aria-expanded="false" aria-controls="thmPop" aria-label="Colours"><i class="thm-sw"></i></button>
+    <div class="thm-pop" id="thmPop" hidden data-thm-host></div></div>
+    <a class="signin" href="/journal/app">Sign in</a><a class="btn pri sm" href="/journal/app?demo=1">Try the demo</a></div>
+</div></header>
+
+<main id="main">
+<section class="jl-hero"><div class="wrap">
+  <div class="jl-hcopy">
+    <h1>Find the leaks in your trading.</h1>
+    <p class="sub">GoldenStraddler Journal pulls in every MetaTrader&nbsp;5 trade with its stop loss and how far it went for and against you. Then it shows where your edge comes from, where it leaks and what it costs, with an AI coach that answers from your own numbers.</p>
+    <div class="cta"><a class="btn pri" href="/journal/app?demo=1">Explore it with sample data</a><a class="btn" href="#pricing">See the price</a></div>
+    <p class="meta">{{PRICE_JOURNAL}} a month, cancel any time. Included with every GoldenStraddler licence.</p>
+  </div>
+  <figure class="jl-shot jl-hshot">
+    <img src="/img/journal/overview.webp" alt="The journal overview: net profit, win rate, profit factor, account limits for a prop challenge and the equity curve" width="1600" height="1000">
+    <figcaption>Sample data</figcaption>
+  </figure>
+  <ul class="jl-src" aria-label="Where your trades come from">
+    <li><svg aria-hidden="true"><use href="#i-link"/></svg><span><b>MT5 connector</b>Every closed trade arrives on its own, with the stop loss it opened with</span></li>
+    <li><svg aria-hidden="true"><use href="#i-file"/></svg><span><b>MT4 and MT5 reports</b>Import your history from the HTML report in one go</span></li>
+    <li><svg aria-hidden="true"><use href="#i-grid"/></svg><span><b>Any CSV</b>From cTrader, prop firms or other platforms</span></li>
+    <li><svg aria-hidden="true"><use href="#i-bolt"/></svg><span><b>Your GoldenStraddler EA</b>Its trades appear by themselves, nothing to set up</span></li>
+  </ul>
+</div></section>
+
+<section class="sec rule jl-row" id="trades"><div class="wrap">
+  <div class="jl-txt">
+    <h2>Every trade, opened up</h2>
+    <p class="lede">Click any trade and see what really happened, not just whether it won.</p>
+    <ul class="jl-pts">
+      <li><b>Results in R, from the real stop.</b> The connector records the stop loss the trade opened with, so a win or loss is measured against what you risked.</li>
+      <li><b>How far it went for and against you.</b> The worst and best price while it was open show whether your stop was too tight and how much profit you gave back.</li>
+      <li><b>Your setup and its checklist.</b> Tick which rules the trade followed, rate it, tag the mistakes and the emotions, add notes and screenshots.</li>
+      <li><b>A second opinion.</b> One click asks the AI coach whether the trade was typical for you on that symbol and setup, and what to change.</li>
+    </ul>
+  </div>
+  <figure class="jl-shot tall"><img src="/img/journal/drawer.webp" alt="One trade opened: entry, exit, stop and target on a price line, the setup checklist, rating and mistake tags" width="620" height="899" loading="lazy"><figcaption>Sample data</figcaption></figure>
+</div></section>
+
+<section class="sec rule" id="analytics"><div class="wrap">
+  <h2>See where the money comes from</h2>
+  <p class="lede">Every breakdown is one click from the trades behind it, and every one says how many trades it rests on.</p>
+  <div class="jl-grid">
+    <article class="jl-card wide"><figure class="jl-shot"><img src="/img/journal/news.webp" alt="Trades around high-impact news compared with trades away from news, by release and by how soon after the release the trade opened" width="1600" height="1152" loading="lazy"></figure>
+      <div><h3>Trading the news, measured</h3><p>Each trade is matched to the high-impact releases around it. See how you do around news against the rest of the time, which releases pay, and whether you get in too early or too late.</p></div></article>
+    <article class="jl-card"><figure class="jl-shot"><img src="/img/journal/heat.webp" alt="Results by hour and weekday as a heat map" width="1200" height="353" loading="lazy"></figure>
+      <div><h3>Your best and worst hours</h3><p>Hour by weekday, sessions, how long you hold, symbols, long against short.</p></div></article>
+    <article class="jl-card"><figure class="jl-shot"><img src="/img/journal/mae.webp" alt="Scatter of how far each trade went against and for the trader, in R" width="1200" height="467" loading="lazy"></figure>
+      <div><h3>Stops and exits</h3><p>Results in R, how deep winners go first, losers that were in profit, and how much of the best price you keep.</p></div></article>
+    <article class="jl-card"><figure class="jl-shot"><img src="/img/journal/insights.webp" alt="Plain-language insights: the weakest weekday, the strongest session, a costly symbol" width="1200" height="1230" loading="lazy"></figure>
+      <div><h3>What stands out, in plain words</h3><p>Your strongest and weakest days, sessions, symbols and setups, and what your most expensive mistake costs, with the sample size every time.</p></div></article>
+    <article class="jl-card"><figure class="jl-shot"><img src="/img/journal/whatif.webp" alt="What-if scenarios replaying the trader's own trades with one habit changed" width="1200" height="900" loading="lazy"></figure>
+      <div><h3>Test a habit before you change it</h3><p>Replay your own trades without a mistake tag, with a stop after two losses, without your weakest session, or with every loss capped at 1R.</p></div></article>
+  </div>
+  <ul class="jl-also">
+    <li>Profit factor, expectancy, SQN, Kelly, Sharpe and Sortino</li><li>Drawdown, recovery and streaks</li><li>Setups and what each mistake costs</li><li>Behaviour after a loss and on losing streaks</li><li>Revenge trades and overtrading</li><li>Monte Carlo on your own results</li>
+  </ul>
+</div></section>
+
+<section class="sec rule jl-row flip" id="coach"><div class="wrap">
+  <div class="jl-txt">
+    <h2>A coach that only quotes your numbers</h2>
+    <p class="lede">Ask what's working, where you leak, or how you trade after two losses. It looks your trades up before it answers.</p>
+    <ul class="jl-pts">
+      <li><b>Every figure comes from your journal.</b> It works through the same statistics you see on screen, so you can check anything it says.</li>
+      <li><b>It's honest about small samples.</b> A pattern on twelve trades is called a hint, not a finding.</li>
+      <li><b>It coaches your process.</b> Entries, exits, stops, size, timing, rules and habits. It never predicts markets or tells you what to buy.</li>
+      <li><b>Weekly and monthly reviews.</b> What worked, where it leaked, how you kept your rules, and three specific things to do next.</li>
+    </ul>
+    <p class="fine">{{AI_CREDITS}} AI credits a month: a question or a trade review uses one, a written review uses four.</p>
+  </div>
+  <figure class="jl-shot"><img src="/img/journal/coach.webp" alt="The AI coach answering what the biggest leak is, with figures from the trader's journal" width="1600" height="840" loading="lazy"><figcaption>An example answer on sample data</figcaption></figure>
+</div></section>
+
+<section class="sec rule jl-row" id="rules"><div class="wrap">
+  <div class="jl-txt">
+    <h2>Built for prop challenges and your own rules</h2>
+    <p class="lede">Set the limits of a funded-account challenge, or your own, and watch how close you are.</p>
+    <ul class="jl-pts">
+      <li><b>Account limits.</b> Daily loss, maximum drawdown (static or trailing), profit target, minimum trading days and the best-day share of profit.</li>
+      <li><b>Your trading rules.</b> Daily loss limit, maximum trades, maximum risk, a stop on every trade, trading hours and a pause after losses in a row.</li>
+      <li><b>A discipline score.</b> The share of days you kept every rule, which rules you break most, and what the trades that broke them made.</li>
+    </ul>
+  </div>
+  <div class="jl-stack">
+    <figure class="jl-shot"><img src="/img/journal/limits.webp" alt="Account limits for a prop challenge: daily loss, drawdown, profit target, trading days and best-day share" width="1600" height="362" loading="lazy"></figure>
+    <figure class="jl-shot"><img src="/img/journal/rules.webp" alt="Which rules the trader breaks and what those trades made" width="1600" height="490" loading="lazy"></figure>
+  </div>
+</div></section>
+
+<section class="sec rule" id="more"><div class="wrap">
+  <h2>Everything else you'd expect</h2>
+  <div class="jl-feats">
+    <div><h3>A daily journal</h3><p>A plan before the session, a review after, lessons, mood, focus and how well you kept to the plan.</p></div>
+    <div><h3>Setups with checklists</h3><p>Write each setup's rules once. They become a checklist on every trade, and each setup gets its own stats.</p></div>
+    <div><h3>Several accounts</h3><p>Live, demo and challenge accounts side by side, or all together.</p></div>
+    <div><h3>Your data stays yours</h3><p>Private to your account. Export every trade with your notes and tags as a CSV whenever you like.</p></div>
+    <div><h3>Read-only connector</h3><p>The MT5 connector only reads your history. It never places, changes or closes a trade, and it never sees your password.</p></div>
+    <div><h3>Your colours, on any screen</h3><p>Dark or light, ten colour themes or your own, on a computer or a phone.</p></div>
+  </div>
+</div></section>
+
+<section class="sec rule glow" id="pricing"><div class="wrap">
+  <h2>One plan, everything in it</h2>
+  <p class="lede">No tiers and no features held back. The AI coach is included.</p>
+  <div class="jl-plans">
+    <article class="plan main on">
+      <h3>Journal</h3>
+      <div class="price"><b>{{PRICE_JOURNAL}}</b><span>a month</span></div>
+      <p class="for">Cancel any time from your account.</p>
+      <ul><li>Unlimited trades, up to 30 accounts</li><li>MT5 connector, MT4/MT5 reports and CSV import</li><li>Every analytics view, what-if and Monte Carlo</li><li>The AI coach, {{AI_CREDITS}} credits a month</li><li>Account limits and discipline rules</li><li>{{REFUND_DAYS}}-day money-back guarantee</li></ul>
+      <a class="btn pri" href="/checkout?plan=journal">Start the Journal plan</a>
+    </article>
+    <article class="plan">
+      <h3>With GoldenStraddler</h3>
+      <div class="price"><b>Included</b></div>
+      <p class="for">Every GoldenStraddler licence, lifetime or monthly, comes with the journal.</p>
+      <ul><li>The news straddle EA for gold on MT5</li><li>The full journal and AI coach</li><li>The EA's trades in your journal by themselves</li><li>Your live EA dashboard</li></ul>
+      <a class="btn" href="/#pricing">See the EA plans</a>
+    </article>
+  </div>
+</div></section>
+
+<section class="sec rule" id="faq"><div class="wrap faqw">
+  <div>
+    <h2>Questions people ask</h2>
+    <p class="lede">Can't see yours? Ask the assistant, and a person can take over.</p>
+    <button class="btn" type="button" data-chat-open><svg aria-hidden="true" class="ic"><use href="#i-chat"/></svg>Ask a question</button>
+  </div>
+  <div class="faq">
+    <details><summary>Which platforms does it work with?</summary><div class="a"><p>MetaTrader 5 syncs automatically through the connector. MetaTrader 4 and MetaTrader 5 history reports import in one go, and any platform that exports closed trades as CSV works too, including cTrader and most prop firms.</p></div></details>
+    <details><summary>How does the MT5 connector work?</summary><div class="a"><p>It's a small Expert Advisor you attach to any chart. It sends your closed trades with the stop loss each one opened with and how far price went for and against it, then each new trade as it closes. It only reads your history: it never places, changes or closes a trade, and it never sees your password.</p></div></details>
+    <details><summary>Do I need the GoldenStraddler EA?</summary><div class="a"><p>No. The journal works for any trading, manual or automated, on any symbol. If you do run GoldenStraddler, its trades appear in your journal by themselves and the journal is included with your licence.</p></div></details>
+    <details><summary>What does the AI coach cost?</summary><div class="a"><p>Nothing extra. The plan includes {{AI_CREDITS}} AI credits a month. A question or a trade review uses one credit and a written weekly or monthly review uses four. Credits reset each month.</p></div></details>
+    <details><summary>Is my data private?</summary><div class="a"><p>Yes. Your journal is private to your account, and the AI coach only sees your own trades when you ask it something. You can export everything as a CSV at any time.</p></div></details>
+    <details><summary>Does it work for prop firm challenges?</summary><div class="a"><p>Yes. Set your challenge's daily loss limit, maximum drawdown, profit target, minimum trading days and consistency rule on the account, and the journal shows how close you are. It counts closed trades, while your firm also counts open positions, so treat it as a guide.</p></div></details>
+    <details><summary>Can I try it first?</summary><div class="a"><p>Explore the whole journal with sample data, no sign-up needed. The Journal plan also has a {{REFUND_DAYS}}-day money-back guarantee.</p></div></details>
+    <details><summary>How do I cancel?</summary><div class="a"><p>From your account page, any time. Your journal stays readable until the end of the month you paid for.</p></div></details>
+  </div>
+</div></section>
+
+<section class="sec rule jl-end"><div class="wrap">
+  <h2>See it with your own trades</h2>
+  <p class="lede">Start with the sample data, then bring your history in. It takes a few minutes.</p>
+  <div class="cta"><a class="btn pri" href="/journal/app?demo=1">Explore it with sample data</a><a class="btn" href="/checkout?plan=journal">Start the Journal plan</a></div>
+</div></section>
+</main>
+
+<footer class="foot"><div class="wrap">
+  <div>
+    <a class="mark" href="/"><svg aria-hidden="true"><use href="#gs"/></svg>GoldenStraddler</a>
+    <p>GoldenStraddler Journal is software for reviewing your own trading. It doesn't give investment advice and never has access to your money. Trading leveraged products carries a high risk of losing money quickly.</p>
+  </div>
+  <nav aria-label="Legal"><a href="/">The EA</a><a href="/markets">Markets</a><a href="/account">Your account</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a><a href="/privacy">Privacy</a><a href="/risk">Risk</a><a href="/imprint">Imprint</a></nav>
+</div></footer>
+<script src="/js/theme.js"></script>
+<script src="/js/chat.js" defer></script>
+</body>
+</html>

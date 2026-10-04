@@ -1,0 +1,72 @@
+/* GoldenStraddler Journal: the page that sells it. Builds on base.css and site.css. */
+.jl .top nav a{white-space:nowrap}
+
+/* hero: the pitch, then the product itself */
+.jl-hero{position:relative;padding:72px 0 40px;overflow:hidden;overflow:clip;isolation:isolate}
+.jl-hero::before{content:"";position:absolute;left:-10%;right:-10%;top:-200px;height:1000px;z-index:-1;pointer-events:none;
+  background:radial-gradient(40% 40% at 80% 40%,rgba(var(--ice-rgb),.16),transparent 72%),radial-gradient(30% 34% at 10% 20%,rgba(var(--gold-rgb),.09),transparent 72%)}
+.jl-hero .wrap{display:grid;grid-template-columns:minmax(0,.94fr) minmax(0,1.06fr);gap:28px 48px;align-items:center}
+.jl-hcopy h1{font:800 clamp(38px,3.7vw,54px)/1.02 var(--disp);letter-spacing:-.045em;max-width:none}
+.jl-hcopy .sub{margin-top:24px;font-size:clamp(16px,1.5vw,18.5px);color:var(--txt2);max-width:50ch}
+.jl .cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:30px}
+.jl .cta .btn{padding:14px 24px;font-size:16px}
+.jl-hcopy .meta{margin-top:18px;font-size:14px;color:var(--muted)}
+.jl-hshot{margin-right:-120px}
+.jl-shot{position:relative;margin:0;border-radius:18px;overflow:hidden;border:1px solid var(--edge2);background:var(--carbon);box-shadow:0 50px 120px -60px rgba(var(--ice-rgb),.45)}
+.jl-shot img{display:block;width:100%;height:auto}
+.jl-shot figcaption{position:absolute;right:12px;bottom:10px;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:999px;background:rgba(0,0,0,.6);color:#fff}
+.jl-shot.tall{max-width:440px;justify-self:end;width:100%}
+.jl-src{grid-column:1/-1;list-style:none;margin:28px 0 0;padding:22px 0 0;border-top:1px solid var(--edge);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:22px}
+.jl-src li{display:flex;gap:12px;align-items:flex-start;font-size:14px;color:var(--txt2)}
+.jl-src svg{width:22px;height:22px;flex:none;color:var(--ice);margin-top:1px}
+.jl-src b{display:block;color:var(--white);font-weight:600;font-size:15px;margin-bottom:2px}
+
+/* rows: words on one side, the screen on the other */
+.jl-row .wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:56px;align-items:center}
+.jl-row.flip .jl-txt{order:2}
+.jl-row h2{font-size:clamp(28px,3.3vw,44px);max-width:18ch}
+.jl-pts{list-style:none;margin:28px 0 0;padding:0;display:flex;flex-direction:column;gap:16px}
+.jl-pts li{position:relative;padding-left:30px;color:var(--txt2);font-size:15.5px;line-height:1.55}
+.jl-pts li::before{content:"";position:absolute;left:3px;top:7px;width:11px;height:6px;border-left:2px solid var(--ice);border-bottom:2px solid var(--ice);transform:rotate(-45deg)}
+.jl-pts b{color:var(--white);font-weight:600}
+.jl-txt .fine{margin-top:20px}
+.jl-stack{display:flex;flex-direction:column;gap:16px}
+
+/* analytics grid */
+.jl-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:44px}
+.jl-card{display:flex;flex-direction:column;gap:16px;padding:18px;border-radius:22px;background:var(--carbon);border:1px solid var(--edge)}
+.jl-card.wide{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,.6fr);align-items:center;gap:28px}
+.jl-card .jl-shot{box-shadow:none;border-radius:14px;border-color:var(--edge)}
+.jl-card h3{font:700 19px var(--disp);letter-spacing:-.02em;margin-bottom:8px}
+.jl-card p{color:var(--txt2);font-size:15px}
+.jl-card:not(.wide) .jl-shot{max-height:300px}
+.jl-card:not(.wide) .jl-shot img{object-fit:cover;object-position:top left;max-height:300px}
+.jl-also{list-style:none;margin:30px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+.jl-also li{padding:7px 14px;border-radius:999px;border:1px solid var(--edge2);font-size:14px;color:var(--txt2)}
+
+/* the rest */
+.jl-feats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px 36px;margin-top:44px}
+.jl-feats h3{font-size:17px;font-weight:600;margin-bottom:6px}
+.jl-feats p{color:var(--txt2);font-size:15px}
+.jl-plans{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;margin-top:48px;max-width:980px}
+.jl-plans .plan .price b{font-size:clamp(40px,4.6vw,54px)}
+.jl-end{text-align:left}
+.jl-end .lede{max-width:52ch}
+
+@media (max-width:1100px){.jl-hshot{margin-right:0}}
+@media (max-width:980px){
+  .jl-hero .wrap,.jl-row .wrap{grid-template-columns:minmax(0,1fr);gap:36px}
+  .jl-row.flip .jl-txt{order:0}
+  .jl-src{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .jl-shot.tall{justify-self:start}
+  .jl-card.wide{grid-template-columns:minmax(0,1fr)}
+  .jl-feats{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:700px){
+  .jl-hero{padding:40px 0 24px}
+  .jl .top nav{display:none}
+  .jl-grid,.jl-plans,.jl-feats{grid-template-columns:minmax(0,1fr)}
+  .jl-src{grid-template-columns:minmax(0,1fr);gap:14px}
+  .jl .cta{display:grid;grid-template-columns:minmax(0,1fr)}
+  .jl-card{padding:14px}
+}

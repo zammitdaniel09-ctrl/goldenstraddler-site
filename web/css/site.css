@@ -344,7 +344,7 @@ html{scroll-padding-top:128px}
 .legal a{color:var(--frost)}
 .legal strong{color:var(--white);font-weight:600}
 .legal .box{margin-top:28px;padding:18px 20px;border:1px solid var(--edge2);border-radius:14px;background:var(--carbon)}
-.legal table{border-collapse:collapse;width:100%;margin-top:12px;font-size:15px}
+.legal table{border-collapse:collapse;width:100%;margin-top:12px;font-size:15px;table-layout:fixed;overflow-wrap:anywhere}
 .legal td,.legal th{border-bottom:1px solid var(--edge);padding:10px 8px 10px 0;text-align:left;vertical-align:top;color:var(--txt2)}
 .legal th{color:var(--white);font-weight:600}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.spin{animation-duration:3s}.hero::before,.pm-code::after,.count span.r,.spark.draw .ln,.mini.draw .ln,.dk-gold .px b.tu,.dk-gold .px b.td,.pulse i{animation:none}.spark.draw .ln,.mini.draw .ln{stroke-dashoffset:0}.line::after,.track i{transition:none}}

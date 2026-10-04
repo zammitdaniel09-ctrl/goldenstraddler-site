@@ -26,7 +26,7 @@ function h(sel, attrs, kids) {
 function add(el, kids) { if (kids === undefined || kids === null || kids === false) return; for (const k of Array.isArray(kids) ? kids : [kids]) { if (k === null || k === undefined || k === false) continue; el.appendChild(k instanceof Node ? k : document.createTextNode(String(k))); } }
 const icon = (id, cls) => { const s = document.createElementNS("http://www.w3.org/2000/svg", "svg"); s.setAttribute("aria-hidden", "true"); if (cls) s.setAttribute("class", cls); const u = document.createElementNS("http://www.w3.org/2000/svg", "use"); u.setAttribute("href", "#" + id); s.appendChild(u); return s; };
 const toastEl = $("#toast"); let toastT = 0;
-function toast(msg, bad) { toastEl.textContent = msg; toastEl.classList.toggle("bad", !!bad); toastEl.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => toastEl.classList.remove("on"), 3200); }
+function toast(msg, bad) { toastEl.textContent = msg; toastEl.classList.toggle("bad", !!bad); toastEl.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => toastEl.classList.remove("on"), Math.max(3200, String(msg).length * 60)); }
 
 // ---------------------------------------------------------------- formatting
 const ST = { data: null, trades: [], view: "overview", sub: "", f: { acc: "", range: "90", from: "", to: "", symbols: [], side: "", outcome: "", tags: [], pb: "", weekday: "", news: "", q: "" }, sel: new Set(), sort: { k: "ct", d: -1 }, shown: 150 };
@@ -285,7 +285,7 @@ function calendarCard(ts) {
       const key = `${ST.calMonth}-${String(d).padStart(2, "0")}`, x = days.get(key), nt = notes.get(key);
       const a = x ? Math.min(1, Math.sqrt(Math.abs(x.net) / mx)) : 0;
       const c = h("a.day" + (x ? (x.net >= 0 ? ".pos" : ".neg") : "") + (nt && nt.notes ? ".note" : ""), { href: "#/days/" + key, style: x ? { "--a": (0.14 + a * 0.7).toFixed(2) } : null, "aria-label": `${dayName(key)}${x ? `: ${money(x.net, { sign: true })}, ${x.n} trades` : ""}` },
-        [h("span.n", d), x ? h("b", money(x.net, { compact: true, sign: true })) : null, x ? h("span.c", x.n + (x.n === 1 ? " trade" : " trades")) : null]);
+        [h("span.n", d), x ? h("b", [h("span.lg", money(x.net, { compact: true, sign: true })), h("span.sm", shortMoney(x.net))]) : null, x ? h("span.c", x.n + (x.n === 1 ? " trade" : " trades")) : null]);
       grid.appendChild(c);
     }
     box.replaceChildren(h("div.j-calh", [h("button.btn.xs.ghost", { type: "button", "aria-label": "Previous month", on: { click: () => { ST.calMonth = shiftMonth(ST.calMonth, -1); draw(); } } }, icon("j-left")),
@@ -295,14 +295,16 @@ function calendarCard(ts) {
   draw();
   return card("Calendar", box);
 }
+const shortMoney = (v) => (v < 0 ? MINUS : "+") + (Math.abs(v) >= 1000 ? (Math.abs(v) / 1000).toFixed(Math.abs(v) >= 10000 ? 0 : 1) + "k" : Math.round(Math.abs(v)));
 const shiftMonth = (ym, d) => { const [y, m] = ym.split("-").map(Number), t = new Date(Date.UTC(y, m - 1 + d, 1)); return t.toISOString().slice(0, 7); };
 
 // ================================================================ TRADES
 const COLS = [["ct", "Closed"], ["s", "Symbol"], ["d", "Side"], ["v", "Lots"], ["op", "Entry"], ["cp", "Exit"], ["dur", "Held"], ["r", "R"], ["net", "Net"], ["pb", "Setup"], ["tags", "Tags"], ["rt", "Rating"]];
+const HM = new Set(["v", "op", "cp", "dur", "pb", "rt", "tags"]);   // columns that step aside on phones
 function tradeTable(ts, o = {}) {
   const cols = o.compact ? COLS.filter(([k]) => ["ct", "s", "d", "v", "r", "net", "tags"].includes(k)) : COLS;
   const t = h("table.j-t", [h("thead", h("tr", [o.select ? h("th.ck", h("input", { type: "checkbox", "aria-label": "Select all", checked: ts.length && ts.every((x) => ST.sel.has(x.id)), on: { change: (e) => { for (const x of ts) e.target.checked ? ST.sel.add(x.id) : ST.sel.delete(x.id); render(); } } })) : null,
-    ...cols.map(([k, l]) => h("th" + (["v", "op", "cp", "dur", "r", "net"].includes(k) ? ".r" : ""), o.sortable ? h("button.sort", { type: "button", "aria-sort": ST.sort.k === k ? (ST.sort.d > 0 ? "ascending" : "descending") : null, on: { click: () => { ST.sort = { k, d: ST.sort.k === k ? -ST.sort.d : -1 }; render(); } } }, [l, ST.sort.k === k ? (ST.sort.d > 0 ? " ↑" : " ↓") : ""]) : l)), h("th", "")]))]);
+    ...cols.map(([k, l]) => h("th" + (["v", "op", "cp", "dur", "r", "net"].includes(k) ? ".r" : "") + (HM.has(k) ? ".hm" : ""), o.sortable ? h("button.sort", { type: "button", "aria-sort": ST.sort.k === k ? (ST.sort.d > 0 ? "ascending" : "descending") : null, on: { click: () => { ST.sort = { k, d: ST.sort.k === k ? -ST.sort.d : -1 }; render(); } } }, [l, ST.sort.k === k ? (ST.sort.d > 0 ? " ↑" : " ↓") : ""]) : l)), h("th", "")]))]);
   const tb = h("tbody");
   for (const x of ts) {
     const tr = h("tr.click" + (ST.sel.has(x.id) ? ".sel" : ""), { tabindex: 0, on: { click: (e) => { if (e.target.closest("input,button,a")) return; openTrade(x.id, ts); }, keydown: (e) => { if (e.key === "Enter") openTrade(x.id, ts); } } }, [
@@ -311,15 +313,15 @@ function tradeTable(ts, o = {}) {
         if (k === "ct") return h("td.n.dim", dt(x.ct));
         if (k === "s") return h("td", h("b", x.s));
         if (k === "d") return h("td", h("span.j-dir." + (x.d > 0 ? "l" : "s"), x.d > 0 ? "Long" : "Short"));
-        if (k === "v") return h("td.n.r", fx(x.v, x.v < 1 ? 2 : 2));
-        if (k === "op") return h("td.n.r.dim", priceFmt(x.op));
-        if (k === "cp") return h("td.n.r.dim", priceFmt(x.cp));
-        if (k === "dur") return h("td.n.r.dim", dur(x.dur));
+        if (k === "v") return h("td.n.r.hm", fx(x.v, 2));
+        if (k === "op") return h("td.n.r.dim.hm", priceFmt(x.op));
+        if (k === "cp") return h("td.n.r.dim.hm", priceFmt(x.cp));
+        if (k === "dur") return h("td.n.r.dim.hm", dur(x.dur));
         if (k === "r") return h("td.n.r." + cls(x.r), rr(x.r));
         if (k === "net") return h("td.n.r." + cls(x.net), money(x.net, { sign: true }));
-        if (k === "pb") return h("td", x.pb && pbOf(x.pb) ? h("span.j-pbc", pbOf(x.pb).name) : "");
-        if (k === "tags") return h("td.tg", (x.tags || []).slice(0, 3).map(tagChip));
-        if (k === "rt") return h("td", x.rt ? stars(x.rt) : "");
+        if (k === "pb") return h("td.hm", x.pb && pbOf(x.pb) ? h("span.j-pbc", pbOf(x.pb).name) : "");
+        if (k === "tags") return h("td.tg.hm", (x.tags || []).slice(0, 3).map(tagChip));
+        if (k === "rt") return h("td.hm", x.rt ? stars(x.rt) : "");
         return h("td");
       }),
       h("td.ic", [x.note ? icon("j-note", "has") : null, x.media && x.media.length ? icon("j-img", "has") : null, !x.reviewed ? h("i.unrev", { title: "Not reviewed yet" }) : null]),
@@ -389,7 +391,9 @@ function tradeMap(t) {
   const UP = new Set(["Entry", "Stop", "Worst"]), lastAt = { up: -99, dn: -99 };
   for (const [l, v] of [...pts].sort((a, b) => P(a[1]) - P(b[1]))) {
     const row = UP.has(l) ? "up" : "dn", far = P(v) - lastAt[row] < 13; lastAt[row] = far ? -99 : P(v);
-    bar.appendChild(h("span.m." + l.toLowerCase() + (far ? ".far" : ""), { style: { left: P(v) + "%" }, title: `${l} ${priceFmt(v)}` }, h("em", [l, h("b", priceFmt(v))])));
+    if (far) box.classList.add(row === "up" ? "fu" : "fd");
+    const edge = P(v) < 8 ? ".l" : P(v) > 92 ? ".r" : "";
+    bar.appendChild(h("span.m." + l.toLowerCase() + (far ? ".far" : "") + edge, { style: { left: P(v) + "%" }, title: `${l} ${priceFmt(v)}` }, h("em", [l, h("b", priceFmt(v))])));
   }
   box.appendChild(bar);
   return box;
@@ -916,7 +920,7 @@ function connector(a) {
     tokBox.replaceChildren(h("p", "Copy your token now. For your security it's only shown once."), h("div.j-copy", [h("code", j.token), h("button.btn.sm", { type: "button", on: { click: async (e) => { try { await navigator.clipboard.writeText(j.token); e.currentTarget.textContent = "Copied"; } catch { } } } }, "Copy")]));
   } } }, a.token_hint ? "Make a new token" : "Make my token");
   openModal("Connect " + a.name + " to MT5", h("ol.j-steps", [
-    h("li", [h("b", "Download the connector. "), "It's a small Expert Advisor that only reads your history. It never places or changes trades. ", h("a.btn.sm", { href: "/dl/GoldenStraddler-Journal.ex5" }, [icon("j-dl"), "GoldenStraddler Journal Connector"])]),
+    h("li", [h("b", "Download the connector. "), "It's a small Expert Advisor that only reads your history. It never places, changes or closes trades. ", h("a.btn.sm", { href: "/dl/GoldenStraddler-Journal.ex5" }, [icon("j-dl"), "GoldenStraddler Journal Connector"]), " ", h("a.fine", { href: "/dl/GoldenStraddler-Journal.mq5" }, "or its source code")]),
     h("li", [h("b", "Put it in MT5. "), "File → Open Data Folder → MQL5 → Experts, copy the file in, then right-click Expert Advisors in the Navigator and choose Refresh."]),
     h("li", [h("b", "Allow its web address. "), "Tools → Options → Expert Advisors: tick Allow WebRequest for listed URL and add ", h("code", location.origin), "."]),
     h("li", [h("b", "Paste your token. "), "Drag the connector onto any chart, paste the token on the Inputs tab and press OK. It sends your whole history once, then each trade as it closes."]),
@@ -1018,7 +1022,7 @@ function demoData() {
     const R = win ? 0.4 + r() * (pb && pb.id === "dp2" ? 3.4 : 2.4) : -(0.75 + r() * (fomo ? 0.9 : 0.35));
     const cp = op + side * R * risk, lots = s === "NAS100" ? pick([1, 2, 3]) : pick([0.1, 0.2, 0.3, 0.5]) * (lossRun >= 2 && r() < 0.3 ? 2 : 1);
     const gross = (cp - op) * side * k * lots, comm = s === "NAS100" ? 0 : -7 * lots;
-    const mfeR = win ? R * (1 + r() * 0.5) : r() < 0.25 ? 0.6 + r() * 1.2 : r() * 0.5, maeR = win ? (r() < 0.35 ? 0.3 + r() * 0.6 : r() * 0.3) : Math.min(1.4, -R + r() * 0.1);
+    const mfeR = win ? R * (1 + r() * 0.5) : r() < 0.25 ? 0.6 + r() * 1.2 : r() * 0.5, maeR = win ? (r() < 0.35 ? 0.3 + r() * 0.6 : r() * 0.3) : -R + r() * 0.03;
     const mfe = op + side * mfeR * risk, mae = op - side * maeR * risk;
     const dur = (win ? 20 + r() * 220 : 15 + r() * 400) * 60000;
     const tg = []; if (fomo) tg.push("dg1"); if (!win && r() < 0.18) tg.push("dg2"); if (win && R < 0.9 && r() < 0.5) tg.push("dg4"); if (lossRun >= 2 && r() < 0.4) tg.push("dg5"); tg.push(lossRun >= 2 ? pick(["dg7", "dg8"]) : pick(["dg6", "dg6", "dg7"]));
@@ -1055,7 +1059,10 @@ function demoData() {
 (async () => {
   try { const saved = JSON.parse(localStorage.getItem("gsj-f") || "null"); if (saved && !DEMO) Object.assign(ST.f, saved, { q: "" }); } catch {}
   if (DEMO) { $("#demoBar").hidden = false; document.body.classList.add("demo"); load(demoData()); ST.f.range = "all"; route(); return; }
-  try { const d = await api("state"); load(d); route(); }
+  try {
+    const d = await api("state"); load(d); route();
+    if (new URLSearchParams(location.search).get("soon") === "connector") { history.replaceState(null, "", location.pathname + location.hash); toast("The MT5 connector download is almost ready. Import your MT5 history report for now.", true); }
+  }
   catch (e) { if (e.status === 403) gate(e.why || "none"); else if (e.status !== 401) { $("#main").replaceChildren(h("div.j-card", [h("h2", "The journal couldn't load"), h("p", e.message)])); } }
 })();
 document.addEventListener("gs-theme", () => { if (ST.data) render(); });

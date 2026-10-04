@@ -83,7 +83,7 @@ function legalVars(s: string) {
   const v: Record<string, string> = {
     SELLER_NAME: getS("seller_name") || "[Seller name to be added]", SELLER_ADDRESS: getS("seller_address") || "[Registered address to be added]",
     SELLER_VAT: getS("seller_vat") || "-", SELLER_REG: getS("seller_reg") || "-", SUPPORT_EMAIL: getS("support_email"),
-    REFUND_DAYS: getS("refund_days"), MOVE_DAYS: getS("move_days"), PRICE_LIFETIME: euros(listPrice("lifetime")), PRICE_MONTHLY: euros(listPrice("monthly")),
+    REFUND_DAYS: getS("refund_days"), MOVE_DAYS: getS("move_days"), PRICE_LIFETIME: euros(listPrice("lifetime")), PRICE_MONTHLY: euros(listPrice("monthly")), PRICE_JOURNAL: euros(listPrice("journal")), AI_CREDITS: String(getN("journal_ai_credits") || 100),
     SITE: siteUrl().replace(/^https?:\/\//, ""), SITE_URL: siteUrl(), UPDATED: "1 October 2026",
   };
   return s.replace(/\{\{([A-Z_]+)\}\}/g, (_, k) => esc(v[k] ?? ""));
@@ -554,6 +554,8 @@ async function handle(req: Request): Promise<Response> {
   if (p === "/dl/GoldenStraddler-Journal.ex5" || p === "/dl/GoldenStraddler-Journal.mq5") {
     const c = meCustomer(req);
     if (!c || !journalAccess(c).ok) return Response.redirect(siteUrl() + "/journal/app", 302);
+    // until the compiled connector is shipped, send people back with a note rather than a bare 404
+    if (!existsSync(join(WEB, p.slice(1)))) return Response.redirect(siteUrl() + "/journal/app?soon=connector#/accounts", 302);
     return file(req, p.slice(1), { download: p.slice(4), cache: 0 });
   }
   if (["/terms", "/refunds", "/privacy", "/risk", "/imprint"].includes(p)) return file(req, "legal" + p + ".html", { replace: legalVars });

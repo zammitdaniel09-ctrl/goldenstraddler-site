@@ -111,19 +111,20 @@ function bars(el, rows, o = {}) {
     const P = pal(el);
     if (!rows.length) { el.innerHTML = `<p class="jc-empty">${o.empty || "No trades here yet."}</p>`; return; }
     if (o.horizontal) {
-      const rowH = 30, labW = Math.min(170, Math.max(80, W * 0.28)), valW = 84, H = rows.length * rowH + 6;
+      // on narrow screens each label sits above its bar instead of beside it
+      const stacked = W < 520, rowH = stacked ? 42 : 30, labW = stacked ? 0 : Math.min(170, Math.max(80, W * 0.28)), valW = stacked ? 0 : 84, H = rows.length * rowH + 6;
       const m = Math.max(...rows.map((r) => Math.abs(r.value)), 1e-9), anyNeg = rows.some((r) => r.value < 0);
       const x0 = labW + (anyNeg ? (W - labW - valW) / 2 : 0), span = anyNeg ? (W - labW - valW) / 2 : W - labW - valW - 4;
       const svg = S("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H, class: "jc", role: "img", "aria-label": o.label || "Bar chart" }, el);
       if (anyNeg) S("line", { x1: x0, x2: x0, y1: 0, y2: H, stroke: P.grid }, svg);
       rows.forEach((r, i) => {
-        const yy = i * rowH + 4, len = (Math.abs(r.value) / m) * span, neg = r.value < 0, bh = Math.min(16, rowH - 10);
-        const lt = S("text", { x: 0, y: yy + rowH / 2 + 1, class: "lb" }, svg); lt.textContent = r.label;
+        const yy = i * rowH + 4, len = (Math.abs(r.value) / m) * span, neg = r.value < 0, bh = stacked ? 10 : Math.min(16, rowH - 10);
+        const lt = S("text", { x: 0, y: stacked ? yy + 12 : yy + rowH / 2 + 1, class: "lb" }, svg); lt.textContent = r.label;
         const g = S("g", { class: "bar", tabindex: 0 }, svg);
         S("rect", { x: 0, y: yy, width: W, height: rowH, fill: "transparent" }, g);
         const bx = neg ? x0 - len : x0;
-        if (len > 0.5) S("path", { d: roundBar(bx, yy + (rowH - bh) / 2, len, bh, neg ? "l" : "r"), fill: neg ? P.dn : r.color || P.up }, g);
-        const vt = S("text", { x: W, y: yy + rowH / 2 + 1, class: "vl", "text-anchor": "end" }, svg); vt.textContent = (o.fmt || String)(r.value);
+        if (len > 0.5) S("path", { d: roundBar(bx, stacked ? yy + 20 : yy + (rowH - bh) / 2, len, bh, neg ? "l" : "r"), fill: neg ? P.dn : r.color || P.up }, g);
+        const vt = S("text", { x: W, y: stacked ? yy + 12 : yy + rowH / 2 + 1, class: "vl", "text-anchor": "end" }, svg); vt.textContent = (o.fmt || String)(r.value);
         const tipRows = [{ value: (o.fmt || String)(r.value), label: o.valueLabel || "" }, ...(r.extra || [])];
         g.addEventListener("pointermove", (e) => showTip(e.clientX, e.clientY, tipRows, r.label)); g.addEventListener("pointerleave", hideTip);
         g.addEventListener("focus", () => { const b = g.getBoundingClientRect(); showTip(b.left + b.width / 2, b.top, tipRows, r.label); }); g.addEventListener("blur", hideTip);
