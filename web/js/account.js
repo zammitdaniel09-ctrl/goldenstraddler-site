@@ -72,8 +72,8 @@ async function start() {
 function sessionStorageGet(k) { try { return sessionStorage.getItem(k); } catch { return null; } }
 
 function statusText(l) {
-  if (l.status === "active") return l.plan === "lifetime" ? ["Active, never expires", "active"] : ["Active", "active"];
-  if (l.status === "expired") return ["Subscription ended", "expired"];
+  if (l.status === "active") return l.plan === "lifetime" ? ["Active, never expires", "active"] : l.plan === "trial" ? ["Active on demo accounts", "active"] : ["Active", "active"];
+  if (l.status === "expired") return [l.plan === "trial" ? "Trial ended" : "Subscription ended", "expired"];
   if (l.status === "revoked") return ["Switched off", "revoked"];
   return [l.status, "pending"];
 }
@@ -92,7 +92,8 @@ function renderLicences() {
     const cp = el("button", "btn sm pri", "Copy licence key"); cp.type = "button"; cp.onclick = () => copyText(l.key, cp); row.appendChild(cp);
     if (l.plan === "journal" && l.status === "active") { const o = el("a", "btn sm", "Open your journal"); o.href = "/journal/app"; row.appendChild(o); }
     if (l.plan !== "lifetime" && l.stripe_sub && ME.customer.portal) row.appendChild(act(el("button", "btn sm", "Manage subscription"), async () => { const r = await api("/api/me/portal", {}); location.href = r.url; }));
-    if (l.plan !== "lifetime" && !l.stripe_sub && l.status !== "revoked") {
+    if (l.plan === "trial") { const b = el("a", "btn sm", "Buy a licence"); b.href = "/#pricing"; row.appendChild(b); }
+    if (l.plan !== "lifetime" && l.plan !== "trial" && !l.stripe_sub && l.status !== "revoked") {
       if (ME.methods.crypto) row.appendChild(act(el("button", "btn sm", "Pay next month in crypto"), async () => { const r = await api("/api/me/renew", { licence: l.id, method: "crypto" }); location.href = r.url; }));
       if (ME.methods.bank) row.appendChild(act(el("button", "btn sm", "Pay next month by bank transfer"), async () => { const r = await api("/api/me/renew", { licence: l.id, method: "bank" }); location.href = r.url; }));
     }
@@ -104,7 +105,8 @@ function renderLicences() {
     left.appendChild(row);
     const add = (k, v, extra) => { right.append(el("dt", "", k)); const d = el("dd"); if (v instanceof Node) d.appendChild(v); else d.textContent = v; if (extra) d.append(" ", el("span", "fine", extra)); right.append(d); };
     add("Status", el("span", "pill " + cls, st));
-    if (l.plan !== "lifetime") add(l.stripe_sub ? "Renews" : "Paid until", l.expires_at ? dateFmt(l.expires_at, false) : DASH, l.stripe_sub ? "automatically" : "");
+    if (l.plan === "trial") add("Trial ends", l.expires_at ? dateFmt(l.expires_at, false) : DASH, "demo accounts only");
+    else if (l.plan !== "lifetime") add(l.stripe_sub ? "Renews" : "Paid until", l.expires_at ? dateFmt(l.expires_at, false) : DASH, l.stripe_sub ? "automatically" : "");
     if (l.plan === "journal") add("Includes", "GoldenStraddler Journal with the AI coach");
     else {
       add("MT5 account", l.account ? `${l.account}${l.account_demo ? " (demo)" : ""}` : "Locks on first run", l.account_server || "");

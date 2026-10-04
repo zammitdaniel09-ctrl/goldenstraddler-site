@@ -232,7 +232,7 @@ function issueDialog() {
   const g = el("form", "formgrid");
   const email = el("input", "field"); email.type = "email"; email.required = true;
   const name = el("input", "field");
-  const plan = el("select", "field"); ["lifetime", "monthly", "journal"].forEach((p) => { const o = el("option", "", p === "journal" ? "Journal only" : PLAN[p]); o.value = p; plan.appendChild(o); });
+  const plan = el("select", "field"); ["lifetime", "monthly", "journal", "trial"].forEach((p) => { const o = el("option", "", p === "journal" ? "Journal only" : p === "trial" ? "Demo trial (demo accounts only)" : PLAN[p]); o.value = p; plan.appendChild(o); });
   const days = el("input", "field"); days.type = "number"; days.min = "0"; days.placeholder = "30";
   const amount = el("input", "field"); amount.type = "number"; amount.min = "0"; amount.step = "0.01"; amount.value = "0";
   const note = el("input", "field"); note.placeholder = "e.g. paid in cash, partner, friend";
@@ -551,6 +551,7 @@ VIEWS.settings = async () => {
   out.push(form("Website", "",
     inp("record_public", "Show the live track record on the sales page", { select: yn }), inp("record_min_trades", "Only once it has at least this many trades", { type: "number" }),
     inp("refund_days", "Money-back period (days)", { type: "number" }), inp("move_days", "Customers can move a licence every (days)", { type: "number" }),
+    inp("trial_days", "Free demo trial length in days (0 = no trial; runs on demo accounts only)", { type: "number" }),
     inp("record_verify_url", "Verified record link, e.g. your public Myfxbook page (blank = none)", { full: 1, ph: "https://www.myfxbook.com/members/..." }),
     inp("promo_code", "Code shown in the bar at the top of the home page (blank = no bar). Give it an end date under Codes and the bar counts down to it", { full: 1 }),
     inp("announcement", "Banner on the sales page (blank = none)", { full: 1 }), inp("ea_version", "Current EA version"), inp("site_url", "Site address")));

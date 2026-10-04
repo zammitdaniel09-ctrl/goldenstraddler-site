@@ -13,7 +13,7 @@ import { DAY, E, SEC_H, SECRET_KEYS, bad, body, emailOk, esc, euros, getN, getS,
 import { adminLogin, adminOf, bootstrapOwner, checkLoginCode, endAllSessions, endSession, newLoginCode, newTotpSecret, otpauthUri, sessionOf, startSession, type Admin } from "./auth";
 import { customerFor, dashState, eaHello, effective, issueLicence, licenceForSync, maskAcc, publicLicence, restore, revoke, storeStatus, storeTrades, type Customer, type Licence, type Order } from "./licence";
 import { billingPortal, connectStripe, createOrder, listPrice, nowpaymentsWebhook, orderById, ordersFor, promo, quote, refundOrder, settleStripeSession, startPayment, stripe, stripeWebhook, type Plan } from "./pay";
-import { mailConfigured, mailExpiring, mailLicence, mailLoginCode, notifyAdmins, outbox, sendMail } from "./mail";
+import { mailConfigured, mailExpiring, mailLicence, mailLoginCode, mailTrial, mailTrialEnding, notifyAdmins, outbox, sendMail } from "./mail";
 import { fulfil } from "./licence";
 import { chatAdmin, chatEnabled, chatRoute, initChat, testAnthropicKey } from "./chat";
 import { hubDetail, hubJson, hubLive, hubPublic, hubRefreshNow, hubStatus, hubTeaser, renderHub, startHub } from "./hub";
@@ -206,6 +206,8 @@ function chatFacts(tz: string) {
   } else L.push("- There is no public discount code right now.");
   const m = methodsOn(), meth = [m.card && "card, Apple Pay and Google Pay (Stripe)", m.crypto && "crypto (NOWPayments)", m.bank && "bank transfer"].filter(Boolean);
   L.push(`- Payment methods available now: ${meth.join(", ") || "none at the moment"}.`);
+  if (getN("trial_days") > 0) L.push(`- Free trial: ${getN("trial_days")} days on a demo account only (it won't run on a live account). Start it from the pricing section of the home page with an email address; the key arrives by email. One trial per email address.`);
+  else L.push("- There's no free trial right now.");
   L.push(`- Money-back guarantee: ${getN("refund_days")} days from the first payment. A licence can move to another MT5 account once every ${getN("move_days")} days.`);
   const up = news.events.filter((e) => e.utc > now() / 1000 - 60).slice(0, 10);
   if (up.length) {
@@ -314,7 +316,27 @@ async function handle(req: Request): Promise<Response> {
     const showRec = getS("record_public") === "1" && rec && rec.trades >= minTrades;
     return json(200, { ok: true, serverNow: now(), prices: { lifetime: listPrice("lifetime"), monthly: listPrice("monthly"), ...(journalOpen() || adminOf(req) ? { journal: listPrice("journal") } : {}) }, methods: methodsOn(),
       refundDays: getN("refund_days"), news: news.events.filter((e) => e.utc > now() / 1000 - 75).slice(0, 8), week: news.events, record: showRec ? rec : null,
-      announcement: getS("announcement"), promo: promo(), verifyUrl: /^https:\/\/[\w.-]+\//.test(getS("record_verify_url")) ? getS("record_verify_url") : "" });
+      announcement: getS("announcement"), promo: promo(), trialDays: getN("trial_days") > 0 ? getN("trial_days") : 0, verifyUrl: /^https:\/\/[\w.-]+\//.test(getS("record_verify_url")) ? getS("record_verify_url") : "" });
+  }
+  // a free trial on a demo account, when switched on in Admin settings (trial_days > 0)
+  if (p === "/api/trial") {
+    if (!post) return bad("POST only", 405);
+    const days = Math.min(30, getN("trial_days"));
+    if (!(days > 0)) return bad("There's no free trial at the moment.", 404);
+    if (limited("trial:" + ipOf(req), 3, 86_400_000)) return bad("Too many trial requests from here today.", 429);
+    let b: any; try { b = await body(req); } catch (e: any) { return bad(e.message, e.code || 400); }
+    const email = str(b.email, 200).toLowerCase();
+    if (!emailOk(email)) return bad("Enter a valid email address.");
+    if (!b.consent) return bad("Please agree to the Terms and the Risk Disclosure.");
+    const c = customerFor(email, "");
+    const had = all<Licence>("SELECT * FROM licences WHERE customer_id = ?", c.id);
+    if (had.some((l) => (l.plan as string) === "trial")) return bad("This email address has already had a trial. Sign in to your account to see it, or pick a plan.");
+    if (had.some((l) => l.plan !== "journal" && effective(l) === "active")) return bad("You already have a GoldenStraddler licence. Sign in to your account to use it.");
+    const l = issueLicence(c.id, "trial", "trial", now() + days * DAY, { note: "Free demo trial" });
+    audit("customer:" + email, "started a demo trial", l.key, `${days} days`);
+    mailTrial(email, l.key, days, l.expires_at!).catch(() => {});
+    notifyAdmins("New demo trial", `${email} started a ${days}-day demo trial.`).catch(() => {});
+    return json(200, { ok: true, days });
   }
   if (p === "/api/markets/live") { if (limited("mkl:" + ipOf(req), 60, 60_000)) return bad("Slow down", 429); return json(200, hubLive()); }
   if (p === "/api/markets") {
@@ -537,7 +559,10 @@ async function handle(req: Request): Promise<Response> {
   const pages: Record<string, [string, boolean?]> = { "/": ["index.html"], "/checkout": ["checkout.html"], "/account": ["account.html", true], "/admin": ["admin.html", true] };
   if (pages[p]) return file(req, pages[p][0], { noindex: !!pages[p][1], replace: (s) => {
     let o = hubNav(legalVars(s));
-    if (p === "/") { o = jsonLd(o); if (getS("record_public") !== "1") o = o.replace(/<a href="#record">/g, '<a href="#record" hidden>'); }
+    if (p === "/") {
+      const td = getN("trial_days");
+      if (td > 0) o = o.replace(/(<p id="faqTrial">)[\s\S]*?(<\/p>)/, (_, a, b) => `${a}Yes: ${td} days on a demo account, free and without a card. Ask for a key in the pricing section and it arrives by email. The trial doesn't run on live accounts. When you buy, there's also a ${getN("refund_days")}-day money-back guarantee on the first payment.${b}`);
+      o = jsonLd(o); if (getS("record_public") !== "1") o = o.replace(/<a href="#record">/g, '<a href="#record" hidden>'); }
     return o;
   } });
   if (p === "/markets" || /^\/markets\/[a-z]{2,12}$/.test(p)) {
@@ -642,6 +667,13 @@ async function adminRoute(req: Request, url: URL, p: string, a: Admin): Promise<
   if (p === "/licence/new" && post) {
     const email = str(b.email, 200).toLowerCase(), plan: Plan = b.plan === "monthly" ? "monthly" : b.plan === "journal" ? "journal" : "lifetime", days = Math.max(0, Math.min(3650, Number(b.days) || 0));
     if (!emailOk(email)) return bad("Enter a valid email address.");
+    if (b.plan === "trial") {
+      const c = customerFor(email, str(b.name, 80)), d = days || getN("trial_days") || 14;
+      const l = issueLicence(c.id, "trial", "manual", now() + d * DAY, { note: str(b.note, 300) || "Demo trial issued by " + who });
+      audit(who, "demo trial issued", l.key, `${email} ${d}d`);
+      if (b.send !== false) mailTrial(email, l.key, d, l.expires_at!).catch(() => {});
+      return json(200, { ok: true, licence: l });
+    }
     const c = customerFor(email, str(b.name, 80));
     const l = issueLicence(c.id, plan, "manual", plan !== "lifetime" ? now() + (days || 30) * DAY : (days ? now() + days * DAY : null), { note: str(b.note, 300) });
     const price = Number(b.amount) >= 0 ? Math.round(Number(b.amount) * 100) : 0;
@@ -761,7 +793,7 @@ async function adminRoute(req: Request, url: URL, p: string, a: Admin): Promise<
   if (p === "/settings") {
     const editable = ["price_lifetime", "price_monthly", "mail_from", "support_email", "notify_emails", "bank_name", "bank_holder", "bank_iban", "bank_bic",
       "seller_name", "seller_address", "seller_vat", "seller_reg", "record_public", "record_min_trades", "stripe_tax", "methods_card", "methods_crypto", "methods_bank",
-      "refund_days", "move_days", "announcement", "site_url", "ea_version", "promo_code", "record_verify_url",
+      "refund_days", "move_days", "trial_days", "announcement", "site_url", "ea_version", "promo_code", "record_verify_url",
       "chat_enabled", "chat_ai", "chat_model", "chat_daily_cap", "chat_greeting", "hub_public",
       "journal_public", "journal_ai_credits", "journal_ai_model", "price_journal"];
     if (post) {
@@ -818,6 +850,13 @@ async function hourly() {
     const due = all<Licence & { email: string }>(`SELECT l.*, c.email FROM licences l JOIN customers c ON c.id = l.customer_id WHERE l.plan IN ('monthly', 'journal') AND l.stripe_sub = ''
       AND l.status = 'active' AND l.expires_at BETWEEN ? AND ? AND (l.reminded_at IS NULL OR l.reminded_at < l.expires_at - ?)`, t, t + 8 * DAY, 9 * DAY);
     for (const l of due) { await mailExpiring(l.email, l, siteUrl() + "/account"); run("UPDATE licences SET reminded_at = ? WHERE id = ?", t, l.id); }
+    // demo trials: a note two days before they end, unless the customer has bought since
+    const trials = all<Licence & { email: string }>(`SELECT l.*, c.email FROM licences l JOIN customers c ON c.id = l.customer_id WHERE l.plan = 'trial' AND l.status = 'active'
+      AND l.expires_at BETWEEN ? AND ? AND l.reminded_at IS NULL`, t, t + 2 * DAY);
+    for (const l of trials) {
+      if (!one("SELECT id FROM licences WHERE customer_id = ? AND plan IN ('lifetime', 'monthly') AND status = 'active'", l.customer_id)) await mailTrialEnding(l.email, l.expires_at!);
+      run("UPDATE licences SET reminded_at = ? WHERE id = ?", t, l.id);
+    }
     // abandoned orders
     run("UPDATE orders SET status = 'expired' WHERE status = 'pending' AND method IN ('card','crypto') AND created_at < ?", t - 2 * DAY);
     run("UPDATE orders SET status = 'expired' WHERE status = 'pending' AND method = 'bank' AND created_at < ?", t - 14 * DAY);

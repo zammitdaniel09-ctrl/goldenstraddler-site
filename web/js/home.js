@@ -337,6 +337,28 @@ function stepLine() {
   new IntersectionObserver((es) => { on = es[0].isIntersecting; clearInterval(t); if (on) { step(); t = setInterval(step, 1500); } }, { threshold: 0.3 }).observe(line);
 }
 
+// ================================================================ free demo trial (only when switched on in Admin settings)
+function trialOn(days) {
+  // the hero's price line is rewritten on every refresh, so its trial link is added back each time
+  const hp = $("heroPay"); if (hp && !hp.querySelector("a")) { const a = document.createElement("a"); a.href = "#trial"; a.textContent = `Or try it free on demo for ${days} days.`; hp.append(" ", a); }
+  const f = $("trial"); if (!f || !f.hidden) return;
+  f.hidden = false;
+  $("trialTxt").textContent = `${days} days on a demo account, no card needed. The key arrives by email.`;
+  $("faqTrial").textContent = `Yes: ${days} days on a demo account, free and without a card. Ask for a key in the pricing section and it arrives by email. The trial doesn't run on live accounts. When you buy, there's also a ${REFUND || 7}-day money-back guarantee on the first payment.`;
+  f.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const msg = $("trialMsg"), btn = f.querySelector("button"), email = f.email.value.trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { msg.textContent = "Enter the email address the key should go to."; return; }
+    if (!f.consent.checked) { msg.textContent = "Please tick the box to agree to the Terms and the Risk Disclosure."; return; }
+    btn.disabled = true; msg.textContent = "Sending…";
+    try {
+      const r = await fetch("/api/trial", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, consent: true }) }), j = await r.json();
+      if (!r.ok || !j.ok) throw new Error(j.error || "That didn't work. Try again in a minute.");
+      f.replaceChildren(Object.assign(document.createElement("p"), { className: "trial-done", textContent: `Done. Your ${j.days}-day trial key is on its way to ${email}. Sign in to your account with that address to download the EA.` }));
+    } catch (err) { msg.textContent = err.message; btn.disabled = false; }
+  });
+}
+
 // ================================================================ prices, methods, record
 const WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
 function applyPublic(j) {
@@ -363,6 +385,7 @@ function applyPublic(j) {
     document.querySelector(".hero").prepend(a);
   }
   applyPromo(j.promo);
+  if (j.trialDays) trialOn(j.trialDays);
   WEEK = j.week || [];
   if (j.record) REC = j.record;
   if (j.record && j.record.trades && $("record").hidden) record(j.record);

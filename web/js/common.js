@@ -57,5 +57,5 @@ function otpBoxes(box, onFull) {
   });
   return { code, clear() { ins.forEach((i) => (i.value = "")); ins[0].focus(); }, shake() { box.classList.remove("bad"); void box.offsetWidth; box.classList.add("bad"); }, focus() { ins[0].focus(); } };
 }
-const PLAN = { lifetime: "Lifetime", monthly: "Monthly", journal: "Journal" };
+const PLAN = { lifetime: "Lifetime", monthly: "Monthly", journal: "Journal", trial: "Demo trial" };
 const METHOD = { card: "Card / wallet", crypto: "Crypto", bank: "Bank transfer", manual: "Manual" };

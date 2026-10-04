@@ -304,6 +304,12 @@
       <li><b>Attach</b><span>Put it on a gold chart. It arms itself before the next release.</span></li>
     </ol>
   </div>
+  <form class="trial" id="trial" hidden novalidate>
+    <div class="trial-t"><b>Try it free on a demo account</b><span id="trialTxt">Demo accounts only. No card needed.</span></div>
+    <div class="trial-f"><input class="field" type="email" name="email" placeholder="you@example.com" autocomplete="email" maxlength="200" aria-label="Email for your trial key"><button class="btn" type="submit">Send my trial key</button></div>
+    <label class="check"><input type="checkbox" name="consent"><span>I agree to the <a href="/terms" target="_blank">Terms</a> and I've read the <a href="/risk" target="_blank">Risk Disclosure</a>.</span></label>
+    <p class="fine trial-msg" id="trialMsg" aria-live="polite"></p>
+  </form>
   <p class="payline" id="payLine">Pay by <b>card, Apple Pay or Google Pay</b>, or in <b>crypto</b>. Got a discount code? Enter it at checkout.</p>
 </div></section>
 
@@ -344,7 +350,7 @@
   <div class="faq">
     <details><summary>Which brokers does it work with?</summary><div class="a"><p>Any MetaTrader 5 broker that offers gold. The ones we use and partner with are <a href="#brokers">listed above</a>. Attach it to your broker's gold symbol, whether that's called XAUUSD, GOLD or something like XAUUSD.r. It works on 2-digit and 3-digit gold quotes and scales its point distances automatically. Raw-spread or ECN accounts with fast execution give the best fills around news.</p></div></details>
     <details><summary>How much do I need in my account?</summary><div class="a"><p>There's no fixed minimum. What matters is lot size: at the default 0.10 lots, a full 100-point stop loss is about $10 plus slippage and costs. Use the calculator above and pick a size where a full stop is an amount you're comfortable losing many times over.</p></div></details>
-    <details><summary>Is there a free trial?</summary><div class="a"><p>There's no free trial, but there's a {{REFUND_DAYS}}-day money-back guarantee. Run it on a demo account first if you like: if it isn't for you, ask for a refund from your account page within {{REFUND_DAYS}} days of your first payment and you get the full amount back.</p></div></details>
+    <details><summary>Is there a free trial?</summary><div class="a"><p id="faqTrial">There's no free trial, but there's a {{REFUND_DAYS}}-day money-back guarantee. Run it on a demo account first if you like: if it isn't for you, ask for a refund from your account page within {{REFUND_DAYS}} days of your first payment and you get the full amount back.</p></div></details>
     <details><summary>Can I try it on a demo account first?</summary><div class="a"><p>Yes, and we recommend it. The licence locks to the first account it runs on, and you can move it to your live account straight away from your account page.</p></div></details>
     <details><summary>Can I use it on a prop firm account?</summary><div class="a"><p>Check your firm's rules first. Many funded-account programmes don't allow trading around news, and breaking that rule can cost you the account or your payouts.</p></div></details>
     <details><summary>How often does it trade?</summary><div class="a"><p>Only around high-impact USD releases, the red-folder events such as Non-Farm Payrolls, CPI and FOMC. Most weeks have a handful. Between releases it does nothing, by design. If you want it trading all the time there's an always-on mode, but that's a much busier way to trade.</p></div></details>

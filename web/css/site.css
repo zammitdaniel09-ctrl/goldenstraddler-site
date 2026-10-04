@@ -816,4 +816,11 @@ body.lock{overflow:hidden}
 .news li{font-size:14.5px;color:var(--txt2)}
 .news li b{display:block;color:var(--white);font-weight:600;margin-bottom:2px}
 .news .fine{margin-top:16px}
-@media (max-width:760px){.news{padding:18px}.news ul{grid-template-columns:1fr}}
+@media (max-width:760px){.news{padding:18px}.news ul{grid-template-columns:1fr}}/* free demo trial, shown only when switched on */
+.trial{margin-top:20px;max-width:980px;display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.3fr);gap:10px 20px;align-items:center;padding:20px 22px;border-radius:18px;border:1px dashed var(--edge2)}
+.trial-t b{display:block;font-weight:600;color:var(--white)}.trial-t span{font-size:14px;color:var(--txt2)}
+.trial-f{display:flex;gap:10px}.trial-f .field{flex:1;min-width:0}
+.trial .check{grid-column:2;font-size:13.5px}.trial-msg{grid-column:2;min-height:1em}
+.trial-done{grid-column:1/-1;color:var(--white)}
+@media (max-width:860px){.trial{grid-template-columns:minmax(0,1fr)}.trial .check,.trial-msg{grid-column:1}}
+@media (max-width:480px){.trial-f{flex-direction:column}}

@@ -116,6 +116,8 @@ export function eaHello(b: any) {
   if (st === "revoked") return signed(key, account, "revoked", exp, "This licence has been switched off. Contact support from your account page.", l.plan);
   // a Journal plan key opens the journal, not the EA, and never locks to a trading account
   if (l.plan === "journal") return signed(key, account, "invalid", 0, "This key is for the Journal plan. The EA needs a GoldenStraddler licence.");
+  // a free trial only runs on demo accounts, and never locks to a live one
+  if ((l.plan as string) === "trial" && !b.demo) return signed(key, account, "invalid", exp, "This is a demo trial. It runs on demo accounts only. Buy a licence from goldenstraddler.com to trade on a live account.", l.plan);
   if (!l.account) {
     run("UPDATE licences SET account = ?, account_server = ?, account_name = ?, account_demo = ?, bound_at = ? WHERE id = ?",
       account, str(b.server, 96), str(b.name, 96), b.demo ? 1 : 0, now(), l.id);
@@ -126,9 +128,9 @@ export function eaHello(b: any) {
     return signed(key, account, "locked", exp, `This licence is locked to account ${maskAcc(l.account)}. Move it from your GoldenStraddler account page.`, l.plan);
   run("UPDATE licences SET last_seen = ?, ea_build = ?, account_server = CASE WHEN ? != '' THEN ? ELSE account_server END WHERE id = ?",
     now(), str(b.build, 20), str(b.server, 96), str(b.server, 96), l.id);
-  if (st === "expired") return signed(key, account, "expired", exp, "Your subscription has ended. Renew from your GoldenStraddler account to keep trading.", l.plan);
+  if (st === "expired") return signed(key, account, "expired", exp, (l.plan as string) === "trial" ? "Your demo trial has ended. Buy a licence from your GoldenStraddler account to keep trading." : "Your subscription has ended. Renew from your GoldenStraddler account to keep trading.", l.plan);
   if (st !== "active") return signed(key, account, st, exp, "This licence isn't active yet.", l.plan);
-  return signed(key, account, "ok", exp, l.plan === "lifetime" ? "Lifetime licence active" : "Subscription active", l.plan);
+  return signed(key, account, "ok", exp, l.plan === "lifetime" ? "Lifetime licence active" : (l.plan as string) === "trial" ? "Demo trial active" : "Subscription active", l.plan);
 }
 
 // licence for an EA sync call: key + the account it's locked to

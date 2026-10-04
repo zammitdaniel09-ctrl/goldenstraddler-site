@@ -147,6 +147,23 @@ export function mailWeekly(email: string, o: any) {
     btn(siteUrl() + "/journal/app#/overview", "Open your journal"),
     p('<span style="font-size:13px;color:#6b7383">From your GoldenStraddler Journal. Turn this email off under Settings.</span>')].join("")));
 }
+// a free demo trial: the key, where it runs and when it ends
+export function mailTrial(email: string, key: string, days: number, endsAt: number) {
+  const site = siteUrl(), end = new Date(endsAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+  return sendMail(email, "Your GoldenStraddler demo trial", layout("Your demo trial is ready", [
+    p(`Here's your trial key. It runs GoldenStraddler on a <b>demo account</b> for ${days} days, until ${esc(end)}.`), keyBox(key),
+    `<ol style="margin:0 0 16px 18px;padding:0;font-size:15px;line-height:1.7;color:#2a3140"><li>Sign in to your account with this email address and download the EA and the setup guide.</li><li>Open a demo account with any MT5 broker that offers gold.</li><li>Attach the EA to a gold chart and paste the key. It arms itself before the next red-folder US release.</li></ol>`,
+    btn(site + "/account", "Download the EA"),
+    p("Demo fills are usually better than live ones around news, so treat the trial as a way to learn how it behaves, not as a forecast of live results. When you're ready, buy a licence from your account and use your new key on any account."),
+  ].join("")));
+}
+export function mailTrialEnding(email: string, endsAt: number) {
+  const end = new Date(endsAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", timeZone: "UTC" });
+  return sendMail(email, "Your GoldenStraddler demo trial ends soon", layout("Your demo trial ends soon", [
+    p(`Your demo trial stops on ${esc(end)}. To keep it running, on demo or live, buy a licence and paste the new key into the EA's inputs.`),
+    btn(siteUrl() + "/#pricing", "See the plans"), p("Questions first? Reply to this email or ask the assistant on the website."),
+  ].join("")));
+}
 export async function notifyAdmins(subject: string, text: string) {
   const extra = getS("notify_emails").split(/[,\s]+/).filter(Boolean);
   const admins = all<{ email: string }>("SELECT email FROM admins WHERE active = 1").map((a) => a.email);
