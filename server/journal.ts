@@ -181,12 +181,12 @@ type Row = { ext: string; symbol: string; side: number; volume: number | null; o
 const ALIASES: Record<string, string[]> = {
   ext: ["position", "position id", "position_id", "ticket", "order", "id", "trade id", "trade #", "deal", "#"],
   symbol: ["symbol", "item", "instrument", "market", "pair", "ticker", "asset", "contract"],
-  side: ["type", "side", "direction", "action", "buy/sell", "b/s", "long/short"],
-  volume: ["volume", "size", "lots", "lot", "quantity", "qty", "amount", "units"],
-  ot: ["open time", "opened", "entry time", "time open", "open date", "date opened", "entry date", "open_time", "opening time", "time"],
-  ct: ["close time", "closed", "exit time", "time close", "close date", "date closed", "exit date", "close_time", "closing time"],
+  side: ["type", "side", "direction", "action", "buy/sell", "b/s", "long/short", "opening direction", "trade side", "position side", "trade type"],
+  volume: ["volume", "size", "lots", "lot", "quantity", "qty", "amount", "units", "closing quantity", "lot size", "volume lots", "position size"],
+  ot: ["open time", "opened", "entry time", "time open", "open date", "date opened", "entry date", "open_time", "opening time", "opening time utc", "open time utc", "entry time utc", "open date time", "time"],
+  ct: ["close time", "closed", "exit time", "time close", "close date", "date closed", "exit date", "close_time", "closing time", "closing time utc", "close time utc", "exit time utc", "close date time"],
   op: ["open price", "entry price", "price open", "entry", "open_price", "opening price", "avg entry", "price"],
-  cp: ["close price", "exit price", "price close", "exit", "close_price", "closing price", "avg exit"],
+  cp: ["close price", "exit price", "price close", "exit", "close_price", "closing price", "avg exit", "closing price avg"],
   sl: ["s / l", "s/l", "sl", "stop loss", "stop", "stoploss", "initial stop"],
   tp: ["t / p", "t/p", "tp", "take profit", "target", "takeprofit"],
   commission: ["commission", "commissions", "comm", "fees", "fee commission"],
@@ -205,7 +205,10 @@ function mapHeader(hdr: string[]) {
   H.forEach((h, i) => {
     const c = (seen[h] = (seen[h] || 0) + 1);
     if ((h === "time" || h === "price") && c === 2) { idx[h === "time" ? "ct" : "cp"] ??= i; return; }
-    for (const [k, al] of Object.entries(ALIASES)) if (idx[k] === undefined && al.includes(h)) { idx[k] = i; break; }
+    for (const [k, al] of Object.entries(ALIASES)) if (idx[k] === undefined && al.includes(h)) { idx[k] = i; return; }
+    // cTrader and others name money columns with the currency: "Net USD", "Gross €", "Commissions EUR"
+    const pre = /^(net|gross|commissions?|swap) [a-z$€£¥]{1,4}$/.exec(h);
+    if (pre) { const k = pre[1] === "net" ? "net" : pre[1] === "gross" ? "gross" : pre[1] === "swap" ? "swap" : "commission"; if (idx[k] === undefined) idx[k] = i; }
   });
   // "time" alone is the open time only when there's no other open-time column
   return idx;
@@ -237,7 +240,8 @@ function rowsFromGrid(grid: string[][], mode: string, dayFirst: boolean) {
     const ot = parseTime(g(r, "ot"), dayFirst), ct = parseTime(g(r, "ct"), dayFirst);
     const otU = toUtc(Number.isFinite(ot) ? ot : ct, mode), ctU = toUtc(Number.isFinite(ct) ? ct : ot, mode);
     if (!Number.isFinite(otU) || !Number.isFinite(ctU)) { if (errors.length < 8) errors.push(`Row ${i + 1}: couldn't read the time.`); continue; }
-    const vol = num(String(g(r, "volume")).split("/")[0]);
+    // "0.50 / 0.50" (MT4/5) or "0.50 Lots" (cTrader): the first number is the size
+    const vol = num((String(g(r, "volume")).split("/")[0].match(/-?\d[\d,]*(\.\d+)?/) || [""])[0]);
     const comm = num(g(r, "commission")) || 0, swap = num(g(r, "swap")) || 0, fee = num(g(r, "fee")) || 0;
     let gross = num(g(r, "gross")), net = num(g(r, "net"));
     if (gross === null && net === null) { if (errors.length < 8) errors.push(`Row ${i + 1}: no profit.`); continue; }
