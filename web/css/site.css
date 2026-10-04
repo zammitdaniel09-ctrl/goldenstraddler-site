@@ -835,3 +835,4 @@ body.lock{overflow:hidden}
 .ab-txt .fine a{color:var(--frost,var(--white))}
 @media (max-width:640px){.about{grid-template-columns:minmax(0,1fr)}.ab-pic img,.ab-ini{width:112px;height:112px}.ab-ini{font-size:38px}}
 .get .feats>div.wide{grid-column:1/-1}
+.vs-free{margin-top:22px;max-width:78ch;color:var(--txt2);font-size:15px}.vs-free b{color:var(--white);font-weight:600}.vs-free a{color:var(--white)}
