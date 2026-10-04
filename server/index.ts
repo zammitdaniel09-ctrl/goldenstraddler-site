@@ -17,7 +17,7 @@ import { mailConfigured, mailExpiring, mailLicence, mailLoginCode, notifyAdmins,
 import { fulfil } from "./licence";
 import { chatAdmin, chatEnabled, chatRoute, initChat, testAnthropicKey } from "./chat";
 import { hubDetail, hubJson, hubLive, hubPublic, hubRefreshNow, hubStatus, hubTeaser, renderHub, startHub } from "./hub";
-import { archiveEvents, connectorSync, journalAccess, journalAdmin, journalApi, journalOpen } from "./journal";
+import { archiveEvents, connectorSync, journalAccess, journalAdmin, journalApi, journalOpen, weeklyDigests } from "./journal";
 import { journalAi } from "./jai";
 
 const PORT = Number(E.PORT) || 3000, DEV = E.DEV === "1";
@@ -507,6 +507,7 @@ async function handle(req: Request): Promise<Response> {
 
   // ---------------------------------------------------------------- dev helpers
   if (DEV && p === "/api/dev/outbox") return json(200, outbox.slice(-20));
+  if (DEV && p === "/api/dev/weekly" && post) { const b = await body(req); return json(200, { ok: true, sent: await weeklyDigests(Number(b.at) || now()) }); }
   if (MOCK && p.startsWith("/api/dev/pay/") && post) { const o = fulfil(p.slice(13), { paymentRef: "mock_" + token(6) }); return json(200, { ok: true, status: o.status }); }
 
   // ---------------------------------------------------------------- downloads (customers with a licence)
@@ -822,6 +823,8 @@ async function hourly() {
     run("UPDATE orders SET status = 'expired' WHERE status = 'pending' AND method = 'bank' AND created_at < ?", t - 14 * DAY);
     run("DELETE FROM login_codes WHERE expires_at < ?", t);
     run("DELETE FROM events WHERE at < ?", t - 60 * DAY);
+    // Monday's journal email, once the journal is open to customers
+    if (journalOpen()) await weeklyDigests(t);
   } catch (e: any) { console.error("hourly:", e.message); }
 }
 setInterval(hourly, 3_600_000);

@@ -131,6 +131,22 @@ export function mailLimit(email: string, account: string, cur: string, k: string
     : [p(`<b>${esc(account)}</b> is ${m(r.now)} below its ${r.label.toLowerCase().includes("trailing") ? "highest closed balance" : "starting balance"}, against a limit of ${m(r.cap)} (${pc(r.used)} used).`), p(level === "hit" ? "That's the limit you set. Check your firm's dashboard for its own figure." : `Room left on closed trades: ${m(r.room)}.`)];
   return sendMail(email, subj, layout(subj, [...body, btn(siteUrl() + "/journal/app#/accounts", "Open your journal"), p('<span style="font-size:13px;color:#6b7383">Turn these emails off in your journal under Settings.</span>')].join("")));
 }
+// Monday's journal email: last week's numbers and one nudge
+export function mailWeekly(email: string, o: any) {
+  const m = (v: number, sg = true) => (sg ? (v > 0 ? "+" : v < 0 ? "−" : "") : "") + (o.cur === "USD" ? "$" : o.cur === "EUR" ? "€" : o.cur === "GBP" ? "£" : o.cur + " ") + Math.abs(v).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const d = (k: string) => new Date(k + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+  const row = (k: string, v: string) => `<tr><td style="padding:8px 0;border-bottom:1px solid #e8ecf2;color:#5a6373;font-size:14px">${esc(k)}</td><td style="padding:8px 0;border-bottom:1px solid #e8ecf2;text-align:right;font-weight:600;font-size:14px;color:#0e1116">${esc(v)}</td></tr>`;
+  const rows = [row("Result", m(o.net)), row("Closed trades", String(o.n)), row("Win rate", Math.round(o.winRate * 100) + "%"), row("Profit factor", o.pf == null ? "–" : o.pf === Infinity ? "No losses" : o.pf.toFixed(2)),
+    o.expR != null ? row("Average trade", (o.expR > 0 ? "+" : o.expR < 0 ? "−" : "") + Math.abs(o.expR).toFixed(2) + "R") : "", row("Best trade", `${o.best.s} ${m(o.best.net)}`), row("Worst trade", `${o.worst.s} ${m(o.worst.net)}`),
+    o.score != null ? row("Days you kept every rule", o.score + "%") : ""].join("");
+  const nudge = o.mistake ? `“${esc(o.mistake.name)}” cost you ${m(o.mistake.net)} over ${o.mistake.n} trade${o.mistake.n === 1 ? "" : "s"}. That's the one to watch this week.`
+    : o.breaks ? `You broke one of your rules ${o.breaks} time${o.breaks === 1 ? "" : "s"}. The Discipline page shows which.` : o.unreviewed ? `${o.unreviewed} trade${o.unreviewed === 1 ? " is" : "s are"} waiting for a review.` : "Every trade is reviewed. Nice and tidy.";
+  const subj = `Your trading week, ${d(o.from)} to ${d(o.to)}: ${m(o.net)}`;
+  return sendMail(email, subj, layout(`Your week, ${d(o.from)} to ${d(o.to)}`, [
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px">${rows}</table>`, p(nudge),
+    btn(siteUrl() + "/journal/app#/overview", "Open your journal"),
+    p('<span style="font-size:13px;color:#6b7383">From your GoldenStraddler Journal. Turn this email off under Settings.</span>')].join("")));
+}
 export async function notifyAdmins(subject: string, text: string) {
   const extra = getS("notify_emails").split(/[,\s]+/).filter(Boolean);
   const admins = all<{ email: string }>("SELECT email FROM admins WHERE active = 1").map((a) => a.email);

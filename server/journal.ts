@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { all, audit, db, DB_PATH, now, one, run } from "./db";
 import { DAY, bad, getN, getS, json, limited, newId, sha256, str, token } from "./util";
 import { effective, type Customer, type Licence } from "./licence";
-import { mailLimit } from "./mail";
+import { mailLimit, mailWeekly } from "./mail";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const JS = require("../web/js/jstats.js");
 
@@ -88,7 +88,7 @@ export function aiUsage(cid: string) {
 }
 
 // ---------------------------------------------------------------- preferences
-const PREF_DEFAULTS = { tz: "UTC", dayStart: 0, currency: "USD", be: 0, rules: { maxDailyLoss: null, maxTrades: null, maxRisk: null, requireStop: false, stopAfterLosses: null, hours: "", revengeMin: 15 }, goals: { monthly: null, weekly: null }, onboarded: false, alerts: true };
+const PREF_DEFAULTS = { tz: "UTC", dayStart: 0, currency: "USD", be: 0, rules: { maxDailyLoss: null, maxTrades: null, maxRisk: null, requireStop: false, stopAfterLosses: null, hours: "", revengeMin: 15 }, goals: { monthly: null, weekly: null }, onboarded: false, alerts: true, weekly: true };
 export function prefsOf(cid: string) {
   const r = one<{ data: string }>("SELECT data FROM j_prefs WHERE customer_id = ?", cid);
   const p = { ...PREF_DEFAULTS, ...(r ? J(r.data) || {} : {}) };
@@ -109,6 +109,7 @@ function setPrefs(cid: string, b: any) {
   if (b.goals && typeof b.goals === "object") p.goals = { monthly: n(b.goals.monthly, -1e9, 1e9), weekly: n(b.goals.weekly, -1e9, 1e9) };
   if (b.onboarded !== undefined) p.onboarded = !!b.onboarded;
   if (b.alerts !== undefined) p.alerts = !!b.alerts;
+  if (b.weekly !== undefined) p.weekly = !!b.weekly;
   run("INSERT INTO j_prefs (customer_id, data, updated_at) VALUES (?, ?, ?) ON CONFLICT(customer_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at", cid, JSON.stringify(p), now());
   return p;
 }
@@ -475,6 +476,36 @@ export function limitAlerts(accountId: string) {
   run("UPDATE j_accounts SET alerted = ? WHERE id = ?", JSON.stringify(st), a.id);
   for (const x of out) mailLimit(c.email, a.name, a.currency || "USD", x.k, x.level, x.row).catch(() => {});
   return out;
+}
+
+// ---------------------------------------------------------------- Monday's email: last week in numbers, from the stats engine (no AI, no credits)
+export async function weeklyDigests(at = now()) {
+  let sent = 0;
+  for (const { customer_id } of all<{ customer_id: string }>("SELECT DISTINCT customer_id FROM j_trades WHERE close_time > ?", at - 9 * DAY)) {
+    const c = one<Customer>("SELECT * FROM customers WHERE id = ?", customer_id);
+    if (!c || !journalAccess(c).ok) continue;
+    const prefs = prefsOf(c.id);
+    if (prefs.weekly === false) continue;
+    const lp = JS.parts(at, prefs.tz);
+    if (lp.wd !== 0 || lp.h < 7) continue;                                    // Mondays from 07:00 in the trader's own time zone
+    const row = one<{ data: string }>("SELECT data FROM j_prefs WHERE customer_id = ?", c.id), saved = row ? J(row.data) || {} : {};
+    if (saved.weeklySent && saved.weeklySent > at - 5 * DAY) continue;
+    const mark = () => run("INSERT INTO j_prefs (customer_id, data, updated_at) VALUES (?, ?, ?) ON CONFLICT(customer_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at",
+      c.id, JSON.stringify({ ...saved, weeklySent: at }), now());
+    const days: string[] = []; for (let i = 7; i >= 1; i--) days.push(JS.dayOf(at - i * DAY, prefs.tz, prefs.dayStart));
+    const wk = JS.enrich(tradesOf(c.id), { tz: prefs.tz, dayStart: prefs.dayStart, be: prefs.be }).filter((t: any) => days.includes(t.day));
+    if (!wk.length) { mark(); continue; }
+    const s = JS.summary(wk, {}), ru = JS.rules(wk, { ...prefs.rules, tz: prefs.tz });
+    const best = wk.reduce((a: any, t: any) => (t.net > a.net ? t : a)), worst = wk.reduce((a: any, t: any) => (t.net < a.net ? t : a));
+    const mistakes = all<{ id: string; name: string }>("SELECT id, name FROM j_tags WHERE customer_id = ? AND kind = 'mistake'", c.id);
+    const cost = mistakes.map((g) => ({ name: g.name, n: wk.filter((t: any) => (t.tags || []).includes(g.id)).length, net: wk.filter((t: any) => (t.tags || []).includes(g.id)).reduce((x: number, t: any) => x + t.net, 0) }))
+      .filter((m) => m.n && m.net < 0).sort((a, b) => a.net - b.net)[0] || null;
+    await mailWeekly(c.email, { from: days[0], to: days[6], cur: prefs.currency || "USD", n: s.n, net: s.net, winRate: s.winRate, pf: s.pf, expR: s.expR,
+      best: { s: best.s, net: best.net }, worst: { s: worst.s, net: worst.net }, unreviewed: wk.filter((t: any) => !t.reviewed).length,
+      score: ru.score, breaks: ru.list.length, mistake: cost });
+    mark(); sent++;
+  }
+  return sent;
 }
 
 // ---------------------------------------------------------------- a shared results page: one account, read-only, for anyone with the link
