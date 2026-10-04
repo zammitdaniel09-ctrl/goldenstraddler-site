@@ -7,11 +7,12 @@ const DATA = window.GS_REPLAYS;
 if (!root || !DATA || !DATA.list || !DATA.list.length) return;
 const $ = (s, el = root) => el.querySelector(s);
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-const CP = DATA.candle, USD = DATA.usdPerPoint, SLOTS = 24, MARGIN = 3;
+const SLOTS = 24, MARGIN = 3;
 const LIST = DATA.list;
+let CP = DATA.candle, USD = DATA.usdPerPoint, T0 = 14 * 3600 + 29 * 60, LOTS = "0.1";   // set per scenario in setupScenario()
 
 // ---------------------------------------------------------------- helpers
-const clock = (ms, sec = true) => { const s = 14 * 3600 + 29 * 60 + ms / 1000, h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = Math.floor(s) % 60;
+const clock = (ms, sec = true) => { const s = T0 + ms / 1000, h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = Math.floor(s) % 60;
   return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0") + (sec ? ":" + String(x).padStart(2, "0") : ""); };
 const px = (c) => (c / 100).toFixed(2);
 const money = (v, ascii) => (v < 0 ? (ascii ? "-" : "−") : "+") + (ascii ? "" : "$") + Math.abs(v).toFixed(2);
@@ -21,6 +22,7 @@ const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">"
 const KIND = {
   recorded: { badge: "Screen recording, 2 Oct", tag: "Screen recording", cls: "k-rec" },
   simreal: { badge: "Real prices, today's settings, simulated trades", tag: "Simulated on real prices", cls: "k-simreal" },
+  simrec: { badge: "Real prices from our screen recording, today's rules, simulated trades", tag: "Simulated on real prices", cls: "k-simreal" },
   sim: { badge: "Simulated release", tag: "Simulated release", cls: "k-sim" },
 };
 
@@ -55,7 +57,9 @@ const ui = {
 const cx = ui.cv.getContext("2d");
 
 // scenario picker
-ui.picks.innerHTML = [["Real prices", LIST.map((d, i) => [d, i]).filter(([d]) => d.kind !== "sim")], ["Simulated", LIST.map((d, i) => [d, i]).filter(([d]) => d.kind === "sim")]]
+const IDX = LIST.map((d, i) => [d, i]);
+ui.picks.innerHTML = [["2 Oct payrolls", IDX.filter(([d]) => d.kind === "recorded" || d.kind === "simreal")], ["Our other recordings", IDX.filter(([d]) => d.kind === "simrec")], ["Simulated releases", IDX.filter(([d]) => d.kind === "sim")]]
+  .filter(([, items]) => items.length)
   .map(([h, items]) => `<div class="rp-grp" role="group" aria-label="${h}"><span class="rp-gh">${h}</span>${items.map(([d, i]) => {
     const net = Math.round(d.trades.reduce((s, tr) => s + tr.pl, 0));
     return `<button type="button" data-i="${i}" aria-pressed="${i === 0}">${esc(d.chip)} <span class="${net >= 0 ? "up" : "dn"}">${whole(net)}</span></button>`; }).join("")}</div>`).join("");
@@ -65,21 +69,26 @@ let noteEls = [];
 function setupScenario(i) {
   cur = i; S = scenario(i);
   const D = S.D, k = KIND[D.kind];
+  CP = D.candle || DATA.candle; USD = D.usd || DATA.usdPerPoint; T0 = D.t0 != null ? D.t0 : 14 * 3600 + 29 * 60; LOTS = String(D.lots || DATA.lots);
+  root.querySelectorAll(".ph-tf").forEach((el) => { el.textContent = CP / 1000 + "s"; });
+  speed = D.speed || 1; ui.speeds.forEach((x) => x.setAttribute("aria-pressed", String(Number(x.dataset.v) === speed)));
   pickBtns.forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.i) === i)));
   ui.title.textContent = D.title; ui.badge.textContent = k.badge; ui.badge.className = "rp-badge " + k.cls; ui.desc.textContent = D.desc; ui.fine.textContent = D.fine;
   ui.tag.textContent = k.tag; ui.tag.className = "ph-tag " + k.cls; ui.rec.hidden = D.kind !== "recorded";
   ui.notes.innerHTML = S.notes.map(([t, x], n) => `<li data-i="${n}"><button type="button" class="num" data-t="${t}" aria-label="Jump to ${clock(t)}">${clock(t)}</button><span>${x}</span></li>`).join("");
   noteEls = [...ui.notes.children];
   const span = D.end - D.start, at = (t) => Math.max(0, Math.min(100, ((t - D.start) / span) * 100));
-  let h = `<i class="rel" style="left:${at(D.release)}%" title="14:30:00 release"></i>`;
+  let h = D.release != null ? `<i class="rel" style="left:${at(D.release)}%" title="${clock(D.release)} release"></i>` : "";
   for (const tr of D.trades) h += `<i class="${tr.pl >= 0 ? "w" : "l"}" style="left:${at(tr.out)}%"></i>`;
   ui.marks.innerHTML = h;
-  ui.bar.setAttribute("aria-valuemin", String(Math.round((D.start - D.release) / 1000)));
-  ui.bar.setAttribute("aria-valuemax", String(Math.round((D.end - D.release) / 1000)));
+  const ref = D.release != null ? D.release : D.start;
+  ui.bar.setAttribute("aria-label", D.release != null ? "Replay position, seconds from the release" : "Replay position, seconds from the start");
+  ui.bar.setAttribute("aria-valuemin", String(Math.round((D.start - ref) / 1000)));
+  ui.bar.setAttribute("aria-valuemax", String(Math.round((D.end - ref) / 1000)));
   const nx = LIST[(i + 1) % LIST.length];
-  ui.endH.textContent = D.kind === "recorded" ? "Window closed at 14:31:00" : "Window closed at 14:30:30";
+  ui.endH.textContent = D.endText || (D.kind === "recorded" ? "Window closed at 14:31:00" : "Window closed at 14:30:30");
   ui.endNet.textContent = money(S.net); ui.endNet.className = "e-net num " + (S.net >= 0 ? "up" : "dn");
-  ui.endN.textContent = `${D.trades.length} trades on 0.1 lots, ${S.won} won and ${D.trades.length - S.won} lost.` + (D.kind === "recorded" ? " The smaller trades are read off the chart and may be a few dollars out." : D.kind === "sim" ? " A simulated release." : " Simulated trades on the real prices.");
+  ui.endN.textContent = `${D.trades.length} trades on ${LOTS} lots, ${S.won} won and ${D.trades.length - S.won} lost.` + (D.kind === "recorded" ? " The smaller trades are read off the chart and may be a few dollars out." : D.kind === "sim" ? " A simulated release." : " Simulated trades on the real prices.");
   ui.next.textContent = "Next: " + nx.chip;
   tNow = D.start; noteI = -2; lastShown = -1; snap = true; hideNote(true);
 }
@@ -133,9 +142,10 @@ function draw(dt) {
     const y = Math.round(Y(v)) + 0.5; if (y < pt - 4 || y > pb) continue;
     cx.beginPath(); cx.moveTo(pl, y); cx.lineTo(pr, y); cx.stroke(); cx.fillText(px(v), pr + 6, y);
   }
-  // time grid: a line every 10 seconds, scrolling with the chart
+  // time grid, scrolling with the chart: the shortest step that leaves room for a label
   cx.textAlign = "center";
-  for (let ms = Math.ceil(vStart / 10000) * 10000; ms <= vEnd; ms += 10000) {
+  const tStep = [10000, 15000, 20000, 30000, 60000].find((g) => (g / CP) * slotW >= 74) || 60000, toff = (T0 % 60) * 1000;
+  for (let ms = Math.ceil((vStart + toff) / tStep) * tStep - toff; ms <= vEnd; ms += tStep) {
     const x = Math.round(X(ms)) + 0.5; if (x < pl + 2 || x > pr - 2) continue;
     cx.beginPath(); cx.moveTo(x, pt - 6); cx.lineTo(x, pb); cx.stroke();
     if (x > pl + 26 && x < pr - 26) cx.fillText(clock(ms), x, pb + 11);
@@ -144,10 +154,10 @@ function draw(dt) {
 
   cx.save(); cx.beginPath(); cx.rect(pl, pt - 10, pr - pl, pb - pt + 10); cx.clip();
   // the release
-  { const x = Math.round(X(D.release)) + 0.5;
+  if (D.release != null) { const x = Math.round(X(D.release)) + 0.5;
     if (x > pl && x < pr) { cx.save(); cx.strokeStyle = C.rel; cx.globalAlpha = 0.55; cx.setLineDash([3, 4]); cx.beginPath(); cx.moveTo(x, pt - 6); cx.lineTo(x, pb); cx.stroke(); cx.restore();
       // the event flag sits at the foot of the line, like the app's calendar marks, and stays inside the chart
-      const lab = D.kind === "sim" ? "News 14:30" : "NFP 14:30"; cx.font = `600 10px ${FONT}`; const w = cx.measureText(lab).width + 10, bx = x + 4 + w > pr ? x - 4 - w : x + 4;
+      const lab = D.relLabel || (D.kind === "sim" ? "News 14:30" : "NFP 14:30"); cx.font = `600 10px ${FONT}`; const w = cx.measureText(lab).width + 10, bx = x + 4 + w > pr ? x - 4 - w : x + 4;
       cx.fillStyle = "rgba(0,0,0,.75)"; cx.fillRect(bx, pb - 19, w, 15); cx.fillStyle = C.rel; cx.textAlign = "left"; cx.textBaseline = "middle"; cx.fillText(lab, bx + 5, pb - 11.5); } }
   // candles
   const bw = Math.max(1, Math.min(16, slotW * 0.64));
@@ -176,14 +186,14 @@ function draw(dt) {
   const hline = (c, col, dash, alpha) => { const y = Math.round(Y(c)) + 0.5; cx.save(); cx.strokeStyle = col; cx.globalAlpha = alpha; cx.setLineDash(dash); cx.beginPath(); cx.moveTo(pl, y); cx.lineTo(pr, y); cx.stroke(); cx.restore(); return y; };
   for (const o of liveO) {
     const col = o.s === "b" ? C.buy : C.sell;
-    left.push({ y: hline(o.p, col, [6, 4], 0.9), parts: [[(o.s === "b" ? "BUY" : "SELL") + " STOP 0.1", col]] });
+    left.push({ y: hline(o.p, col, [6, 4], 0.9), parts: [[(o.s === "b" ? "BUY" : "SELL") + " STOP " + LOTS, col]] });
     tags.push({ y: Y(o.p), text: px(o.p), col, box: true });
     left.push({ y: hline(o.sl, C.sell, [4, 4], 0.5), parts: [["SL", C.sell]] });
     tags.push({ y: Y(o.sl), text: px(o.sl), col: C.sell, box: false });
   }
   for (const tr of openT) {
     const col = tr.s === "b" ? C.buy : C.sell, v = Math.round(plOf(tr, bid, ask) * 100) / 100, sl = slOf(tr, t);
-    left.push({ y: hline(tr.en, col, [8, 3], 1), parts: [[(tr.s === "b" ? "BUY" : "SELL") + " 0.1, ", col], [money(v, true) + " USD", v >= 0 ? C.buy : C.sell]] });
+    left.push({ y: hline(tr.en, col, [8, 3], 1), parts: [[(tr.s === "b" ? "BUY" : "SELL") + " " + LOTS + ", ", col], [money(v, true) + " USD", v >= 0 ? C.buy : C.sell]] });
     tags.push({ y: Y(tr.en), text: px(tr.en), col, box: true });
     left.push({ y: hline(sl, C.sell, [4, 4], 0.6), parts: [["SL", C.sell]] });
     tags.push({ y: Y(sl), text: px(sl), col: C.sell, box: false });
@@ -194,7 +204,7 @@ function draw(dt) {
   let prev = -Infinity;
   for (const L of left) { let y = Math.max(L.y - 3, prev + 12); y = Math.max(pt + 8, Math.min(pb - 2, y)); prev = y; let x = 6;
     for (const [s, col] of L.parts) { cx.fillStyle = col; cx.fillText(s, x, y); x += cx.measureText(s).width; } }
-  const cd = 60 - (Math.floor(t / 1000) % 60), cdTxt = cd === 60 ? "01:00" : "00:" + String(cd).padStart(2, "0");
+  const cd = 60 - (Math.floor(T0 + t / 1000) % 60), cdTxt = cd === 60 ? "01:00" : "00:" + String(cd).padStart(2, "0");
   const bidBox = { y0: yb - 9, y1: yb + 21 }, askBox = { y0: ya - 8, y1: ya + 8 };
   if (askBox.y1 > bidBox.y0 && askBox.y0 < bidBox.y1) { askBox.y0 = bidBox.y0 - 17; askBox.y1 = bidBox.y0 - 1; }
   const placed = [bidBox, askBox];
@@ -225,7 +235,7 @@ function notify(tr) {
   if (noteShown && performance.now() - noteShown.at < 1800 && Math.abs(tr.pl) < Math.abs(noteShown.pl)) return;
   noteShown = { at: performance.now(), pl: tr.pl };
   ui.noteT.textContent = `Position closed ${money(tr.pl)}`;
-  ui.noteD.textContent = `${tr.s === "b" ? "Buy" : "Sell"} 0.1 XAUUSD, ${px(tr.en)} to ${px(tr.ex)}`;
+  ui.noteD.textContent = `${tr.s === "b" ? "Buy" : "Sell"} ${LOTS} XAUUSD, ${px(tr.en)} to ${px(tr.ex)}`;
   ui.note.classList.toggle("dn", tr.pl < 0);
   ui.note.hidden = false; void ui.note.offsetWidth; ui.note.classList.add("on");
   clearTimeout(noteTimer); noteTimer = setTimeout(() => ui.note.classList.remove("on"), 2600);
@@ -263,8 +273,9 @@ function chrome(st, force) {
   }
   const f = ((tNow - D.start) / (D.end - D.start)) * 100;
   ui.fill.style.width = f + "%"; ui.head.style.left = f + "%";
-  ui.bar.setAttribute("aria-valuenow", String(Math.round((tNow - D.release) / 1000)));
-  ui.bar.setAttribute("aria-valuetext", clock(tNow) + (tNow < D.release ? `, ${Math.ceil((D.release - tNow) / 1000)} seconds before the release` : ""));
+  const ref = D.release != null ? D.release : D.start;
+  ui.bar.setAttribute("aria-valuenow", String(Math.round((tNow - ref) / 1000)));
+  ui.bar.setAttribute("aria-valuetext", clock(tNow) + (D.release != null && tNow < D.release ? `, ${Math.ceil((D.release - tNow) / 1000)} seconds before the release` : ""));
   ui.clk.textContent = clock(tNow);
   ui.end.hidden = tNow < D.end;
 }
@@ -330,7 +341,7 @@ new IntersectionObserver((es) => {
   for (const e of es) {
     visible = e.isIntersecting;
     if (visible && !autoStarted && !reduce) { autoStarted = true; setPlaying(true); }
-    else if (visible && autoPaused) { autoPaused = false; setPlaying(true); }
+    else if (visible && autoPaused) { autoPaused = false; if (tNow < S.D.end) setPlaying(true); }   // never restart a finished replay on scroll
     else if (!visible && playing) { autoPaused = true; setPlaying(false); }
   }
 }, { threshold: 0.45 }).observe(ui.phone);
