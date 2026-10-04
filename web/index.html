@@ -69,7 +69,7 @@
     <div class="hero-copy">
       <h1>Ready before the number drops.</h1>
       <p class="sub">GoldenStraddler is a MetaTrader&nbsp;5 Expert Advisor that trades gold on high-impact US news. Five seconds before each release it places a buy stop and a sell stop around price. The number picks the side and a trailing stop follows the move.</p>
-      <div class="cta"><a class="btn pri" id="heroBuy" href="#pricing">Get GoldenStraddler</a><a class="btn" href="#replay"><span class="lg">Watch it trade a real release</span><span class="sh">Watch a release</span></a></div>
+      <div class="cta"><a class="btn pri" id="heroBuy" href="#pricing">Get GoldenStraddler</a><a class="btn" href="#replay"><span class="lg">Watch it trade a release</span><span class="sh">Watch a release</span></a></div>
       <p class="meta" id="heroPay">{{PRICE_LIFETIME}} once or {{PRICE_MONTHLY}} a month, with a {{REFUND_DAYS}}-day money-back guarantee.</p>
       <ul class="proof" aria-label="Why people trust it">
         <li id="pfLive" hidden><i class="live-dot"></i><span id="pfLiveT">Our own live account is running it right now</span></li>
@@ -121,19 +121,21 @@
 </section>
 
 <section class="sec rule" id="replay"><div class="wrap">
-  <h2>Watch it trade a real release</h2>
-  <p class="lede">Our own screen recording of the US jobs report on Friday 2 October, rebuilt candle by candle: the same prices, orders, fills and stops, losses included.</p>
+  <h2>Watch it trade a release</h2>
+  <p class="lede">Our real 2 October payrolls on a phone screen, the same prices traded with today's settings, and simulated releases of every kind, including one that loses. Pick one.</p>
   <div class="rp" id="rp">
+    <div class="rp-picks"></div>
     <div class="rp-dev">
       <figure class="rp-phone dark-ui">
         <div class="ph">
+          <div class="ph-note" hidden aria-hidden="true"><svg><use href="#gs"/></svg><p><small>GoldenStraddler &middot; now</small><b></b><span></span></p></div>
           <div class="ph-status" aria-hidden="true">
             <span class="ph-time num">14:29</span>
             <span class="ph-island"><i class="ph-rec"></i></span>
             <span class="ph-ind"><svg viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1" opacity=".35"/></svg><svg viewBox="0 0 16 12"><path d="M8 11.5 5.6 9a3.4 3.4 0 0 1 4.8 0zM3.4 6.8a6.5 6.5 0 0 1 9.2 0l-1.1 1.1a4.9 4.9 0 0 0-7 0zM1.2 4.6a9.6 9.6 0 0 1 13.6 0l-1.1 1.1a8 8 0 0 0-11.4 0z"/></svg><svg viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3" fill="none" stroke="currentColor" opacity=".5"/><rect x="2" y="2" width="15" height="8" rx="1.6"/><rect x="23.6" y="4" width="1.8" height="4" rx=".9" opacity=".5"/></svg></span>
           </div>
           <div class="ph-tool" aria-hidden="true">
-            <b>5s</b>
+            <b>2s</b>
             <svg viewBox="0 0 20 20"><path d="M10 2v5M10 13v5M2 10h5M13 10h5" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
             <i>&fnof;</i>
             <svg viewBox="0 0 20 20"><path d="M4 16 9 6l3 6 2-3 2 7" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round" stroke-linecap="round"/></svg>
@@ -141,15 +143,14 @@
             <svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="6.5" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M10 3.5a6.5 6.5 0 0 1 0 13z" fill="currentColor"/></svg>
           </div>
           <div class="ph-chart">
-            <canvas role="img" aria-label="Recreated phone screen recording of gold (XAUUSD) on 5-second candles from 14:29 to 14:31 on 2 October 2026, while GoldenStraddler traded the US jobs report. The play-by-play next to it describes every order and trade."></canvas>
-            <div class="ph-sym" aria-hidden="true"><b>XAUUSD &bull; 5s</b><span>Gold vs US Dollar</span></div>
-            <span class="ph-ff" hidden aria-hidden="true"><svg viewBox="0 0 16 10"><path d="M0 0l7 5-7 5zM8 0l7 5-7 5z"/></svg>6&times;</span>
+            <canvas role="img" aria-label="Phone-screen replay of gold (XAUUSD) on 2-second candles around a US news release, with GoldenStraddler's orders and trades. The play-by-play next to it describes every step in text."></canvas>
+            <div class="ph-sym" aria-hidden="true"><b>XAUUSD &bull; 2s</b><span>Gold vs US Dollar</span><i class="ph-tag"></i></div>
             <p class="rp-cap" aria-hidden="true"><svg><use href="#gs"/></svg><span></span></p>
             <div class="rp-end" hidden>
-              <p class="e-h">Window closed at 14:31:00</p>
-              <dl><div><dt>On the release</dt><dd class="e-rel num up"></dd></div><div><dt>The whole session</dt><dd class="e-net num up"></dd></div></dl>
+              <p class="e-h"></p>
+              <dl><div><dt>Result on 0.1 lots</dt><dd class="e-net num up"></dd></div></dl>
               <p class="e-n"></p>
-              <div class="e-act"><button class="btn sm pri rp-again" type="button">Watch again</button><button class="btn sm rp-jump" type="button">Skip to the release</button></div>
+              <div class="e-act"><button class="btn sm pri rp-next" type="button">Next</button><button class="btn sm rp-again" type="button">Watch again</button></div>
             </div>
           </div>
           <div class="ph-quote" aria-hidden="true">
@@ -170,7 +171,7 @@
       <div class="rp-ctl">
         <button class="rp-btn rp-play" type="button" data-s="pause" aria-label="Play"><svg viewBox="0 0 20 20" aria-hidden="true"><path class="ic-pause" d="M6 4.5h2.6v11H6zM11.4 4.5H14v11h-2.6z"/><path class="ic-play" d="M6.5 4.2l9 5.8-9 5.8z"/></svg></button>
         <button class="rp-btn rp-restart" type="button" aria-label="Start again"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.6 10a5.6 5.6 0 1 0 1.7-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M5.6 2.8v3.6h3.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-        <div class="rp-bar" role="slider" tabindex="0" aria-label="Replay position, seconds from the 14:30 release" aria-valuemin="-53" aria-valuemax="68" aria-valuenow="-53">
+        <div class="rp-bar" role="slider" tabindex="0" aria-label="Replay position, seconds from the 14:30 release" aria-valuemin="-13" aria-valuemax="34" aria-valuenow="-13">
           <div class="tr"><i class="fl"></i></div><div class="mk"></div><i class="hd"></i>
         </div>
         <span class="rp-clk num" aria-hidden="true">14:29:06</span>
@@ -178,11 +179,14 @@
       </div>
     </div>
     <div class="rp-side">
+      <p class="rp-badge"></p>
+      <h3 class="rp-title"></h3>
+      <p class="rp-desc"></p>
       <dl class="rp-live" aria-label="Running totals in the replay"><div><dt>Closed so far</dt><dd class="num" data-l="closed">$0.00</dd></div><div><dt>Open trade</dt><dd class="num mu" data-l="open">No trade</dd></div><div><dt>Trades</dt><dd class="num" data-l="n">0</dd></div></dl>
-      <p class="rp-res"></p>
-      <h3>Play by play</h3>
+      <h4>Play by play</h4>
       <ol class="rp-notes" tabindex="0" aria-label="Play by play, in Malta time"></ol>
-      <p class="rp-fine">Recreated from a screen recording of our own account (XAUUSD, 0.1 lots, Malta time). Bid and ask come from every frame of the recording, 30 a second, and orders, fills and stops sit where the recording shows them. The +$363.50 trade and the &minus;$15.20 loss are the amounts on screen. The smaller trades after the release are rebuilt from the chart and may be a few dollars out each. The recording used our timing at the time: orders 15 seconds before the release, and new orders until 60 seconds after. GoldenStraddler now arms 5 seconds before and stops 30 seconds after. One release on one account: your fills will differ, and past results don't predict future ones.</p>
+      <p class="rp-fine"></p>
+      <p class="rp-gen">One release on one account, and simulations of others. Your fills will differ, and past results don't predict future ones. GoldenStraddler arms 5 seconds before each release and places nothing new after 30 seconds.</p>
     </div>
   </div>
 </div></section>
