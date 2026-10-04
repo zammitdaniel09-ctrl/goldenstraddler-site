@@ -79,7 +79,6 @@ function tickNext(now) {
   // same data on the example licence card
   $("licNext").textContent = `${names(g)}, ${when(g.utc, false)}`;
   $("licArm").textContent = `Arms at ${hhmmss(g.utc * 1000 - ARM_MS)}, your time`;
-  if (window.GSTerm) GSTerm.event(shortName(g) === g.titles[0] ? g.titles[0] : shortName(g));
   return { g, left };
 }
 
@@ -511,13 +510,14 @@ function setupMenu() {
 function setupBuyBar() {
   const bar = $("mbuy"), seenNow = new Map();
   const update = () => {
-    const show = phone() && !seenNow.get("cta") && !seenNow.get("pricing") && !seenNow.get("foot") && scrollY > 200;
+    const show = phone() && !seenNow.get("cta") && !seenNow.get("pricing") && !seenNow.get("foot") && !seenNow.get("replay") && scrollY > 200;
+    document.body.classList.toggle("rp-in", !!seenNow.get("replay"));   // the phone replay gets the whole screen
     bar.classList.toggle("show", show); bar.setAttribute("aria-hidden", show ? "false" : "true"); $("mbGo").tabIndex = show ? 0 : -1;
     document.body.classList.toggle("mbuy-on", show);
   };
   const io = new IntersectionObserver((es) => { for (const e of es) seenNow.set(e.target.dataset.k, e.isIntersecting); update(); });
   const watch = (el, k) => { if (el) { el.dataset.k = k; io.observe(el); } };
-  watch(document.querySelector(".hero .cta"), "cta"); watch($("pricing"), "pricing"); watch(document.querySelector(".foot"), "foot");
+  watch(document.querySelector(".hero .cta"), "cta"); watch($("pricing"), "pricing"); watch(document.querySelector(".foot"), "foot"); watch(document.querySelector(".rp-phone"), "replay");
   addEventListener("scroll", update, { passive: true });
 }
 

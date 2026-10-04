@@ -108,6 +108,12 @@ Trading gold CFDs and other leveraged products carries a high risk of losing mon
 ## Our own live account
 We run GoldenStraddler on our own live MT5 account and stream every closed trade to the home page (section "The live account, as it trades"), in points. It's one account on one broker, trading small lots while the record builds. The latest numbers are in the live facts.
 
+## The replay on the home page ("Watch it trade a real release")
+- It's rebuilt from our own phone screen recording of the US jobs report (NFP) on Friday 2 October 2026, 14:29 to 14:31 Malta time, XAUUSD at 0.1 lots. Prices come from every frame of the recording; orders, fills and stops sit where the recording shows them. Nothing in it is simulated, but the smaller trades after the release are read off the chart and may be a few dollars out each.
+- What happened: a sell filled on a dip about 12 seconds before the number and was stopped for -$15.20. A fresh pair went on, the buy filled at 4187.41 just before the release, gold jumped about $24 in half a second, and the trailing stop closed it at 4223.76 for +$363.50 (top tick 4228.31). The re-entries in the minute after were mostly small losses with a few small wins; the whole session came to about +$259 over 14 trades.
+- The recording used the timing we ran then: orders 15 seconds before and new orders until 60 seconds after. GoldenStraddler now arms 5 seconds before and stops 30 seconds after, so the same release would not play out identically today.
+- It's one release on one account. Results vary, fills differ by broker, and many releases are smaller or reverse into the stop.
+
 ## Pages
 - Home and pricing: / (pricing at /#pricing, results at /#record, FAQ at /#faq)
 - Checkout: /checkout?plan=lifetime or /checkout?plan=monthly (add &code=CODE)

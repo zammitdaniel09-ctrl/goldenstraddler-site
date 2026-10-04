@@ -538,7 +538,7 @@ function eaBandHtml() {
     <h2 id="ea-h">Let GoldenStraddler trade the USD releases</h2>
     <p>Our Expert Advisor for MetaTrader&nbsp;5 trades gold around every red-folder USD release on this calendar. Five seconds before the number it places a buy stop and a sell stop, the number picks the side, the other order is deleted, and a trailing stop follows the move.</p>
     ${e ? `<p class="ea-n"><span><span class="dot"></span>Next one it trades: <b>${esc(e.title)}</b>, <time data-utc="${e.utc}" datetime="${new Date(e.utc * 1000).toISOString()}">${esc(dayTime(e.utc))}</time></span><span class="cd num" data-cd="${e.utc}"></span></p>` : ""}
-    <div class="ea-b"><a class="btn pri" href="/#pricing">Get GoldenStraddler</a><a class="btn" href="/">Watch a simulated release</a></div>
+    <div class="ea-b"><a class="btn pri" href="/#pricing">Get GoldenStraddler</a><a class="btn" href="/#replay">Watch it trade a real release</a></div>
   </div>
   <ol class="ea-tl" aria-label="One release with GoldenStraddler">
     <li><b class="num">−5 s</b><span>Buy stop and sell stop go in, 60 points either side</span></li>
@@ -554,7 +554,7 @@ function eaSide(b: Brief) {
     <p class="fine">Our MT5 Expert Advisor brackets gold five seconds before every red-folder USD release and trails whichever side the number picks.</p>
     <ul><li>Both orders in at T−5 s</li><li>Trailing stop from +50 points</li><li>Nothing left pending after T+30 s</li></ul>
     <a class="btn pri sm" href="/#pricing">Get GoldenStraddler</a><a class="ea-more" href="/#how">How it trades</a></div>`;
-  return `<div class="card2 ea-s sm"><p class="fine"><b>Trade the USD releases on gold?</b> GoldenStraddler, our MT5 Expert Advisor, places both sides five seconds before each red-folder release and trails the winner.</p><a class="ea-more" href="/">Watch a simulated release</a></div>`;
+  return `<div class="card2 ea-s sm"><p class="fine"><b>Trade the USD releases on gold?</b> GoldenStraddler, our MT5 Expert Advisor, places both sides five seconds before each red-folder release and trails the winner.</p><a class="ea-more" href="/#replay">Watch it trade a real release</a></div>`;
 }
 
 export function renderHub(path: string): { title: string; desc: string; html: string } | null {
