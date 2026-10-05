@@ -1004,6 +1004,8 @@ if (getS("mig_2026_10_05") !== "1") {
 }
 // 5 October, later: email sending is connected, so the free weekly email goes live
 if (getS("mig_2026_10_05b") !== "1") { setS("digest_public", "1"); setS("mig_2026_10_05b", "1"); audit("system", "settings updated", "", "weekly email switched on"); }
+// 5 October: the owner's Google Search Console verification code (public by design: it sits in the home page's HTML)
+if (getS("mig_2026_10_05c") !== "1") { setS("google_verify", "Q1Avi02IMtwRyVOE85tO_K5eEWroXXaEq4o7YcezaI4"); setS("mig_2026_10_05c", "1"); audit("system", "settings updated", "", "Google Search Console verification tag"); }
 const server = Bun.serve({ port: PORT, hostname: "0.0.0.0", idleTimeout: 120,
   fetch: (req) => handle(req).catch(err) });
 console.log(`goldenstraddler.com on :${server.port} | db ${DB_PATH} | stripe ${getS("stripe_secret") ? "on" : "off"} | crypto ${getS("np_api_key") ? "on" : "off"} | email ${mailConfigured() ? "on" : "off"}${DEV ? " | DEV" : ""}`);
