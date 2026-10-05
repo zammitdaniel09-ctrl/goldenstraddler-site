@@ -82,13 +82,16 @@ const notFound = (req: Request) => file(req, "404.html").then((r) => new Respons
 
 // the Markets link appears in the home page menus once the hub is published
 const hubNav = (s: string) => (hubPublic() ? s.replace(/<!--HUB_NAV-->/g, '<a href="/markets">Markets</a>').replace("<!--HUB_TEASER-->", () => hubTeaser()) : s);
-// seller details are filled into the legal pages
+// seller details are filled into the legal pages; until the owner adds them, the pages say it without naming anyone
 function legalVars(s: string) {
+  const name = getS("seller_name").trim(), addr = getS("seller_address").trim(), vat = getS("seller_vat").trim(), reg = getS("seller_reg").trim();
+  const site = siteUrl().replace(/^https?:\/\//, ""), who = name ? [name, addr].filter(Boolean).join(", ") : `the business that runs ${site}`;
+  const ids = [vat && "VAT number " + vat, reg && "registration " + reg].filter(Boolean).join(", ");
   const v: Record<string, string> = {
-    SELLER_NAME: getS("seller_name") || "[Seller name to be added]", SELLER_ADDRESS: getS("seller_address") || "[Registered address to be added]",
-    SELLER_VAT: getS("seller_vat") || "-", SELLER_REG: getS("seller_reg") || "-", SUPPORT_EMAIL: getS("support_email"),
+    SELLER_NAME: name, SELLER_ADDRESS: addr, SELLER_VAT: vat, SELLER_REG: reg, SUPPORT_EMAIL: getS("support_email"),
+    SOLD_BY: `GoldenStraddler is sold by ${who}${ids ? ` (${ids})` : ""}.`, CONTROLLER: `The data controller is ${who}.`,
     REFUND_DAYS: getS("refund_days"), MOVE_DAYS: getS("move_days"), PRICE_LIFETIME: euros(listPrice("lifetime")), PRICE_MONTHLY: euros(listPrice("monthly")), PRICE_JOURNAL: euros(listPrice("journal")), PRICE_JOURNAL_YEAR: euros(listPrice("journal_year")), AI_CREDITS: String(getN("journal_ai_credits") || 100),
-    SITE: siteUrl().replace(/^https?:\/\//, ""), SITE_URL: siteUrl(), UPDATED: "5 October 2026",
+    SITE: site, SITE_URL: siteUrl(), UPDATED: "5 October 2026",
   };
   return s.replace(/\{\{([A-Z_]+)\}\}/g, (_, k) => esc(v[k] ?? ""));
 }
@@ -676,7 +679,8 @@ async function handle(req: Request): Promise<Response> {
     }
     return file(req, p.slice(1), { download: p.slice(4), cache: 0 });
   }
-  if (["/terms", "/refunds", "/privacy", "/risk", "/imprint"].includes(p)) return file(req, "legal" + p + ".html", { replace: (s) => privacyExtras(legalVars(s)) });
+  // imprint rows the owner hasn't filled in are left out rather than shown empty
+  if (["/terms", "/refunds", "/privacy", "/risk", "/imprint"].includes(p)) return file(req, "legal" + p + ".html", { replace: (s) => privacyExtras(legalVars(s)).replace(/<tr><th>[^<]*<\/th><td><\/td><\/tr>\n?/g, "") });
   // the weekly email: double opt-in confirmation and one-click unsubscribe
   if (p === "/subscribe/confirm" || p === "/unsubscribe") {
     const t = str(url.searchParams.get("t") || "", 64), sub = t ? one<{ email: string; status: string }>("SELECT email, status FROM subscribers WHERE token = ?", t) : null;
@@ -1004,6 +1008,8 @@ if (getS("mig_2026_10_05") !== "1") {
 }
 // 5 October, later: email sending is connected, so the free weekly email goes live
 if (getS("mig_2026_10_05b") !== "1") { setS("digest_public", "1"); setS("mig_2026_10_05b", "1"); audit("system", "settings updated", "", "weekly email switched on"); }
+// 5 October: the owner asked for their name and address to come off the site for now (re-added later in Admin settings)
+if (getS("mig_2026_10_05d") !== "1") { setS("seller_name", ""); setS("seller_address", ""); setS("mig_2026_10_05d", "1"); audit("system", "settings updated", "", "seller name and address cleared at the owner's request"); }
 // 5 October: the owner's Google Search Console verification code (public by design: it sits in the home page's HTML)
 if (getS("mig_2026_10_05c") !== "1") { setS("google_verify", "Q1Avi02IMtwRyVOE85tO_K5eEWroXXaEq4o7YcezaI4"); setS("mig_2026_10_05c", "1"); audit("system", "settings updated", "", "Google Search Console verification tag"); }
 const server = Bun.serve({ port: PORT, hostname: "0.0.0.0", idleTimeout: 120,

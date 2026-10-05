@@ -348,7 +348,6 @@ function verdictOnTest(bs: Brief[]) {
   return t;
 }
 function methodHtml() {
-  const seller = getS("seller_name") || "the operator of GoldenStraddler";
   return `<section class="mk-method" id="method"><div class="wrap">
   <h2>How the calls work</h2>
   <div class="mk-cols">
@@ -360,7 +359,7 @@ function methodHtml() {
     </div>
     <div class="mk-disc">
       <h3>Who made this, and what it isn't</h3>
-      <p>Prepared by ${esc(seller)}, which runs GoldenStraddler. The calls are generated automatically by the model described here, from data for the week ending ${esc(short(state.asOf))}. Prices, yields, positioning and the calendar are facts from the sources below. The call and the confidence are the model's opinion.</p>
+      <p>Prepared by GoldenStraddler. The calls are generated automatically by the model described here, from data for the week ending ${esc(short(state.asOf))}. Prices, yields, positioning and the calendar are facts from the sources below. The call and the confidence are the model's opinion.</p>
       <p>This is general market information, not personal investment advice. It doesn't consider your goals, finances or experience. Backtests and past calls don't predict future results.</p>
       <p><b>Conflicts of interest.</b> We sell the GoldenStraddler EA, and we earn commission from partner brokers when people we refer trade with them. Our own trading account runs the EA on gold news releases and doesn't follow these calls.</p>
       <h3>Sources</h3>
