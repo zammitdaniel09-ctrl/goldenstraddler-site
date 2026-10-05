@@ -194,9 +194,7 @@ async function poll() {
 $$("[data-live] .px").forEach((p) => { const id = p.closest("[data-live]").dataset.live; last[id] = last[id] || p.textContent; });
 if (nodes.length || charts.length || document.querySelector("[data-calc]")) { setInterval(poll, 20000); setTimeout(poll, 3000); document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); }); }
 // ---------------------------------------------------------------- the header and the in-page navigation stay out of each other's way
-const topBar = document.querySelector(".top"), sub = document.querySelector(".mk-sub");
-const setTop = () => { if (topBar) document.documentElement.style.setProperty("--top-h", Math.round(topBar.getBoundingClientRect().height) + "px"); };
-setTop(); addEventListener("resize", setTop);
+const sub = document.querySelector(".mk-sub");   // the shared header script keeps --top-h up to date
 if (sub && "IntersectionObserver" in window) {
   const links = $$("a", sub), secs = links.map((a) => document.getElementById(a.getAttribute("href").slice(1))).filter(Boolean), seen = new Map();
   const io = new IntersectionObserver((es) => {
@@ -205,20 +203,6 @@ if (sub && "IntersectionObserver" in window) {
     links.forEach((a) => { const hit = on && a.getAttribute("href") === "#" + on.id; a.classList.toggle("on", !!hit); const row = sub.firstElementChild; if (hit && row.scrollWidth > row.clientWidth) row.scrollTo({ left: a.offsetLeft - 16, behavior: "smooth" }); });
   }, { rootMargin: "-130px 0px -55% 0px", threshold: [0, 0.01] });
   secs.forEach((x) => io.observe(x));
-}
-
-// ---------------------------------------------------------------- phones: the menu
-const menuBtn = document.getElementById("menuBtn"), sheet = document.getElementById("sheet");
-if (menuBtn && sheet) {
-  const set = (open) => {
-    document.documentElement.style.setProperty("--hdr", Math.round(topBar.getBoundingClientRect().bottom) + "px");
-    sheet.hidden = !open; menuBtn.setAttribute("aria-expanded", String(open)); menuBtn.setAttribute("aria-label", open ? "Close menu" : "Open menu");
-    document.body.classList.toggle("lock", open);
-  };
-  menuBtn.addEventListener("click", () => set(sheet.hidden));
-  sheet.addEventListener("click", (e) => { if (e.target.closest("a,button") && !e.target.closest(".tp")) set(false); });   // trying colours keeps the menu open
-  addEventListener("keydown", (e) => { if (e.key === "Escape" && !sheet.hidden) { set(false); menuBtn.focus(); } });
-  addEventListener("resize", () => { if (innerWidth > 940 && !sheet.hidden) set(false); });
 }
 
 // ---------------------------------------------------------------- market hours: the sessions drawn in the visitor's own day

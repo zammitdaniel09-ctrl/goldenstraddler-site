@@ -24,7 +24,8 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preload" href="/fonts/unbounded-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/fonts/space-grotesk-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/css/fonts.css">
-<link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/site.css"><link rel="stylesheet" href="/css/chat.css">
+<link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/site.css"><link rel="stylesheet" href="/css/shell.css"><link rel="stylesheet" href="/css/chat.css">
+<script src="/js/shell.js"></script><link rel="expect" href="#vt-ready" blocking="render">
 <!--JSONLD-->
 </head>
 <body class="home">
@@ -39,29 +40,13 @@
   <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
 </svg>
 
-<header class="top" id="top">
 <div class="promo" id="promo" hidden><div class="wrap">
   <p class="pm-deal"><span class="pm-save" id="pmSave">€500 off</span> <span class="pm-long" id="pmWhat">Lifetime with code</span></p>
   <button class="pm-code" id="pmCode" type="button"><span id="pmCodeTxt">GOLD999</span><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M11 3.5V3a1.5 1.5 0 0 0-1.5-1.5H3A1.5 1.5 0 0 0 1.5 3v6.5A1.5 1.5 0 0 0 3 11h.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></button>
   <p class="pm-t" id="pmT" hidden><span class="pm-lab" id="pmLab"></span> <b class="num" id="pmCount"></b></p>
   <a class="pm-go" id="pmGo" href="/checkout?plan=lifetime">Claim it</a>
 </div></div>
-<div class="wrap">
-  <a class="mark" href="/"><svg aria-hidden="true"><use href="#gs"/></svg><span>GoldenStraddler</span></a>
-  <nav aria-label="Main"><a href="#how">How it works</a><a href="#record">Results</a><!--HUB_NAV--><!--JOURNAL_NAV--><a href="#pricing">Pricing</a><a href="#faq">FAQ</a></nav>
-  <div class="r"><div class="thm"><button class="thm-btn" id="thmBtn" type="button" aria-expanded="false" aria-controls="thmPop" aria-label="Colours"><i class="thm-sw"></i></button>
-    <div class="thm-pop" id="thmPop" hidden data-thm-host></div></div>
-    <a class="signin" href="/account">Sign in</a><a class="btn pri sm" href="#pricing">Get it</a>
-    <button class="menu-btn" id="menuBtn" type="button" aria-expanded="false" aria-controls="sheet" aria-label="Open menu"><svg aria-hidden="true"><use href="#i-menu"/></svg></button></div>
-</div></header>
-
-<div class="sheet" id="sheet" hidden>
-  <nav aria-label="Menu">
-    <a href="#how">How it works</a><a href="#replay">Watch a release</a><a href="#desk">Live gold and this week</a><a href="#record">Results</a><a href="#need">What you need</a><!--HUB_NAV--><!--JOURNAL_NAV--><a href="#pricing">Pricing</a><a href="#brokers">Brokers</a><a href="#faq">FAQ</a><a href="/account">Sign in</a>
-  </nav>
-  <div class="sheet-thm" data-thm-host></div>
-  <div class="sheet-cta"><a class="btn pri" id="sheetBuy" href="#pricing">Get GoldenStraddler</a><button class="btn" type="button" data-chat-open>Ask a question</button></div>
-</div>
+<!--SHELL-->
 
 <main id="main">
 <section class="hero"><div class="wrap">
@@ -118,6 +103,7 @@
 </div></div>
 </section>
 
+<i id="vt-ready" hidden></i>
 <section class="sec rule" id="replay"><div class="wrap">
   <div class="rv" id="rp">
     <div class="rv-head">

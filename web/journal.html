@@ -18,7 +18,8 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preload" href="/fonts/unbounded-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/fonts/space-grotesk-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/css/fonts.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/site.css"><link rel="stylesheet" href="/css/chat.css"><link rel="stylesheet" href="/css/jlanding.css">
+<link rel="stylesheet" href="/css/fonts.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/site.css"><link rel="stylesheet" href="/css/shell.css"><link rel="stylesheet" href="/css/chat.css"><link rel="stylesheet" href="/css/jlanding.css">
+<script src="/js/shell.js"></script><link rel="expect" href="#vt-ready" blocking="render">
 </head>
 <body class="jl">
 <a class="skip" href="#main">Skip to content</a>
@@ -32,13 +33,7 @@
   <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13.2 2.5L5 13.4h6l-1.2 8.1 8.2-10.9h-6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
 </svg>
 
-<header class="top" id="top"><div class="wrap">
-  <a class="mark" href="/journal"><svg aria-hidden="true"><use href="#gs"/></svg><span>Journal</span></a>
-  <nav aria-label="Main"><a href="#bot">With the EA</a><a href="#trades">Trades</a><a href="#analytics">Analytics</a><a href="#coach">AI coach</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a><a href="/">The EA</a></nav>
-  <div class="r"><div class="thm"><button class="thm-btn" id="thmBtn" type="button" aria-expanded="false" aria-controls="thmPop" aria-label="Colours"><i class="thm-sw"></i></button>
-    <div class="thm-pop" id="thmPop" hidden data-thm-host></div></div>
-    <a class="signin" href="/journal/app">Sign in</a><a class="btn pri sm" href="/journal/app?demo=1">Try the demo</a></div>
-</div></header>
+<!--SHELL-->
 
 <main id="main">
 <section class="jl-hero"><div class="wrap">
@@ -60,6 +55,7 @@
   </ul>
 </div></section>
 
+<i id="vt-ready" hidden></i>
 <section class="sec rule jl-row" id="bot"><div class="wrap">
   <div class="jl-txt">
     <h2>The EA and you, side by side</h2>

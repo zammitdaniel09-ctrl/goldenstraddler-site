@@ -19,6 +19,7 @@ import { chatAdmin, chatEnabled, chatRoute, initChat, testAnthropicKey } from ".
 import { hubDetail, hubJson, hubLive, hubPublic, hubRefreshNow, hubStatus, hubTeaser, renderHub, startHub } from "./hub";
 import { archiveEvents, connectorSync, journalAccess, journalAdmin, journalApi, journalOpen, weeklyDigests } from "./journal";
 import { journalAi } from "./jai";
+import { rise, shell } from "./shell";
 
 const PORT = Number(E.PORT) || 3000, DEV = E.DEV === "1";
 const WEB = join(import.meta.dir, "..", "web");
@@ -627,7 +628,7 @@ async function handle(req: Request): Promise<Response> {
   if (p === "/health") return json(200, { ok: true, uptime: Math.round((now() - STARTED) / 1000) });
   const pages: Record<string, [string, boolean?]> = { "/": ["index.html"], "/checkout": ["checkout.html"], "/account": ["account.html", true], "/admin": ["admin.html", true] };
   if (pages[p]) return file(req, pages[p][0], { noindex: !!pages[p][1], replace: (s) => {
-    let o = hubNav(legalVars(s));
+    let o = hubNav(legalVars(p === "/" ? s.replace("<!--SHELL-->", () => shell("ea")) : s));
     if (p === "/") {
       const td = getN("trial_days");
       if (td > 0) o = o.replace(/(<p id="faqTrial">)[\s\S]*?(<\/p>)/, (_, a, b) => `${a}Yes: ${td} days on a demo account, free and without a card. Ask for a key in the pricing section and it arrives by email. The trial doesn't run on live accounts. When you buy, there's also a ${getN("refund_days")}-day money-back guarantee on the first payment.${b}`);
@@ -636,21 +637,21 @@ async function handle(req: Request): Promise<Response> {
       if (journalOpen()) o = o.replace(/<!--JOURNAL_NAV-->/g, '<a href="/journal">Journal</a>').replace(/<!--JOURNAL_LI-->/g, "<li>GoldenStraddler Journal with the AI coach</li>")
         .replace("<!--JOURNAL_FEAT-->", '<div class="wide"><dt>A trading journal, included</dt><dd><span class="lg">Every trade from the EA lands in GoldenStraddler Journal by itself. Add the account you trade by hand and see the bot and you side by side, with analytics and an AI coach. <a href="/journal">See the journal</a>.</span><span class="sh">The EA\'s trades and yours in one journal, with an AI coach. <a href="/journal">See it</a>.</span></dd></div>');
       o = o.replace(/<!--JOURNAL_(NAV|LI|FEAT)-->/g, "");
-      o = jsonLd(o); if (getS("record_public") !== "1") o = o.replace(/<a href="#record">/g, '<a href="#record" hidden>'); }
+      o = rise(jsonLd(o)); if (getS("record_public") !== "1") o = o.replace(/<a href="#record">/g, '<a href="#record" hidden>'); }
     return o;
   } });
   if (p === "/markets" || /^\/markets\/[a-z]{2,12}$/.test(p)) {
     const r = renderHub(p);
     if (!r) return notFound(req);
-    return file(req, "markets.html", { noindex: !hubPublic(), replace: (s) => legalVars(s.replace("<!--HUB_MAIN-->", () => r.html)            // a function, so "$&" in the page isn't read as a pattern
-      .replace(/\{\{HUB_TITLE\}\}/g, () => esc(r.title)).replace(/\{\{HUB_DESC\}\}/g, () => esc(r.desc)).replace(/\{\{HUB_PATH\}\}/g, () => p)) });
+    return file(req, "markets.html", { noindex: !hubPublic(), replace: (s) => rise(legalVars(s.replace("<!--SHELL-->", () => shell("markets")).replace("<!--HUB_MAIN-->", () => r.html)            // a function, so "$&" in the page isn't read as a pattern
+      .replace(/\{\{HUB_TITLE\}\}/g, () => esc(r.title)).replace(/\{\{HUB_DESC\}\}/g, () => esc(r.desc)).replace(/\{\{HUB_PATH\}\}/g, () => p))) });
   }
   if (/^\/order\/[A-Z0-9-]{6,12}$/i.test(p)) return file(req, "order.html", { noindex: true });
   if (p === "/journal" || p === "/journal/app") {
     const open = journalOpen();
     if (!open && !adminOf(req)) return notFound(req);
     if (p === "/journal/app") return file(req, "journal-app.html", { noindex: true });
-    return file(req, "journal.html", { noindex: !open, replace: (s) => hubNav(legalVars(s)) });
+    return file(req, "journal.html", { noindex: !open, replace: (s) => rise(hubNav(legalVars(s.replace("<!--SHELL-->", () => shell("journal"))))) });
   }
   const shm = /^\/j\/([A-Za-z0-9_-]{12,40})$/.exec(p);
   if (shm) {

@@ -1,0 +1,140 @@
+/* The shared header for the EA, Markets and Journal, and the way the site moves between them.
+   The switcher in the middle is the map: a lens sits on the part you're in, and going to another part
+   slides the page across in the direction of the switcher (left to right is EA → Markets → Journal). */
+
+:root{--ease-out:cubic-bezier(.16,1,.3,1);--ease-push:cubic-bezier(.32,.72,0,1)}
+
+/* ---------------------------------------------------------------- header */
+.top.shell{view-transition-name:gs-top;transition:background-color .3s,border-color .3s,box-shadow .3s}
+.top.shell.scrolled{background:rgba(var(--bg-rgb),.86);box-shadow:0 10px 30px -22px var(--shadow)}
+.top.shell>.wrap{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:16px;height:68px}
+.top.shell .mark{justify-self:start;min-width:0}
+.top.shell .mark>span{white-space:nowrap}
+.top.shell .r{margin-left:0;justify-self:end;gap:6px}
+.top.shell .menu-btn{display:inline-flex;margin-left:4px;transition:background-color .2s,border-color .2s}
+.top.shell .menu-btn:hover{border-color:var(--edge3)}
+.top.shell .menu-btn path{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;transform-box:fill-box;transform-origin:center;transition:transform .42s var(--ease-out)}
+.top.shell .menu-btn[aria-expanded=true] .m1{transform:translateY(4px) rotate(45deg)}
+.top.shell .menu-btn[aria-expanded=true] .m2{transform:translateY(-4px) rotate(-45deg)}
+
+/* reading progress: a hairline under the header that fills as you go down the page */
+.top-prog{position:absolute;left:0;right:0;bottom:-1px;height:2px;pointer-events:none;transform:scaleX(0);transform-origin:0 50%;opacity:0;
+  background:linear-gradient(90deg,rgba(var(--ice-rgb),.1),rgba(var(--ice-rgb),.85))}
+@supports (animation-timeline:scroll()){
+  .top-prog{opacity:1;animation:gsProg linear both;animation-timeline:scroll(root block)}
+}
+@keyframes gsProg{to{transform:scaleX(1)}}
+
+/* ---------------------------------------------------------------- the switcher */
+.top.shell .sw{position:relative;display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:0;margin:0;padding:4px;border-radius:999px;
+  background:rgba(var(--fg-rgb),.035);border:1px solid var(--edge);isolation:isolate}
+.top.shell .sw a{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;padding:7px 18px;border-radius:999px;
+  font:600 14.5px var(--body);letter-spacing:-.005em;color:var(--txt2);text-decoration:none;white-space:nowrap;transition:color .3s var(--ease-out),background-color .2s}
+.top.shell .sw a:hover{color:var(--white);background:rgba(var(--fg-rgb),.045)}
+.top.shell .sw a[aria-current],.top.shell .sw a.sw-go{color:var(--white);background:none}
+.top.shell .sw a:active{transform:scale(.97)}
+.top.shell .sw .sh{display:none}
+.sw-lens{position:absolute;z-index:0;top:4px;bottom:4px;left:4px;width:calc((100% - 8px)/var(--n));border-radius:999px;pointer-events:none;
+  transform:translateX(calc(var(--i)*100%));transition:transform .56s var(--ease-push);view-transition-name:gs-lens;
+  background:linear-gradient(180deg,rgba(var(--ice-rgb),.2),rgba(var(--ice-rgb),.09));
+  box-shadow:inset 0 0 0 1px rgba(var(--ice-rgb),.42),inset 0 1px 0 rgba(255,255,255,.08),0 6px 14px -8px rgba(0,0,0,.55)}
+/* arriving from another part without a view transition: the lens starts where you were and glides over */
+.gs-lensin .sw-lens{transition:none;transform:none}
+.gs-lensin[data-sw-from="1"] .sw-lens{transform:translateX(100%)}
+.gs-lensin[data-sw-from="2"] .sw-lens{transform:translateX(200%)}
+
+/* ---------------------------------------------------------------- what fits at each width */
+@media (max-width:1080px){.top.shell .signin{display:none}}
+@media (max-width:900px){.top.shell .top-cta{display:none}}
+@media (max-width:760px){
+  .top.shell>.wrap{gap:10px;height:60px}
+  .top.shell .mark>span{display:none}
+  .top.shell .sw .lg{display:none}.top.shell .sw .sh{display:inline}
+  .top.shell .sw a{padding:7px 14px;font-size:14px;letter-spacing:.012em}
+  .top.shell .thm{display:none}
+}
+@media (max-width:380px){.top.shell .sw a{padding:7px 10px;font-size:13.5px}.top.shell .menu-btn{width:40px;height:40px}}
+@media (max-width:420px){.home .top.shell .mark>span{display:none}}
+
+/* ---------------------------------------------------------------- the menu: a panel on wide screens, the whole screen on phones */
+.sheet{transition:opacity .2s var(--ease-out),transform .34s var(--ease-out),clip-path .44s var(--ease-out)}
+.sheet .sheet-x a{color:var(--txt2)}
+@media (min-width:761px){
+  .sheet{left:auto;bottom:auto;right:max(16px,calc((100vw - 1200px)/2 + 28px));top:calc(var(--hdr,68px) + 8px);width:340px;max-height:calc(100dvh - var(--hdr,68px) - 24px);
+    padding:10px 10px 12px;gap:10px;border-radius:20px;background:var(--carbon);border:1px solid var(--edge2);backdrop-filter:none;-webkit-backdrop-filter:none;
+    box-shadow:0 28px 60px -24px var(--shadow),0 4px 10px -6px rgba(0,0,0,.35);transform-origin:calc(100% - 22px) -8px}
+  .sheet nav a{padding:9px 12px;font:500 15.5px var(--body);border-bottom:0;border-radius:10px;color:var(--white);transition:background-color .15s,color .15s}
+  .sheet nav a:hover{background:var(--carbon2)}
+  .sheet .sheet-x{padding-top:8px;border-top:1px solid var(--edge)}
+  .sheet .sheet-x a{font-size:14.5px;color:var(--txt2)}
+  .sheet .sheet-x a:hover{color:var(--white)}
+  .sheet-thm{display:none}
+  .sheet-cta{flex-direction:row;padding:4px 2px 0}.sheet-cta .btn{flex:1;padding:11px 12px;font-size:14.5px}
+  .sheet:not(.on){opacity:0;transform:translateY(-6px) scale(.97)}
+}
+@media (max-width:760px){
+  .sheet{clip-path:inset(0 0 0 0)}
+  .sheet:not(.on){clip-path:inset(0 0 100% 0)}
+  .sheet .sheet-x a{font-size:17px;font-weight:500}
+  .sheet.on nav a{animation:gsItem .5s var(--ease-out) both;animation-delay:calc(var(--k,0)*26ms + 70ms)}
+}
+@keyframes gsItem{from{opacity:0;transform:translateY(12px)}}
+
+/* ---------------------------------------------------------------- arriving fresh: the headline rises word by word, the rest follows */
+.rise .w{display:inline-block;overflow:hidden;vertical-align:top;padding:.1em 0 .14em;margin:-.1em 0 -.14em}
+.rise .w>span{display:inline-block}
+.gs-rise .rise .w>span{animation:gsRise 1s var(--ease-out) both;animation-delay:calc(var(--d,0)*60ms + 60ms)}
+.gs-rise .rise~*,.gs-rise .hero .hcard,.gs-rise .jl-hero .jl-hshot,.gs-rise .jl-src,.gs-rise .mk-hr{animation:gsLift .9s var(--ease-out) both;animation-delay:.42s}
+.gs-rise .rise~*:nth-child(3),.gs-rise .jl-src{animation-delay:.5s}
+.gs-rise .rise~*:nth-child(n+4),.gs-rise .hero .hcard,.gs-rise .jl-hero .jl-hshot,.gs-rise .mk-hr{animation-delay:.58s}
+@keyframes gsRise{from{transform:translateY(110%) rotate(3deg)}}
+@keyframes gsLift{from{opacity:0;transform:translateY(16px)}}
+
+/* the product pictures settle into place as they come up the screen */
+@supports (animation-timeline:view()){
+  @media (prefers-reduced-motion:no-preference){
+    .jl-row .jl-shot,.jl-card .jl-shot{animation:gsSettle linear both;animation-timeline:view();animation-range:entry 0% entry 85%}
+  }
+}
+@keyframes gsSettle{from{transform:translateY(36px) scale(.96);filter:brightness(.75)}}
+
+/* ---------------------------------------------------------------- moving between the three parts */
+@view-transition{navigation:auto}
+.gsc{view-transition-name:gs-chat}
+::view-transition-group(root),::view-transition-group(gs-lens){animation-duration:.56s;animation-timing-function:var(--ease-push)}
+::view-transition-group(gs-top){animation-duration:.3s}
+/* the buttons on the right change between parts; each one glides to its new place instead of fading through the others */
+.top.shell .thm-btn{view-transition-name:gs-thm}
+.top.shell .signin{view-transition-name:gs-signin}
+.top.shell .top-cta{view-transition-name:gs-cta}
+::view-transition-group(gs-thm),::view-transition-group(gs-signin),::view-transition-group(gs-cta){animation-duration:.45s;animation-timing-function:var(--ease-out)}
+::view-transition-old(gs-cta),::view-transition-new(gs-cta){height:100%;object-fit:cover}
+::view-transition-old(gs-top),::view-transition-new(gs-top){animation-duration:.22s}
+
+/* forward (to the right in the switcher, or deeper into a part): the new page pushes in from the right */
+html[data-vt=fwd]::view-transition-old(root){mix-blend-mode:normal;animation:gsOutL .56s var(--ease-push) both}
+html[data-vt=fwd]::view-transition-new(root){mix-blend-mode:normal;animation:gsInR .56s var(--ease-push) both}
+/* back: the page you're on slides away to the right and uncovers the one underneath */
+html[data-vt=back]::view-transition-old(root){z-index:1;mix-blend-mode:normal;animation:gsOutR .56s var(--ease-push) both}
+html[data-vt=back]::view-transition-new(root){mix-blend-mode:normal;animation:gsInL .56s var(--ease-push) both}
+@keyframes gsOutL{to{transform:translateX(-26%);filter:brightness(.5)}}
+@keyframes gsInR{from{transform:translateX(100%);box-shadow:-24px 0 60px -8px rgba(0,0,0,.55)}to{box-shadow:-24px 0 60px -8px rgba(0,0,0,0)}}
+@keyframes gsOutR{from{box-shadow:-24px 0 60px -8px rgba(0,0,0,.55)}to{transform:translateX(100%);box-shadow:-24px 0 60px -8px rgba(0,0,0,0)}}
+@keyframes gsInL{from{transform:translateX(-26%);filter:brightness(.5)}}
+/* while it moves the header stays solid, so the pages slide under it cleanly */
+html[data-vt] .top.shell{background:rgba(var(--bg-rgb),.97)}
+
+/* browsers without view transitions get a short slide on arrival instead */
+.gs-from-fwd main,.gs-from-fwd .foot{animation:gsArriveR .5s var(--ease-out) both}
+.gs-from-back main,.gs-from-back .foot{animation:gsArriveL .5s var(--ease-out) both}
+@keyframes gsArriveR{from{transform:translateX(48px);opacity:0}}
+@keyframes gsArriveL{from{transform:translateX(-48px);opacity:0}}
+
+@media (prefers-reduced-motion:reduce){
+  .sw-lens,.sheet,.top.shell .menu-btn path{transition-duration:.01s}
+  .sheet.on nav a,.gs-rise .rise .w>span,.gs-rise .rise~*,.gs-rise .hero .hcard,.gs-rise .jl-hero .jl-hshot,.gs-rise .jl-src,.gs-rise .mk-hr,
+  .gs-from-fwd main,.gs-from-back main,.gs-from-fwd .foot,.gs-from-back .foot{animation:none}
+  .top-prog{display:none}
+  html[data-vt]::view-transition-old(root),html[data-vt]::view-transition-new(root){animation:none}
+  ::view-transition-group(*){animation-duration:.15s}
+}

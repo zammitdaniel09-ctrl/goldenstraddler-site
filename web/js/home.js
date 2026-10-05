@@ -7,10 +7,6 @@ const MINUS = "−";
 const eur = (c) => "€" + (c / 100).toLocaleString("en-IE", { minimumFractionDigits: c % 100 ? 2 : 0, maximumFractionDigits: 2 });
 const pad = (n) => String(n).padStart(2, "0");
 
-const top = $("top");
-const onScroll = () => top.classList.toggle("scrolled", scrollY > 8);
-addEventListener("scroll", onScroll, { passive: true }); onScroll();
-
 let skew = 0, GROUPS = [];
 
 // ================================================================ small helpers
@@ -496,20 +492,6 @@ function setupTabs() {
   const hc = tabs(ht, () => [...line.children]); swipe(line, hc);
 }
 
-// ================================================================ phone menu
-function setupMenu() {
-  const btn = $("menuBtn"), sheet = $("sheet");
-  const set = (open) => {
-    document.documentElement.style.setProperty("--hdr", Math.round(top.getBoundingClientRect().bottom) + "px");
-    sheet.hidden = !open; btn.setAttribute("aria-expanded", open ? "true" : "false"); btn.setAttribute("aria-label", open ? "Close menu" : "Open menu");
-    document.body.classList.toggle("lock", open);
-  };
-  btn.addEventListener("click", () => set(sheet.hidden));
-  sheet.addEventListener("click", (e) => { if (e.target.closest("a,button") && !e.target.closest(".tp")) set(false); });   // trying colours keeps the menu open
-  addEventListener("keydown", (e) => { if (e.key === "Escape" && !sheet.hidden) { set(false); btn.focus(); } });
-  addEventListener("resize", () => { if (!phone() && innerWidth > 940 && !sheet.hidden) set(false); });
-}
-
 // ================================================================ sticky buy bar on phones
 function setupBuyBar() {
   const bar = $("mbuy"), seenNow = new Map();
@@ -541,7 +523,6 @@ function setupCalc() {
 }
 
 setupTabs();
-setupMenu();
 setupBuyBar();
 setupCalc();
 bracketArt();
