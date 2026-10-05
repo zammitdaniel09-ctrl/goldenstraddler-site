@@ -763,12 +763,11 @@ function historyHtml(b: Brief) {
 let artSprite = "";
 try { const m = readFileSync(join(import.meta.dir, "..", "web", "markets.html"), "utf8"); const i = m.indexOf("<defs>"), j = m.lastIndexOf("</symbol>"); if (i > 0 && j > i) artSprite = m.slice(i, j + 9); } catch {}
 export function hubTeaser() {
-  const pick = ["gold", "silver", "wti", "eurusd", "usdjpy", "btc"].map((id) => state.briefs.find((b) => b.id === id)).filter(Boolean) as Brief[];
-  if (pick.length < 4) return "";
-  return `<svg width="0" height="0" style="position:absolute" aria-hidden="true">${artSprite}</svg>
-<section class="mt" aria-labelledby="mt-h"><div class="wrap">
-  <div class="mt-h"><h2 id="mt-h">This week's market calls</h2><p>A scoring model on public data calls 16 markets every weekend, with the numbers behind each call and an honest track record.</p><a class="btn sm" href="/markets">Open the Markets desk</a></div>
-  <ul class="mt-l">${pick.map((b) => { const q = livePx(b); return `<li><a href="/markets/${b.id}">${art(b.id)}<span class="mt-n"><b>${esc(b.name)}</b><span class="num ${q.ch == null ? "" : q.ch >= 0 ? "up" : "dn"}">${esc(q.txt)} ${q.ch == null ? "" : pct(q.ch, 2)}</span></span><span class="pill ${cls(b.call.dir)}">${esc(b.call.label)}</span>${meter(b.call.score)}</a></li>`; }).join("")}</ul>
+  // one line on the home page: three of this week's calls and the way in, so the page stays short
+  const pick = ["gold", "silver", "eurusd"].map((id) => state.briefs.find((b) => b.id === id)).filter(Boolean) as Brief[];
+  if (pick.length < 2) return "";
+  return `<section class="mt1" aria-label="The Markets desk"><div class="wrap">
+  <p><b>This week's market calls:</b> ${pick.map((b) => `<a href="/markets/${b.id}">${esc(b.name)} ${pillHtml(b)}</a>`).join(" ")} <span class="mt1-more">and ${state.briefs.length - pick.length} more markets.</span> <a class="mt1-go" href="/markets">Open the Markets desk</a></p>
 </div></section>`;
 }
 

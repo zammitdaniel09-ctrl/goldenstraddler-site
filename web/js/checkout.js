@@ -102,6 +102,10 @@ form.addEventListener("submit", async (e) => {
       }
     }
     else if (JOURNAL) { $("closed").hidden = false; $("closed").textContent = "The Journal plan isn't open yet."; form.hidden = true; }
+    // the ways to pay, as plain words beside the button
+    const marks = [...(PUB.methods.card ? ["Visa", "Mastercard", "Amex", "Apple Pay", "Google Pay"] : []), ...(PUB.methods.bank ? ["SEPA transfer"] : []), ...(PUB.methods.crypto ? ["BTC", "ETH", "USDT"] : [])];
+    $("payMarks").replaceChildren(...marks.map((m) => Object.assign(document.createElement("li"), { textContent: m })));
+    if (PUB.vatNote) { $("sVat").hidden = false; $("sVat").textContent = PUB.vatNote; }
     let any = false, first = null;
     for (const lab of $("methods").querySelectorAll("label")) {
       const on = !!PUB.methods[lab.dataset.m]; lab.hidden = !on;

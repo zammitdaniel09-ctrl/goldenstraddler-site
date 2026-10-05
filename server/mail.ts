@@ -46,7 +46,7 @@ const keyBox = (k: string) =>
 export function mailLicence(o: Order, l: Licence) {
   const site = siteUrl();
   if (l.plan === "journal") return sendMail(o.email, "Your GoldenStraddler Journal is ready", layout("Your journal is ready", [
-    p(`Thanks for subscribing to GoldenStraddler Journal (${euros(o.amount_cents)} a month). Sign in with this email address to open it.`),
+    p(`Thanks for subscribing to GoldenStraddler Journal (${euros(o.amount_cents)} a ${o.plan === "journal_year" ? "year" : "month"}). Sign in with this email address to open it.`),
     `<ol style="margin:0 0 16px 18px;padding:0;font-size:15px;line-height:1.7;color:#2a3140">
       <li>Open the journal and add your trading account.</li>
       <li>Connect MT5 with the small connector EA, or import a history file from MT4, MT5 or any platform.</li>
@@ -163,6 +163,35 @@ export function mailTrialEnding(email: string, endsAt: number) {
     p(`Your demo trial stops on ${esc(end)}. To keep it running, on demo or live, buy a licence and paste the new key into the EA's inputs.`),
     btn(siteUrl() + "/#pricing", "See the plans"), p("Questions first? Reply to this email or ask the assistant on the website."),
   ].join("")));
+}
+// about a month after the first payment: an honest review, good or bad, on the review page set in Admin settings
+export function mailReviewInvite(email: string, url: string, journalOnly: boolean) {
+  const what = journalOnly ? "GoldenStraddler Journal" : "GoldenStraddler";
+  return sendMail(email, `How is ${what} working for you?`, layout(`A month with ${what}`, [
+    p(`You've had ${what} for about a month. Would you write a short, honest review of how it's going? Good or bad, it helps other traders decide, and we read every one.`),
+    btn(url, "Write a review"),
+    p("Something not working? Reply to this email and a person will help. Reviews are never a condition for support or refunds."),
+  ].join("")));
+}
+// the free weekly email: double opt-in, then every Sunday the week's red-folder USD releases
+export function mailDigestConfirm(email: string, link: string) {
+  return sendMail(email, "Confirm your weekly red-folder email", layout("One click to confirm", [
+    p("You asked for the free weekly email with the coming week's high-impact US releases for gold traders. Confirm it's you and the first one arrives on Sunday."),
+    btn(link, "Yes, send it to me"),
+    p('<span style="font-size:13px;color:#6b7383">Didn\'t ask for this? Ignore this email and you won\'t hear from us.</span>'),
+  ].join("")));
+}
+export function mailDigest(email: string, week: string, rows: { when: string; title: string; detail: string }[], callLine: string, unsub: string) {
+  const site = siteUrl();
+  const tr = rows.map((r) => `<tr><td style="padding:9px 10px 9px 0;border-bottom:1px solid #e8ecf2;color:#5a6373;font-size:13px;white-space:nowrap;vertical-align:top">${esc(r.when)}</td><td style="padding:9px 0;border-bottom:1px solid #e8ecf2;font-size:14px;color:#0e1116"><b>${esc(r.title)}</b>${r.detail ? `<br><span style="color:#5a6373;font-size:13px">${esc(r.detail)}</span>` : ""}</td></tr>`).join("");
+  const html = layout(`Red-folder USD releases, ${week}`, [
+    rows.length ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px">${tr}</table>` : p("No high-impact US releases on the calendar this week. A quiet one for news traders."),
+    p('<span style="font-size:13px;color:#6b7383">Times are UTC. Check your broker\'s server time before you trade.</span>'),
+    callLine ? p(callLine) : "",
+    btn(site + "/markets", "Open the Markets desk"),
+    p(`<span style="font-size:13px;color:#6b7383">Not investment advice. <a href="${unsub}" style="color:#6b7383">Unsubscribe</a> with one click.</span>`),
+  ].join(""));
+  return sendMail(email, `This week's red-folder USD releases (${week})`, html);
 }
 export async function notifyAdmins(subject: string, text: string) {
   const extra = getS("notify_emails").split(/[,\s]+/).filter(Boolean);

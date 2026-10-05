@@ -8,12 +8,12 @@ import { existsSync, readFileSync, renameSync, statSync, writeFileSync } from "n
 import { createDecipheriv, createHash } from "node:crypto";
 import { join, normalize } from "node:path";
 import QRCode from "qrcode";
-import { all, audit, backupTo, DB_PATH, now, one, run } from "./db";
+import { all, audit, backupTo, DB_PATH, now, one, run, seenEvent } from "./db";
 import { DAY, E, SEC_H, SECRET_KEYS, bad, body, emailOk, esc, euros, getN, getS, ipOf, json, limited, newId, setS, siteUrl, str, sha256, cookie, token } from "./util";
 import { adminLogin, adminOf, bootstrapOwner, checkLoginCode, endAllSessions, endSession, newLoginCode, newTotpSecret, otpauthUri, sessionOf, startSession, type Admin } from "./auth";
 import { customerFor, dashState, eaHello, effective, issueLicence, licenceForSync, maskAcc, publicLicence, restore, revoke, storeStatus, storeTrades, type Customer, type Licence, type Order } from "./licence";
 import { billingPortal, connectStripe, createOrder, listPrice, nowpaymentsWebhook, orderById, ordersFor, promo, quote, refundOrder, settleStripeSession, startPayment, stripe, stripeWebhook, yearlyJournal, type Plan } from "./pay";
-import { mailConfigured, mailExpiring, mailLicence, mailLoginCode, mailTrial, mailTrialEnding, notifyAdmins, outbox, sendMail } from "./mail";
+import { mailConfigured, mailDigest, mailDigestConfirm, mailExpiring, mailLicence, mailLoginCode, mailReviewInvite, mailTrial, mailTrialEnding, notifyAdmins, outbox, sendMail } from "./mail";
 import { fulfil } from "./licence";
 import { chatAdmin, chatEnabled, chatRoute, initChat, testAnthropicKey } from "./chat";
 import { hubDetail, hubJson, hubLive, hubPublic, hubRefreshNow, hubStatus, hubTeaser, renderHub, startHub } from "./hub";
@@ -92,6 +92,13 @@ function legalVars(s: string) {
   return s.replace(/\{\{([A-Z_]+)\}\}/g, (_, k) => esc(v[k] ?? ""));
 }
 
+// privacy entries for features the owner has switched on: the weekly email and the review invitation
+function privacyExtras(s: string) {
+  if (getS("digest_public") === "1") s = s.replace("<!--DIGEST_ROW-->", "<tr><td>Weekly email: your email address, when you signed up and confirmed, and your IP address at sign-up</td><td>To send the free weekly list of high-impact US releases you asked for</td><td>Consent. Unsubscribe with one click in any email.</td></tr>")
+    .replace("<!--DIGEST_KEEP-->", "<li>Weekly email: until you unsubscribe. Unconfirmed sign-ups are deleted after 30 days.</li>");
+  if (/^https:\/\//.test(getS("review_url"))) s = s.replace("<!--REVIEW_NOTE-->", ", and one email about a month after your first purchase asking for a review").replace("<!--REVIEW_BASIS-->", ". The review email: legitimate interest");
+  return s.replace(/<!--(DIGEST_ROW|DIGEST_KEEP|REVIEW_NOTE|REVIEW_BASIS)-->/g, "");
+}
 // structured data for search engines: the product with both plans, and the questions on the page
 // "Who's behind it": shown once the owner fills in a name and a few lines in Admin settings
 function aboutHtml() {
@@ -331,7 +338,24 @@ async function handle(req: Request): Promise<Response> {
     const showRec = getS("record_public") === "1" && rec && rec.trades >= minTrades;
     return json(200, { ok: true, serverNow: now(), prices: { lifetime: listPrice("lifetime"), monthly: listPrice("monthly"), ...(journalOpen() || adminOf(req) ? { journal: listPrice("journal"), journal_year: listPrice("journal_year") } : {}) }, methods: methodsOn(),
       refundDays: getN("refund_days"), news: news.events.filter((e) => e.utc > now() / 1000 - 75).slice(0, 8), week: news.events, record: showRec ? rec : null,
-      announcement: getS("announcement"), promo: promo(), trialDays: getN("trial_days") > 0 ? getN("trial_days") : 0, verifyUrl: /^https:\/\/[\w.-]+\//.test(getS("record_verify_url")) ? getS("record_verify_url") : "" });
+      announcement: getS("announcement"), promo: promo(), trialDays: getN("trial_days") > 0 ? getN("trial_days") : 0, vatNote: getS("vat_note"), recordAt: showRec ? record.at : null, digest: getS("digest_public") === "1" && mailConfigured(), verifyUrl: /^https:\/\/[\w.-]+\//.test(getS("record_verify_url")) ? getS("record_verify_url") : "" });
+  }
+  // the free weekly email (double opt-in): the confirmation email is the only thing sent until the link is clicked
+  if (p === "/api/subscribe") {
+    if (!post) return bad("POST only", 405);
+    if (getS("digest_public") !== "1") return bad("The weekly email isn't open yet.", 404);
+    if (limited("sub:" + ipOf(req), 5, 3_600_000)) return bad("Too many sign-ups from here. Try again later.", 429);
+    let b: any; try { b = await body(req); } catch (e: any) { return bad(e.message, e.code || 400); }
+    const email = str(b.email, 200).toLowerCase();
+    if (!emailOk(email)) return bad("Enter a valid email address.");
+    if (!b.consent) return bad("Tick the box to say you'd like the email.");
+    const ex = one<{ status: string; token: string; created_at: number }>("SELECT status, token, created_at FROM subscribers WHERE email = ?", email);
+    if (ex && ex.status === "active") return json(200, { ok: true });   // same answer either way, so nobody learns who is subscribed
+    const tok = ex && ex.status === "pending" ? ex.token : token(24);
+    if (ex) run("UPDATE subscribers SET status = 'pending', token = ?, created_at = ?, ip = ? WHERE email = ?", tok, now(), ipOf(req), email);
+    else run("INSERT INTO subscribers (email, status, token, created_at, ip) VALUES (?, 'pending', ?, ?, ?)", email, tok, now(), ipOf(req));
+    mailDigestConfirm(email, `${siteUrl()}/subscribe/confirm?t=${tok}`).catch(() => {});
+    return json(200, { ok: true });
   }
   // a free trial on a demo account, when switched on in Admin settings (trial_days > 0)
   if (p === "/api/trial") {
@@ -461,7 +485,7 @@ async function handle(req: Request): Promise<Response> {
         licences: lics.map((l) => ({ ...publicLicence(l), canMove: !!l.account && (!l.last_move_at || now() - l.last_move_at > moveDays * DAY), nextMove: l.last_move_at ? l.last_move_at + moveDays * DAY : null })),
         orders: ordersFor(c.id).map((o) => ({ id: o.id, plan: o.plan, kind: o.kind, method: o.method, status: o.status, amount: o.amount_cents, created_at: o.created_at, paid_at: o.paid_at,
           refundable: o.status === "paid" && o.kind === "new" && !!o.paid_at && now() - o.paid_at < getN("refund_days") * DAY })),
-        eaVersion: getS("ea_version"), eaReady: !!eaPath(), methods: methodsOn(), moveDays, refundDays: getN("refund_days"), support: getS("support_email"), serverNow: now(),
+        eaVersion: getS("ea_version"), eaReady: !!eaPath(), eaUpdated: eaPath() ? statSync(eaPath()).mtimeMs : null, guideUpdated: getS("guide_updated"), methods: methodsOn(), moveDays, refundDays: getN("refund_days"), support: getS("support_email"), serverNow: now(),
         journal: (journalOpen() || !!adminOf(req)) && journalAccess(c).ok, hasEa: lics.some((l) => l.plan !== "journal" && l.status !== "revoked") });
     }
     if (p === "/api/me/state") {
@@ -571,6 +595,7 @@ async function handle(req: Request): Promise<Response> {
 
   // ---------------------------------------------------------------- dev helpers
   if (DEV && p === "/api/dev/outbox") return json(200, outbox.slice(-20));
+  if (DEV && p === "/api/dev/digest" && post) { await sendDigests(now()); return json(200, { ok: true }); }
   if (DEV && p === "/api/dev/weekly" && post) { const b = await body(req); return json(200, { ok: true, sent: await weeklyDigests(Number(b.at) || now()) }); }
   if (MOCK && p.startsWith("/api/dev/pay/") && post) { const o = fulfil(p.slice(13), { paymentRef: "mock_" + token(6) }); return json(200, { ok: true, status: o.status }); }
 
@@ -645,7 +670,20 @@ async function handle(req: Request): Promise<Response> {
     }
     return file(req, p.slice(1), { download: p.slice(4), cache: 0 });
   }
-  if (["/terms", "/refunds", "/privacy", "/risk", "/imprint"].includes(p)) return file(req, "legal" + p + ".html", { replace: legalVars });
+  if (["/terms", "/refunds", "/privacy", "/risk", "/imprint"].includes(p)) return file(req, "legal" + p + ".html", { replace: (s) => privacyExtras(legalVars(s)) });
+  // the weekly email: double opt-in confirmation and one-click unsubscribe
+  if (p === "/subscribe/confirm" || p === "/unsubscribe") {
+    const t = str(url.searchParams.get("t") || "", 64), sub = t ? one<{ email: string; status: string }>("SELECT email, status FROM subscribers WHERE token = ?", t) : null;
+    let h = "That link doesn't work any more", m = "It may be old or already used. You can sign up again on the home page.";
+    if (sub && p === "/subscribe/confirm") {
+      if (sub.status !== "active") { run("UPDATE subscribers SET status = 'active', confirmed_at = ? WHERE token = ?", now(), t); audit("subscriber:" + sub.email, "confirmed the weekly email"); }
+      h = "You're on the list"; m = "The weekly red-folder email arrives on Sunday evenings. Every one has a one-click unsubscribe link.";
+    } else if (sub) {
+      if (sub.status !== "unsub") { run("UPDATE subscribers SET status = 'unsub' WHERE token = ?", t); audit("subscriber:" + sub.email, "unsubscribed from the weekly email"); }
+      h = "You're unsubscribed"; m = "You won't get the weekly email any more. Changed your mind? Sign up again on the home page.";
+    }
+    return file(req, "notice.html", { noindex: true, replace: (s) => legalVars(s).replace(/%%H%%/g, () => esc(h)).replace(/%%M%%/g, () => esc(m)) });
+  }
   if (/^\/(css|js|img|fonts)\/[\w.\-/]+$/.test(p) || /^\/[\w.-]+\.(png|ico|svg|webmanifest|jpg)$/.test(p)) return file(req, p.slice(1), { cache: 86400 });
   return notFound(req);
 }
@@ -681,6 +719,12 @@ async function adminRoute(req: Request, url: URL, p: string, a: Admin): Promise<
         expired: lic.filter((l) => effective(l) === "expired").length, revoked: lic.filter((l) => l.status === "revoked").length, total: lic.length },
       mrr: active.filter((l) => l.plan === "monthly").length * listPrice("monthly") + active.filter((l) => l.plan === "journal").reduce((a, l) => a + (yearlyJournal(l.id) ? Math.round(listPrice("journal_year") / 12) : listPrice("journal")), 0),
       journal: journalAdmin(),
+      funnel: (() => { const f = t - 30 * DAY, n = (sql: string, ...a: any[]) => one<{ n: number }>(sql, ...a)!.n;
+        return { checkouts: n("SELECT COUNT(*) n FROM orders WHERE kind = 'new' AND created_at >= ?", f), paid: n("SELECT COUNT(*) n FROM orders WHERE kind = 'new' AND status IN ('paid','refunded') AND created_at >= ?", f),
+          trials: n("SELECT COUNT(*) n FROM licences WHERE plan = 'trial' AND created_at >= ?", f),
+          trialsBought: n("SELECT COUNT(DISTINCT t.customer_id) n FROM licences t JOIN orders o ON o.customer_id = t.customer_id AND o.status = 'paid' AND o.kind = 'new' AND o.paid_at > t.created_at WHERE t.plan = 'trial' AND t.created_at >= ?", f),
+          refunds: n("SELECT COUNT(*) n FROM orders WHERE status = 'refunded' AND refunded_at >= ?", f), chats: n("SELECT COUNT(DISTINCT chat_id) n FROM chat_msgs WHERE role = 'user' AND at >= ?", f),
+          subscribers: n("SELECT COUNT(*) n FROM subscribers WHERE status = 'active'") }; })(),
       online, customers: one<{ n: number }>("SELECT COUNT(*) n FROM customers")!.n, daily,
       pendingBank: all("SELECT id, email, plan, amount_cents, created_at FROM orders WHERE method = 'bank' AND status IN ('pending','processing') ORDER BY created_at DESC LIMIT 20"),
       refundRequests: all("SELECT id, at, email, message FROM messages WHERE topic = 'refund' AND handled = 0 ORDER BY at DESC"),
@@ -846,7 +890,7 @@ async function adminRoute(req: Request, url: URL, p: string, a: Admin): Promise<
       "seller_name", "seller_address", "seller_vat", "seller_reg", "record_public", "record_min_trades", "stripe_tax", "methods_card", "methods_crypto", "methods_bank",
       "refund_days", "move_days", "trial_days", "announcement", "about_name", "about_role", "about_text", "site_url", "ea_version", "promo_code", "record_verify_url",
       "chat_enabled", "chat_ai", "chat_model", "chat_daily_cap", "chat_greeting", "hub_public",
-      "journal_public", "journal_ai_credits", "journal_ai_model", "price_journal", "price_journal_year"];
+      "journal_public", "journal_ai_credits", "journal_ai_model", "price_journal", "price_journal_year", "vat_note", "review_url", "guide_updated", "digest_public"];
     if (post) {
       if (!owner) return bad("Only the owner can change settings.", 403);
       for (const k of editable) if (b[k] !== undefined) {
@@ -909,6 +953,17 @@ async function hourly() {
       if (!one("SELECT id FROM licences WHERE customer_id = ? AND plan IN ('lifetime', 'monthly') AND status = 'active'", l.customer_id)) await mailTrialEnding(l.email, l.expires_at!);
       run("UPDATE licences SET reminded_at = ? WHERE id = ?", t, l.id);
     }
+    // about 30 days after a first payment that wasn't refunded: one review invitation, once the review page is set
+    const rv = getS("review_url");
+    if (/^https:\/\//.test(rv)) {
+      const due2 = all<{ id: string; email: string; plan: string }>(`SELECT o.id, o.email, o.plan FROM orders o WHERE o.kind = 'new' AND o.status = 'paid' AND o.paid_at BETWEEN ? AND ?
+        AND NOT EXISTS (SELECT 1 FROM orders r WHERE r.email = o.email AND r.status = 'refunded')`, t - 33 * DAY, t - 30 * DAY);
+      for (const o of due2) if (!seenEvent("review:" + o.email)) await mailReviewInvite(o.email, rv, o.plan.startsWith("journal"));
+    }
+    // Sunday evening (17:00 UTC): the free weekly email to everyone who confirmed
+    const nowD = new Date(t);
+    if (getS("digest_public") === "1" && nowD.getUTCDay() === 0 && nowD.getUTCHours() === 17 && !seenEvent("digest:" + nowD.toISOString().slice(0, 10))) await sendDigests(t);
+    run("DELETE FROM subscribers WHERE status = 'pending' AND created_at < ?", t - 30 * DAY);
     // abandoned orders
     run("UPDATE orders SET status = 'expired' WHERE status = 'pending' AND method IN ('card','crypto') AND created_at < ?", t - 2 * DAY);
     run("UPDATE orders SET status = 'expired' WHERE status = 'pending' AND method = 'bank' AND created_at < ?", t - 14 * DAY);
@@ -919,6 +974,17 @@ async function hourly() {
   } catch (e: any) { console.error("hourly:", e.message); }
 }
 setInterval(hourly, 3_600_000);
+async function sendDigests(t: number) {
+  await refreshNews();
+  const end = t / 1000 + 7 * 86400, fmt = (u: number) => new Date(u * 1000).toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+  const rows = news.events.filter((e) => e.utc > t / 1000 && e.utc < end).map((e) => ({ when: fmt(e.utc), title: e.title, detail: [e.fc && "Forecast " + e.fc, e.prev && "previous " + e.prev].filter(Boolean).join(", ") }));
+  const gold = hubPublic() ? hubJson().markets.find((m) => m.id === "gold") : null;
+  const callLine = gold && gold.call ? `This weekend's call for gold on the Markets desk: ${gold.call.label}. It's a model's read of public data, not advice.` : "";
+  const d0 = new Date(t + DAY), d1 = new Date(t + 6 * DAY), wk = `${d0.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })} to ${d1.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })}`;
+  const subs = all<{ email: string; token: string }>("SELECT email, token FROM subscribers WHERE status = 'active'");
+  for (const s of subs) { await mailDigest(s.email, wk, rows, callLine, `${siteUrl()}/unsubscribe?t=${s.token}`); run("UPDATE subscribers SET last_sent = ? WHERE email = ?", t, s.email); }
+  if (subs.length) audit("system", "weekly email sent", "", `${subs.length} subscribers, ${rows.length} releases`);
+}
 
 // ================================================================ start
 bootstrapOwner();

@@ -43,7 +43,8 @@ async function start() {
   document.title = "Your account | GoldenStraddler";
   $("logout").onclick = async () => { try { await api("/api/logout", {}); } catch {} location.href = "/"; };
   $("helpEmail").value = ME.customer.email;
-  $("eaVer").textContent = `Version ${ME.eaVersion}. Download it again any time, for example on a new PC or VPS.`;
+  const dayW = (v) => new Date(typeof v === "string" ? v + "T12:00:00" : v).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  $("eaVer").textContent = `Version ${ME.eaVersion}` + (ME.eaUpdated ? `, updated ${dayW(ME.eaUpdated)}` : "") + (/^\d{4}-\d\d-\d\d$/.test(ME.guideUpdated || "") ? `. Guide updated ${dayW(ME.guideUpdated)}` : "") + ". Download them again any time, for example on a new PC or VPS.";
   if (!ME.eaReady) {
     const d = $("dlEa"); d.removeAttribute("href"); d.setAttribute("aria-disabled", "true"); d.style.opacity = ".55"; d.style.pointerEvents = "none"; d.textContent = "EA download being prepared";
     $("eaVer").textContent = "We're putting the finishing touches to the download. We'll email you as soon as it's ready.";

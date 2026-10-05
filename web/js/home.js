@@ -116,7 +116,10 @@ function tickPromo(now, nx) {
   if (!PROMO) return;
   const t = $("pmT");
   if (PROMO.endsAt && PROMO.endsAt > now) {
-    t.hidden = false; setLab("Code ends", " in"); $("pmCount").textContent = fmtLeft(PROMO.endsAt - now);
+    // a real end date, said plainly: no ticking clock on a discount
+    t.hidden = false; setLab("Code ends"); const c = $("pmCount");
+    const w = new Date(PROMO.endsAt).toLocaleString(undefined, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    if (c.textContent !== w) c.textContent = w;
   } else if (nx) {
     const sn = shortName(nx.g);
     t.hidden = false;
@@ -172,12 +175,11 @@ $("pmCode").addEventListener("click", async () => {
 
 // ================================================================ the desk layout follows whichever cards have data
 function layoutDesk() {
-  const on = (id) => !$(id).hidden, row = (a, b) => { const x = [a, b].filter(on); return x.length === 2 ? `"${x[0]} ${x[1]}"` : x.length ? `"${x[0]} ${x[0]}"` : ""; };
-  const top = row("gold", "acct"), bot = row("week", "week");
-  const desk = $("desk"), any = ["gold", "week", "acct"].some(on);
+  const on = (id) => { const e = $(id); return !!e && !e.hidden; }, row = (a, b) => { const x = [a, b].filter(on); return x.length === 2 ? `"${x[0]} ${x[1]}"` : x.length ? `"${x[0]} ${x[0]}"` : ""; };
+  const desk = $("desk"), any = ["gold", "week"].some(on);
   desk.hidden = !any;
-  desk.style.setProperty("--areas", [top, bot].filter(Boolean).join(" ") || '"gold"');
-  desk.style.setProperty("--areas-m", ["gold", "acct", "week"].filter(on).map((k) => `"${k}"`).join(" ") || '"gold"');
+  desk.style.setProperty("--areas", row("gold", "week") || '"gold"');
+  desk.style.setProperty("--areas-m", ["gold", "week"].filter(on).map((k) => `"${k}"`).join(" ") || '"gold"');
   // phone tabs: hide tabs for cards without data, and keep a visible card selected
   const tabs = [...desk.querySelectorAll(".desk-tabs [data-tab]")];
   tabs.forEach((b) => (b.hidden = !on(b.dataset.tab)));
@@ -186,7 +188,7 @@ function layoutDesk() {
 }
 
 // ================================================================ live: gold price and our account
-let lastPx = 0, sparkDrawn = false, liveFails = 0, acctDone = false;
+let lastPx = 0, sparkDrawn = false, liveFails = 0;
 function drawSpark(sp) {
   const svg = $("gSpark");
   if (!sp || sp.length < 2) { svg.replaceChildren(); return; }
@@ -217,7 +219,7 @@ function applyLive(j) {
     $("gNote").textContent = (span >= 2 ? `Last ${span} hours. ` : "") + "Public spot price, refreshed every few seconds. Your broker's quote will differ slightly.";
     $("gLive").lastChild.textContent = "Live";
   } else card.hidden = true;
-  const a = j.account, ac = $("acct");
+  const a = j.account;
   const pf = $("pfLive");
   if (a) {
     pf.hidden = false;
@@ -225,29 +227,6 @@ function applyLive(j) {
     const t = $("pfLiveT"); t.replaceChildren(a.online ? "Our own live account is running it right now. " : "Our own live account runs it. ");
     const l = document.createElement("a"); l.href = "#record"; l.textContent = "See the results"; t.appendChild(l);
   }
-  if (a) {
-    ac.hidden = false;
-    const chip = $("acChip");
-    chip.className = "chip " + (a.online ? "pulse" : "off");
-    $("acChipT").textContent = a.online ? "Online now" : "Offline right now";
-    if (!acctDone) {
-      acctDone = true;
-      const box = $("acNums"); box.replaceChildren();
-      const add = (k, v, fmt) => { const d = document.createElement("div"), l = document.createElement("span"), b = document.createElement("b"); l.className = "lab"; l.textContent = k; d.append(l, b); box.appendChild(d); countUp(b, v, fmt); };
-      add("Closed trades", a.trades, (v) => Math.round(v).toLocaleString("en-GB"));
-      add("Net points", a.points, (v) => sg(Math.round(v)));
-      add("Won", a.winRate * 100, (v) => Math.round(v) + "%");
-      const c = REC && REC.curve;
-      if (c && c.length > 1) {
-        const lo = Math.min(0, ...c), hi = Math.max(0, ...c), span = hi - lo || 1, y = (v) => 66 - (v - lo) / span * 60, x = (i) => i / (c.length - 1) * 300;
-        let d = ""; c.forEach((v, i) => (d += (i ? "L" : "M") + x(i).toFixed(1) + " " + y(v).toFixed(1)));
-        const sv = $("acCurve");
-        sv.innerHTML = `<line x1="0" x2="300" y1="${y(0).toFixed(1)}" y2="${y(0).toFixed(1)}" stroke="#2e3644" stroke-dasharray="3 5" vector-effect="non-scaling-stroke"/><path class="ln" pathLength="1" d="${d}"/>`;
-        sv.removeAttribute("hidden"); $("acCap").hidden = false;
-        if (!reduce) { sv.classList.add("pre"); sv._go = () => sv.classList.add("draw"); seen.observe(sv); }
-      }
-    }
-  } else ac.hidden = true;
   layoutDesk();
 }
 async function pollLive() {
@@ -358,6 +337,24 @@ function trialOn(days) {
   });
 }
 
+// ================================================================ the free weekly email (double opt-in)
+function digestOn() {
+  const f = $("wkSub"); if (!f || !f.hidden) return;
+  f.hidden = false; layoutDesk();
+  f.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const msg = $("wkMsg"), btn = f.querySelector("button"), email = f.email.value.trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { msg.textContent = "Enter your email address."; return; }
+    if (!f.consent.checked) { msg.textContent = "Tick the box to say you'd like the email."; return; }
+    btn.disabled = true; msg.textContent = "Sending…";
+    try {
+      const r = await fetch("/api/subscribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, consent: true }) }), j = await r.json();
+      if (!r.ok || !j.ok) throw new Error(j.error || "That didn't work. Try again in a minute.");
+      f.replaceChildren(Object.assign(document.createElement("p"), { className: "fine", textContent: `Nearly there: we've sent a link to ${email}. Click it to confirm, and the first email arrives on Sunday.` }));
+    } catch (err) { msg.textContent = err.message; btn.disabled = false; }
+  });
+}
+
 // ================================================================ prices, methods, record
 const WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
 function applyPublic(j) {
@@ -390,6 +387,13 @@ function applyPublic(j) {
   if (j.record && j.record.trades && $("record").hidden) record(j.record);
   // the Results links only lead somewhere while the live record is public
   document.querySelectorAll('a[href="#record"]').forEach((a) => (a.hidden = !(j.record && j.record.trades)));
+  // how fresh the record is, so nobody has to wonder whether it's still running
+  if (j.recordAt && j.record && j.record.trades) {
+    const ra = $("recAt"); ra.hidden = false;
+    ra.textContent = `Updated ${new Date(j.recordAt).toLocaleString(undefined, { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}, straight from the account.`;
+  }
+  if (j.vatNote) { const v = $("vatNote"); v.hidden = false; v.textContent = j.vatNote; }
+  if (j.digest) digestOn();
   if (j.verifyUrl) {
     const v = $("recVerify"); v.replaceChildren("Independently tracked: ");
     const a = document.createElement("a"); a.href = j.verifyUrl; a.rel = "noopener"; a.target = "_blank"; a.textContent = "see the verified record"; v.appendChild(a); v.append(".");

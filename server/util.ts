@@ -64,6 +64,7 @@ export const DEFAULTS: Record<string, string> = {
   promo_code: "GOLD999", record_verify_url: "", hub_public: "1",
   chat_enabled: "1", chat_ai: "1", chat_model: "claude-haiku-4-5-20251001", chat_daily_cap: "500", chat_greeting: "",
   journal_public: "0", journal_ai_credits: "100", journal_ai_model: "claude-sonnet-5-5", price_journal: "3900", price_journal_year: "39000",
+  vat_note: "", review_url: "", guide_updated: "2026-10-03", digest_public: "0",
 };
 const cache = new Map<string, string>();
 export function getS(k: string): string {

@@ -64,6 +64,10 @@ CREATE TABLE IF NOT EXISTS messages (
   message TEXT NOT NULL, customer_id TEXT DEFAULT '', handled INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS events ( id TEXT PRIMARY KEY, at INTEGER NOT NULL );
+CREATE TABLE IF NOT EXISTS subscribers (
+  email TEXT PRIMARY KEY, status TEXT NOT NULL DEFAULT 'pending', token TEXT NOT NULL, created_at INTEGER NOT NULL,
+  confirmed_at INTEGER, last_sent INTEGER, ip TEXT DEFAULT ''
+);
 `);
 
 export const now = () => Date.now();

@@ -97,7 +97,6 @@
 <div class="desk" id="desk"><div class="wrap">
   <div class="tabs desk-tabs" role="tablist" aria-label="Live">
     <button role="tab" type="button" data-tab="gold" aria-selected="true">Gold</button>
-    <button role="tab" type="button" data-tab="acct" aria-selected="false">Our account</button>
     <button role="tab" type="button" data-tab="week" aria-selected="false">This week</button>
   </div>
   <article class="dk dk-gold on" id="gold" data-panel="gold" hidden>
@@ -106,16 +105,15 @@
     <svg class="spark" id="gSpark" viewBox="0 0 300 90" preserveAspectRatio="none" aria-hidden="true"></svg>
     <span class="fine" id="gNote"></span>
   </article>
-  <article class="dk dk-acct" id="acct" data-panel="acct" hidden>
-    <div class="dk-h"><span class="lab">Our own account, running GoldenStraddler</span><span class="chip pulse" id="acChip"><i></i><span id="acChipT">Online now</span></span></div>
-    <div class="acn" id="acNums"></div>
-    <svg class="mini" id="acCurve" viewBox="0 0 300 70" preserveAspectRatio="none" aria-hidden="true" hidden></svg>
-    <p class="fine" id="acCap" hidden>Points after each closed trade since we started streaming it.</p>
-    <a class="dk-link" href="#record">See the full record</a>
-  </article>
   <article class="dk dk-week" id="week" data-panel="week" hidden>
     <div class="dk-h"><span class="lab">This week's red-folder USD releases</span><span class="fine">Your time</span></div>
     <ol class="wk" id="wkList"></ol>
+    <form class="wk-sub" id="wkSub" hidden novalidate>
+      <p><b>Get this list every Sunday.</b> Free, one email a week, unsubscribe with one click.</p>
+      <div class="wk-f"><input class="field" type="email" name="email" placeholder="you@example.com" autocomplete="email" maxlength="200" aria-label="Email for the weekly list"><button class="btn sm" type="submit">Sign up</button></div>
+      <label class="check"><input type="checkbox" name="consent"><span>Send me the weekly email. I've read the <a href="/privacy">privacy policy</a>.</span></label>
+      <p class="fine" id="wkMsg" aria-live="polite"></p>
+    </form>
   </article>
 </div></div>
 </section>
@@ -235,12 +233,13 @@
     <button role="tab" type="button" data-tab="shot" aria-selected="false">The MT5 panel</button>
   </div>
   <div class="rec">
-    <figure class="shotcard" data-panel="shot"><img src="/img/setup/panel_live.webp" alt="The GoldenStraddler panel on our live MT5 account" width="376" height="805" loading="lazy"><figcaption>The real GoldenStraddler panel on our live MetaTrader&nbsp;5 account, 1 October 2026. We trade small lots while the record builds.</figcaption></figure>
+    <figure class="shotcard" data-panel="shot"><img src="/img/setup/panel_live.webp" alt="The GoldenStraddler panel on our live MT5 account" width="376" height="805" loading="lazy"><figcaption>The real GoldenStraddler panel on our live MetaTrader&nbsp;5 account, 1 October 2026, running version 2.10, which armed 15 seconds before a release. Version 3.10 arms 5 seconds before. We trade small lots while the record builds.</figcaption></figure>
     <div class="recr on" data-panel="curve">
       <div class="stats" id="recStats"></div>
       <p class="fine rec-why">The win rate is low by design: a losing trade stops out near its fixed stop (slippage can add to it), while a winning one is left to run with the trailing stop. Net points and drawdown say more than how often it wins.</p>
       <div class="curve"><span class="lab">Cumulative points per closed trade</span><svg id="recCurve" viewBox="0 0 600 220" preserveAspectRatio="none" aria-hidden="true"></svg></div>
       <p class="fine" id="recVerify"></p>
+      <p class="fine" id="recAt" hidden></p>
     </div>
   </div>
   <div class="go"><a class="btn pri" href="#pricing">Run it on your account</a><span class="fine">One account on one broker: your fills and results will differ.</span></div>
@@ -343,6 +342,7 @@
     <p class="fine trial-msg" id="trialMsg" aria-live="polite"></p>
   </form>
   <p class="payline" id="payLine">Pay by <b>card, Apple Pay or Google Pay</b>, or in <b>crypto</b>. Got a discount code? Enter it at checkout.</p>
+  <p class="fine vatnote" id="vatNote" hidden></p>
 </div></section>
 
 <section class="sec rule" id="brokers"><div class="wrap">
@@ -384,13 +384,13 @@
     <details><summary>How much do I need in my account?</summary><div class="a"><p>There's no fixed minimum. What matters is lot size: at the default 0.10 lots, a full 100-point stop loss is about $10 plus slippage and costs. Use the calculator above and pick a size where a full stop is an amount you're comfortable losing many times over.</p></div></details>
     <details><summary>Is there a free trial?</summary><div class="a"><p id="faqTrial">There's no free trial, but there's a {{REFUND_DAYS}}-day money-back guarantee. Run it on a demo account first if you like: if it isn't for you, ask for a refund from your account page within {{REFUND_DAYS}} days of your first payment and you get the full amount back.</p></div></details>
     <details><summary>Can I try it on a demo account first?</summary><div class="a"><p>Yes, and we recommend it. The licence locks to the first account it runs on, and you can move it to your live account straight away from your account page.</p></div></details>
-    <details><summary>Can I use it on a prop firm account?</summary><div class="a"><p>Check your firm's rules first. Many funded-account programmes don't allow trading around news, and breaking that rule can cost you the account or your payouts.</p></div></details>
+    <details><summary>Can I use it on a prop firm account?</summary><div class="a"><p>Check your firm's rules first. Many funded-account programmes don't allow trading around news, and breaking that rule can cost you the account or your payouts. Where news trading is allowed, size the lots so a full stop loss plus slippage fits well inside the daily loss limit, and remember that fills around the number can be worse than the stop.</p></div></details>
     <details><summary>How often does it trade?</summary><div class="a"><p>Only around high-impact USD releases, the red-folder events such as Non-Farm Payrolls, CPI and FOMC. Most weeks have a handful. Between releases it does nothing, by design. If you want it trading all the time there's an always-on mode, but that's a much busier way to trade.</p></div></details>
     <details><summary>Does it use a grid or martingale?</summary><div class="a"><p>No. Every order is the lot size you set, with its own stop loss. It never adds to a losing trade and never raises the size after a loss. When a trade closes while the window is still open, a fresh pair goes on at the same size.</p></div></details>
     <details><summary>Why pay for it when free news EAs exist?</summary><div class="a"><p>Free straddle EAs exist, and some are a fine way to learn the idea. GoldenStraddler is built and tuned for gold on MT5: both orders leave in the same instant, every price comes from the newest tick, entries and stops move out to twice the live spread when brokers widen it, and point distances scale to your broker's quote. The red-folder calendar loads by itself with two backups, you get a private live dashboard of every trade, new versions, a setup guide and people to help. Whether that's worth it to you is your call, and the {{REFUND_DAYS}}-day money-back guarantee lets you find out.</p></div></details>
     <details><summary>If it works, why sell it?</summary><div class="a"><p>Fair question. It isn't a money machine: it automates one well-known way of trading the news, and it doesn't win every release. Some releases go nowhere and some reverse into the stop. Selling it pays for development and support. We run it on our own live account and show every closed trade, so you can judge it on the record rather than on promises.</p></div></details>
     <details><summary>Do I need a VPS?</summary><div class="a"><p>MT5 has to be open and connected at release time. If your computer isn't always on, a Windows VPS close to your broker's servers is the reliable way. Many cost a few euros a month and some brokers offer one free. The guide has a section on setting one up.</p></div></details>
-    <details><summary>Can I use it on more than one account?</summary><div class="a"><p>One licence runs on one MT5 account at a time. For a second account at the same time, buy a second licence. You can move a licence to a different account from your account page once every {{MOVE_DAYS}} days.</p></div></details>
+    <details><summary>Can I use it on more than one account?</summary><div class="a"><p>One licence runs on one MT5 account at a time. For a second account at the same time, buy a second licence. You can move a licence to a different account from your account page once every {{MOVE_DAYS}} days. Every key is checked by our server and locks to its account, so a shared key won't run anywhere else. That's what pays for the updates and the support.</p></div></details>
     <details><summary>Does it work on a Mac or on MetaTrader 4?</summary><div class="a"><p>It's built for MetaTrader 5 on Windows. It doesn't run on MT4. On a Mac, use a Windows VPS.</p></div></details>
     <details><summary>What happens when a monthly plan ends?</summary><div class="a"><p>You get three extra days. After that the EA stops placing new orders and removes its pending orders. A trade that's already open keeps trailing until its stop closes it. Pay again and it starts working on its own.</p></div></details>
     <details><summary>Does the EA see my password or move my money?</summary><div class="a"><p>No. It runs inside your own MT5 and never sees your password. It sends your account number, status and closed trades to your private dashboard, and you can switch that off in the inputs. We never hold or manage client funds.</p></div></details>

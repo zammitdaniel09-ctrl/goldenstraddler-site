@@ -76,8 +76,10 @@
       <div class="ln off" id="sOffRow" hidden><span id="sOffLab">Discount</span><b id="sOff"></b></div>
       <div class="tot"><span>Today</span><b id="sTotal">{{PRICE_LIFETIME}}</b></div>
       <p class="then" id="sThen"></p>
+      <p class="fine sum-vat" id="sVat" hidden></p>
       <button class="btn pri" type="submit" id="payBtn">Continue to payment</button>
       <p class="err" id="coErr" aria-live="polite"></p>
+      <ul class="paymarks" id="payMarks" aria-label="Ways to pay"></ul>
       <div class="sum-guar"><svg aria-hidden="true"><use href="#i-shield"/></svg><span><b>{{REFUND_DAYS}}-day money-back guarantee</b> Not for you? Ask from your account page within {{REFUND_DAYS}} days of your first payment. No reason needed.</span></div>
       <div class="safe">
         <span id="safeProc">Card and wallet payments are handled by Stripe. We never see your card details.</span>

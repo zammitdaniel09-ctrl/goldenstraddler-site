@@ -114,6 +114,15 @@ VIEWS.overview = async () => {
       });
       return s;
     })()));
+  if (d.funnel) {
+    const f = d.funnel, pc = (a, b) => (b ? Math.round((a / b) * 100) + "%" : "–");
+    const fg = el("div", "grid g4");
+    fg.append(stat("Checkouts started", String(f.checkouts), `${f.paid} paid (${pc(f.paid, f.checkouts)})`),
+      stat("Demo trials", String(f.trials), `${f.trialsBought} bought afterwards (${pc(f.trialsBought, f.trials)})`),
+      stat("Refunds", String(f.refunds), `${pc(f.refunds, f.paid)} of paid orders`),
+      stat("Chats started", String(f.chats), `${f.subscribers} on the weekly email`));
+    out.push(card(el("h2", "", "Last 30 days, from first look to purchase"), fg));
+  }
   out.push(g2, card(el("h2", "", "Latest orders"), ordersTable(d.recent)));
   view.replaceChildren(...out);
 };
@@ -553,8 +562,13 @@ VIEWS.settings = async () => {
     inp("refund_days", "Money-back period (days)", { type: "number" }), inp("move_days", "Customers can move a licence every (days)", { type: "number" }),
     inp("trial_days", "Free demo trial length in days (0 = no trial; runs on demo accounts only)", { type: "number" }),
     inp("record_verify_url", "Verified record link, e.g. your public Myfxbook page (blank = none)", { full: 1, ph: "https://www.myfxbook.com/members/..." }),
-    inp("promo_code", "Code shown in the bar at the top of the home page (blank = no bar). Give it an end date under Codes and the bar counts down to it", { full: 1 }),
-    inp("announcement", "Banner on the sales page (blank = none)", { full: 1 }), inp("ea_version", "Current EA version"), inp("site_url", "Site address")));
+    inp("promo_code", "Code shown in the bar at the top of the home page (blank = no bar). Give it an end date under Codes and the bar shows that date", { full: 1 }),
+    inp("announcement", "Banner on the sales page (blank = none)", { full: 1 }), inp("ea_version", "Current EA version"), inp("site_url", "Site address"),
+    inp("vat_note", "Tax line shown under the prices and at checkout, e.g. \"Prices include VAT where it applies\" (blank = none; agree it with your accountant)", { full: 1 }),
+    inp("guide_updated", "Date the setup guide was last updated (shown on the account page)", { ph: "2026-10-03" })));
+  out.push(form("Reviews and the weekly email", "The review email goes once, about 30 days after a first payment that wasn't refunded, to the review page you enter here. The weekly email needs email sending (Resend): visitors sign up on the home page, confirm by email, and get the coming week's red-folder US releases every Sunday at 17:00 UTC. Switching either on adds its entry to the privacy policy.",
+    inp("review_url", "Review page link, e.g. your Trustpilot page (blank = no review emails)", { full: 1, ph: "https://www.trustpilot.com/review/goldenstraddler.com" }),
+    inp("digest_public", "Offer the free weekly email on the home page", { select: yn })));
   out.push(form("Who's behind it", "A short block on the home page with your name, a line about you and a photo. Buyers of trading software look for a real person behind it. It appears once a name and some text are filled in.",
     inp("about_name", "Your name as shown"), inp("about_role", "Role, e.g. Founder and developer"),
     inp("about_text", "A few sentences: your trading background, why you built it, how you run it. A blank line starts a new paragraph.", { full: 1, area: 1 })));
