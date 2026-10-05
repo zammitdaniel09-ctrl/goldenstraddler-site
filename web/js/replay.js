@@ -1,5 +1,5 @@
-// "Watch it trade a release": phone-screen replays. Our real 2 October recording, the same prices traded
-// with today's rules, and simulated releases traded by the same rules (window.GS_REPLAYS, replay-data.js).
+// "Watch it trade": a reel of phone-screen replays. Our own screen recordings rebuilt as they happened, the 2 October
+// prices traded with today's rules, and simulated releases traded by the same rules (window.GS_REPLAYS, replay-data.js).
 (() => {
 "use strict";
 const root = document.getElementById("rp");
@@ -7,26 +7,24 @@ const DATA = window.GS_REPLAYS;
 if (!root || !DATA || !DATA.list || !DATA.list.length) return;
 const $ = (s, el = root) => el.querySelector(s);
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-const SLOTS = 24, MARGIN = 3;
+const SLOTS = 24, MARGIN = 3, NEXT_MS = 4500;
 const LIST = DATA.list;
-let CP = DATA.candle, USD = DATA.usdPerPoint, T0 = 14 * 3600 + 29 * 60, LOTS = "0.1";   // set per scenario in setupScenario()
+let CP = DATA.candle, USD = DATA.usdPerPoint, T0 = 14 * 3600 + 29 * 60, LOTS = "0.1";   // set per replay in setupScenario()
 
 // ---------------------------------------------------------------- helpers
 const clock = (ms, sec = true) => { const s = T0 + ms / 1000, h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = Math.floor(s) % 60;
   return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0") + (sec ? ":" + String(x).padStart(2, "0") : ""); };
 const px = (c) => (c / 100).toFixed(2);
 const money = (v, ascii) => (v < 0 ? (ascii ? "-" : "−") : "+") + (ascii ? "" : "$") + Math.abs(v).toFixed(2);
-const whole = (v) => (v < 0 ? "−" : "+") + "$" + Math.round(Math.abs(v)).toLocaleString("en-US");
 const glue = (x) => x.replace(/([−+])\$/g, "$1⁠$$");   // keep the sign with the amount when a line wraps
 const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const KIND = {
-  recorded: { badge: "Screen recording, 2 Oct", tag: "Screen recording", cls: "k-rec" },
-  simreal: { badge: "Real prices, today's settings, simulated trades", tag: "Simulated on real prices", cls: "k-simreal" },
-  simrec: { badge: "Real prices from our screen recording, today's rules, simulated trades", tag: "Simulated on real prices", cls: "k-simreal" },
-  sim: { badge: "Simulated release", tag: "Simulated release", cls: "k-sim" },
+  recorded: { tag: "Screen recording", cls: "k-rec" },
+  simreal: { tag: "Real prices, simulated trades", cls: "k-simreal" },
+  sim: { tag: "Simulated release", cls: "k-sim" },
 };
 
-// decoded scenario (built when it's first shown)
+// decoded replay (built when it's first shown)
 const cache = new Map();
 function scenario(i) {
   if (cache.has(i)) return cache.get(i);
@@ -45,52 +43,40 @@ const slOf = (tr, t) => { let v = tr.sl[0][1]; for (const [a, p] of tr.sl) if (a
 
 // ---------------------------------------------------------------- dom
 const ui = {
-  phone: $(".rp-phone"), chart: $(".ph-chart"), cv: $(".ph-chart canvas"), time: $(".ph-time"), rec: $(".ph-rec"), tag: $(".ph-tag"), cap: $(".rp-cap"), capT: $(".rp-cap span"),
+  phone: $(".rp-phone"), chart: $(".ph-chart"), cv: $(".ph-chart canvas"), time: $(".ph-time"), rec: $(".ph-rec"), tag: $(".ph-tag"), ttl: $(".ph-ttl"), sub: $(".ph-sub"),
+  ff: $(".ph-ff"), ffT: $(".ph-ff b"), cap: $(".rp-cap"), capT: $(".rp-cap span"), seg: $(".ph-seg"),
   note: $(".ph-note"), noteT: $(".ph-note b"), noteD: $(".ph-note span"),
-  sell: $(".q.sell"), buy: $(".q.buy"), sellP: $(".q.sell .num"), buyP: $(".q.buy .num"),
-  end: $(".rp-end"), endH: $(".rp-end .e-h"), endNet: $(".rp-end .e-net"), endN: $(".rp-end .e-n"), again: $(".rp-again"), next: $(".rp-next"),
-  play: $(".rp-play"), restart: $(".rp-restart"), bar: $(".rp-bar"), fill: $(".rp-bar .fl"), head: $(".rp-bar .hd"), marks: $(".rp-bar .mk"),
-  clk: $(".rp-clk"), speeds: [...root.querySelectorAll(".rp-speed button")], picks: $(".rp-picks"),
-  title: $(".rp-title"), badge: $(".rp-badge"), desc: $(".rp-desc"), fine: $(".rp-fine"),
-  closed: $('[data-l="closed"]'), open: $('[data-l="open"]'), count: $('[data-l="n"]'), notes: $(".rp-notes"),
+  sell: $(".q.sell"), buy: $(".q.buy"), sellP: $(".q.sell .num"), buyP: $(".q.buy .num"), lot: $(".ph-quote .lot .num"),
+  end: $(".rp-end"), endH: $(".rp-end .e-h"), endLab: $(".rp-end .e-lab"), endNet: $(".rp-end .e-net"), endN: $(".rp-end .e-n"), again: $(".rp-again"), next: $(".rp-next"), nextT: $(".rp-next span"),
+  play: $(".rp-play"), prev: $(".rv-prev"), fwd: $(".rv-next"), now: $("#rvNow"),
+  title: $(".rp-title"), desc: $(".rp-desc"), fine: $(".rp-fine"), notes: $(".rp-notes"),
 };
 const cx = ui.cv.getContext("2d");
 
-// scenario picker
-const IDX = LIST.map((d, i) => [d, i]);
-ui.picks.innerHTML = [["2 Oct payrolls", IDX.filter(([d]) => d.kind === "recorded" || d.kind === "simreal")], ["Our other recordings", IDX.filter(([d]) => d.kind === "simrec")], ["Simulated releases", IDX.filter(([d]) => d.kind === "sim")]]
-  .filter(([, items]) => items.length)
-  .map(([h, items]) => `<div class="rp-grp" role="group" aria-label="${h}"><span class="rp-gh">${h}</span>${items.map(([d, i]) => {
-    const net = Math.round(d.trades.reduce((s, tr) => s + tr.pl, 0));
-    return `<button type="button" data-i="${i}" aria-pressed="${i === 0}">${esc(d.chip)} <span class="${net >= 0 ? "up" : "dn"}">${whole(net)}</span></button>`; }).join("")}</div>`).join("");
-const pickBtns = [...ui.picks.querySelectorAll("button")];
+// one segment per replay at the top of the phone, like stories
+ui.seg.innerHTML = LIST.map((d, i) => `<button type="button" data-i="${i}" aria-label="Replay ${i + 1} of ${LIST.length}: ${esc(d.chip)}"><i><b></b></i></button>`).join("");
+const segs = [...ui.seg.querySelectorAll("button")], segFill = segs.map((b) => b.querySelector("b"));
 
-let noteEls = [];
 function setupScenario(i) {
   cur = i; S = scenario(i);
-  const D = S.D, k = KIND[D.kind];
+  const D = S.D, k = KIND[D.kind] || KIND.sim;
   CP = D.candle || DATA.candle; USD = D.usd || DATA.usdPerPoint; T0 = D.t0 != null ? D.t0 : 14 * 3600 + 29 * 60; LOTS = String(D.lots || DATA.lots);
   root.querySelectorAll(".ph-tf").forEach((el) => { el.textContent = CP / 1000 + "s"; });
-  speed = D.speed || 1; ui.speeds.forEach((x) => x.setAttribute("aria-pressed", String(Number(x.dataset.v) === speed)));
-  pickBtns.forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.i) === i)));
-  ui.title.textContent = D.title; ui.badge.textContent = k.badge; ui.badge.className = "rp-badge " + k.cls; ui.desc.textContent = D.desc; ui.fine.textContent = D.fine;
+  ui.lot.textContent = Number(LOTS).toFixed(2);
   ui.tag.textContent = k.tag; ui.tag.className = "ph-tag " + k.cls; ui.rec.hidden = D.kind !== "recorded";
-  ui.notes.innerHTML = S.notes.map(([t, x], n) => `<li data-i="${n}"><button type="button" class="num" data-t="${t}" aria-label="Jump to ${clock(t)}">${clock(t)}</button><span>${x}</span></li>`).join("");
-  noteEls = [...ui.notes.children];
-  const span = D.end - D.start, at = (t) => Math.max(0, Math.min(100, ((t - D.start) / span) * 100));
-  let h = D.release != null ? `<i class="rel" style="left:${at(D.release)}%" title="${clock(D.release)} release"></i>` : "";
-  for (const tr of D.trades) h += `<i class="${tr.pl >= 0 ? "w" : "l"}" style="left:${at(tr.out)}%"></i>`;
-  ui.marks.innerHTML = h;
-  const ref = D.release != null ? D.release : D.start;
-  ui.bar.setAttribute("aria-label", D.release != null ? "Replay position, seconds from the release" : "Replay position, seconds from the start");
-  ui.bar.setAttribute("aria-valuemin", String(Math.round((D.start - ref) / 1000)));
-  ui.bar.setAttribute("aria-valuemax", String(Math.round((D.end - ref) / 1000)));
+  ui.ttl.textContent = D.title; ui.sub.textContent = D.sub || "";
+  segs.forEach((b, n) => { if (n === i) b.setAttribute("aria-current", "true"); else b.removeAttribute("aria-current"); segFill[n].style.width = n < i ? "100%" : "0%"; });
+  // the written version, under "How these replays are made"
+  ui.title.textContent = D.kind === "sim" ? D.title : `${D.title} (${k.tag.toLowerCase()})`; ui.desc.textContent = D.desc; ui.fine.textContent = D.fine;
+  ui.notes.innerHTML = S.notes.map(([t, x]) => `<li><span class="tm">${clock(t)}</span>${x}</li>`).join("");
+  ui.now.textContent = `Replay ${i + 1} of ${LIST.length}: ${D.title}. ${k.tag}.`;
   const nx = LIST[(i + 1) % LIST.length];
-  ui.endH.textContent = D.endText || (D.kind === "recorded" ? "Window closed at 14:31:00" : "Window closed at 14:30:30");
+  ui.endH.textContent = D.endText || "Window closed at 14:30:30";
+  ui.endLab.textContent = `Result on ${LOTS} lots` + (D.kind === "recorded" ? ", as recorded" : D.kind === "sim" ? ", simulated" : ", simulated on real prices");
   ui.endNet.textContent = money(S.net); ui.endNet.className = "e-net num " + (S.net >= 0 ? "up" : "dn");
-  ui.endN.textContent = `${D.trades.length} trades on ${LOTS} lots, ${S.won} won and ${D.trades.length - S.won} lost.` + (D.kind === "recorded" ? " The smaller trades are read off the chart and may be a few dollars out." : D.kind === "sim" ? " A simulated release." : " Simulated trades on the real prices.");
-  ui.next.textContent = "Next: " + nx.chip;
-  tNow = D.start; noteI = -2; lastShown = -1; snap = true; hideNote(true);
+  ui.endN.textContent = `${D.trades.length} trades, ${S.won} won and ${D.trades.length - S.won} lost.`;
+  ui.nextT.textContent = "Next: " + nx.title;
+  tNow = D.start; noteI = -2; lastShown = -1; snap = true; capAt = 0; rate = D.speed || 1; hideNote(true); stopGo();
 }
 
 // ---------------------------------------------------------------- canvas
@@ -102,7 +88,7 @@ function size() {
   dpr = Math.min(2.5, window.devicePixelRatio || 1); W = Math.max(200, r.width); H = Math.max(200, r.height);
   ui.cv.width = Math.round(W * dpr); ui.cv.height = Math.round(H * dpr); ui.cv.style.width = W + "px"; ui.cv.style.height = H + "px";
 }
-const AX = 60, TOP = 40, BOT = 22, CAPZ = 66;   // CAPZ: room under the chart for the commentary, so it never covers candles
+const AX = 60, TOP = 92, BOT = 22, CAPZ = 74;   // TOP: room for the title; CAPZ: room under the chart for the captions, so they never cover candles
 let lo = 0, hi = 0, snap = true, tNow = 0;
 function niceStep(range) { const raw = range / 6, p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p; return (f < 1.5 ? 1 : f < 2.25 ? 2 : f < 3.5 ? 2.5 : f < 7.5 ? 5 : 10) * p; }
 
@@ -157,7 +143,7 @@ function draw(dt) {
   if (D.release != null) { const x = Math.round(X(D.release)) + 0.5;
     if (x > pl && x < pr) { cx.save(); cx.strokeStyle = C.rel; cx.globalAlpha = 0.55; cx.setLineDash([3, 4]); cx.beginPath(); cx.moveTo(x, pt - 6); cx.lineTo(x, pb); cx.stroke(); cx.restore();
       // the event flag sits at the foot of the line, like the app's calendar marks, and stays inside the chart
-      const lab = D.relLabel || (D.kind === "sim" ? "News 14:30" : "NFP 14:30"); cx.font = `600 10px ${FONT}`; const w = cx.measureText(lab).width + 10, bx = x + 4 + w > pr ? x - 4 - w : x + 4;
+      const lab = D.relLabel || "News 14:30"; cx.font = `600 10px ${FONT}`; const w = cx.measureText(lab).width + 10, bx = x + 4 + w > pr ? x - 4 - w : x + 4;
       cx.fillStyle = "rgba(0,0,0,.75)"; cx.fillRect(bx, pb - 19, w, 15); cx.fillStyle = C.rel; cx.textAlign = "left"; cx.textBaseline = "middle"; cx.fillText(lab, bx + 5, pb - 11.5); } }
   // candles
   const bw = Math.max(1, Math.min(16, slotW * 0.64));
@@ -225,8 +211,8 @@ function draw(dt) {
   return { i, bid, ask, openT, doneT };
 }
 
-// ---------------------------------------------------------------- phone chrome, notifications and the side panel
-let dir = "up", noteI = -2, lastPanel = 0, lastShown = -1, noteTimer = 0;
+// ---------------------------------------------------------------- phone chrome: quotes, notifications, captions, progress
+let dir = "up", noteI = -2, lastShown = -1, noteTimer = 0, capAt = 0;
 function hideNote(now) { clearTimeout(noteTimer); ui.note.classList.remove("on"); if (now) ui.note.hidden = true; }
 let noteShown = null;
 function notify(tr) {
@@ -240,111 +226,98 @@ function notify(tr) {
   ui.note.hidden = false; void ui.note.offsetWidth; ui.note.classList.add("on");
   clearTimeout(noteTimer); noteTimer = setTimeout(() => ui.note.classList.remove("on"), 2600);
 }
-function chrome(st, force) {
-  const { i, bid, ask, openT, doneT } = st, D = S.D;
+function chrome(st) {
+  const { i, bid, ask, doneT } = st, D = S.D;
   ui.time.textContent = clock(tNow, false);
   if (i > 0) { let j = i; while (j > 0 && S.B[j - 1] === S.B[j]) j--; dir = j > 0 && S.B[j] < S.B[j - 1] ? "dn" : "up"; }
   const split = (c) => { const s = px(c); return `${s.slice(0, -2)}<b>${s.slice(-2)}</b>`; };
   ui.sellP.innerHTML = split(bid); ui.buyP.innerHTML = split(ask);
   ui.sell.dataset.d = dir; ui.buy.dataset.d = dir;
-  // a trade that closed since the last frame gets a notification (only while playing, not while scrubbing)
+  // a trade that closed since the last frame gets a notification (only while playing)
   if (playing && doneT.length > lastShown && lastShown >= 0) notify(doneT[doneT.length - 1]);
   lastShown = doneT.length;
-  // caption: the newest note, shown for a few seconds
+  // caption: the newest note, on screen for a few seconds of real time however fast the replay runs
   const notes = S.notes;
   let ni = -1; for (let k = 0; k < notes.length; k++) if (notes[k][0] <= tNow) ni = k;
-  const showCap = ni >= 0 && tNow - notes[ni][0] < Math.max(3800, notes[ni + 1] ? Math.min(notes[ni + 1][0] - notes[ni][0], 6000) : 6000) && tNow < D.end;
-  if (ni !== noteI) {
-    noteI = ni;
-    if (ni >= 0) ui.capT.textContent = notes[ni][1];
-    noteEls.forEach((el, k) => { el.classList.toggle("now", k === ni); el.classList.toggle("past", k < ni); });
-    const el = noteEls[ni], box = ui.notes;
-    if (el) { const want = el.offsetTop - box.offsetTop - box.clientHeight / 2 + el.clientHeight / 2; box.scrollTo({ top: Math.max(0, want), behavior: reduce || force ? "auto" : "smooth" }); }
-    else box.scrollTo({ top: 0 });
-  }
+  if (ni !== noteI) { noteI = ni; capAt = performance.now(); if (ni >= 0) ui.capT.textContent = notes[ni][1]; }
+  const showCap = ni >= 0 && tNow < D.end && (playing ? performance.now() - capAt < 4200 : tNow - notes[ni][0] < 6000);
   ui.cap.classList.toggle("on", showCap);
-  const now = performance.now();
-  if (force || now - lastPanel > 100) {
-    lastPanel = now;
-    const closed = doneT.reduce((s, tr) => s + tr.pl, 0), open = openT.reduce((s, tr) => s + plOf(tr, bid, ask), 0), w = doneT.filter((tr) => tr.pl > 0).length;
-    ui.closed.textContent = doneT.length ? money(closed) : "$0.00"; ui.closed.className = "num " + (doneT.length ? (closed >= 0 ? "up" : "dn") : "");
-    ui.open.textContent = openT.length ? money(open) : "No trade"; ui.open.className = "num " + (openT.length ? (open >= 0 ? "up" : "dn") : "mu");
-    ui.count.textContent = doneT.length ? `${doneT.length} (${w} won)` : "0";
-  }
-  const f = ((tNow - D.start) / (D.end - D.start)) * 100;
-  ui.fill.style.width = f + "%"; ui.head.style.left = f + "%";
-  const ref = D.release != null ? D.release : D.start;
-  ui.bar.setAttribute("aria-valuenow", String(Math.round((tNow - ref) / 1000)));
-  ui.bar.setAttribute("aria-valuetext", clock(tNow) + (D.release != null && tNow < D.release ? `, ${Math.ceil((D.release - tNow) / 1000)} seconds before the release` : ""));
-  ui.clk.textContent = clock(tNow);
-  ui.end.hidden = tNow < D.end;
+  segFill[cur].style.width = Math.max(0, Math.min(100, ((tNow - D.start) / (D.end - D.start)) * 100)) + "%";
+  const fast = playing && rate > (D.speed || 1) * 1.15;
+  ui.ff.hidden = !fast && !(playing && (D.speed || 1) !== 1);
+  if (!ui.ff.hidden) ui.ffT.textContent = (Math.round(rate * 2) / 2) + "×";
+  const ended = tNow >= D.end;
+  if (ended !== !ui.end.hidden) ui.end.hidden = !ended;
 }
 
 // ---------------------------------------------------------------- playback
-let playing = false, speed = 1, raf = 0, lastFrame = 0, autoStarted = false, autoPaused = false, userDriven = false, advTimer = 0;
-function render(dt, force) { chrome(draw(dt), force); }
+let playing = false, raf = 0, lastFrame = 0, autoStarted = false, autoPaused = false, held = false, goTimer = 0, rate = 1, visible = false;
+const inSlow = (t) => { const z = S.D.slow; if (!z) return true; for (const [a, b] of z) { if (t < a) return false; if (t <= b) return true; } return false; };
+function render(dt) { chrome(draw(dt)); }
+function stopGo() { clearTimeout(goTimer); ui.next.classList.remove("go"); }
 function setPlaying(on) {
-  clearTimeout(advTimer);
+  stopGo();
   if (on && tNow >= S.D.end) { tNow = S.D.start; snap = true; noteI = -2; lastShown = -1; }
   playing = on; ui.play.dataset.s = on ? "play" : "pause"; ui.play.setAttribute("aria-label", on ? "Pause" : "Play");
   cancelAnimationFrame(raf);
   if (on) { lastFrame = performance.now(); if (lastShown < 0) lastShown = S.D.trades.filter((tr) => tr.out <= tNow).length; raf = requestAnimationFrame(loop); }
-  render(16, true);
+  render(16);
 }
 function loop(now) {
   if (!playing) return;
   const dt = Math.min(80, now - lastFrame); lastFrame = now;
-  tNow += dt * speed;
+  // quiet stretches play faster, and the speed eases in and out
+  const base = S.D.speed || 1, want = inSlow(tNow) ? base : (S.D.ff || base);
+  rate += (want - rate) * (1 - Math.exp(-dt / (want > rate ? 380 : 160)));
+  tNow += dt * rate;
   if (tNow >= S.D.end) {
-    tNow = S.D.end; playing = false; ui.play.dataset.s = "pause"; ui.play.setAttribute("aria-label", "Play again"); render(dt, true);
-    if (!userDriven) advTimer = setTimeout(() => { if (visible && !playing) { show((cur + 1) % LIST.length); setPlaying(true); } }, 7000);   // passive viewers get the next one
+    tNow = S.D.end; playing = false; ui.play.dataset.s = "pause"; ui.play.setAttribute("aria-label", "Play again"); render(dt);
+    // the next replay starts by itself, story-style, unless someone paused or is reading
+    if (!held && visible) { ui.next.style.setProperty("--go", NEXT_MS / 1000 + "s"); void ui.next.offsetWidth; ui.next.classList.add("go");
+      goTimer = setTimeout(() => { if (visible && !playing && !held) go(cur + 1); }, NEXT_MS); }
     return;
   }
   render(dt);
   raf = requestAnimationFrame(loop);
 }
-function seek(t, keepSnap) { tNow = Math.max(S.D.start, Math.min(S.D.end, t)); if (!keepSnap) snap = true; noteI = -2; lastShown = -1; hideNote(); render(16, true); }
-function show(i) { setupScenario(i); render(16, true); }
-const takeOver = () => { autoStarted = true; userDriven = true; clearTimeout(advTimer); };
+function seek(t) { tNow = Math.max(S.D.start, Math.min(S.D.end, t)); snap = true; noteI = -2; lastShown = -1; hideNote(); render(16); }
+function go(i) { setupScenario(((i % LIST.length) + LIST.length) % LIST.length); render(16); setPlaying(true); }
 
-ui.play.addEventListener("click", () => { takeOver(); autoPaused = false; setPlaying(!playing); });
-ui.restart.addEventListener("click", () => { takeOver(); seek(S.D.start); setPlaying(true); });
-ui.again.addEventListener("click", () => { takeOver(); seek(S.D.start); setPlaying(true); });
-ui.next.addEventListener("click", () => { takeOver(); show((cur + 1) % LIST.length); setPlaying(true); });
-ui.picks.addEventListener("click", (e) => { const b = e.target.closest("button[data-i]"); if (!b) return; takeOver(); show(Number(b.dataset.i)); setPlaying(true); });
-ui.speeds.forEach((b) => b.addEventListener("click", () => { speed = Number(b.dataset.v); ui.speeds.forEach((x) => x.setAttribute("aria-pressed", String(x === b))); }));
-ui.notes.addEventListener("click", (e) => { const b = e.target.closest("button[data-t]"); if (!b) return; takeOver(); seek(Number(b.dataset.t) - 1500); setPlaying(true); });
+ui.play.addEventListener("click", () => { autoStarted = true; autoPaused = false; held = playing; setPlaying(!playing); });
+ui.prev.addEventListener("click", () => { autoStarted = true; held = false; go(tNow - S.D.start > 3000 && !(tNow >= S.D.end) ? cur : cur - 1); });
+ui.fwd.addEventListener("click", () => { autoStarted = true; held = false; go(cur + 1); });
+ui.again.addEventListener("click", (e) => { e.stopPropagation(); held = false; seek(S.D.start); setPlaying(true); });
+ui.next.addEventListener("click", (e) => { e.stopPropagation(); held = false; go(cur + 1); });
+ui.seg.addEventListener("click", (e) => { const b = e.target.closest("button[data-i]"); if (!b) return; autoStarted = true; held = false; go(Number(b.dataset.i)); });
+ui.end.addEventListener("pointerup", (e) => e.stopPropagation());
+// tap the left or right of the screen to go back or forward, the middle to pause; swipe sideways on a phone
 {
-  const tAt = (e) => { const r = ui.bar.getBoundingClientRect(); return S.D.start + Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * (S.D.end - S.D.start); };
-  let drag = false, was = false;
-  ui.bar.addEventListener("pointerdown", (e) => { drag = true; was = playing; takeOver(); playing = false; cancelAnimationFrame(raf); ui.bar.setPointerCapture(e.pointerId); seek(tAt(e)); });
-  ui.bar.addEventListener("pointermove", (e) => { if (drag) seek(tAt(e), true); });
-  const up = () => { if (!drag) return; drag = false; if (was) setPlaying(true); else render(16, true); };
-  ui.bar.addEventListener("pointerup", up); ui.bar.addEventListener("pointercancel", up);
-  ui.bar.addEventListener("keydown", (e) => {
-    const k = e.key, big = e.shiftKey || k === "PageUp" || k === "PageDown" ? 5000 : 1000;
-    let t = null;
-    if (k === "ArrowRight" || k === "ArrowUp" || k === "PageUp") t = tNow + big;
-    else if (k === "ArrowLeft" || k === "ArrowDown" || k === "PageDown") t = tNow - big;
-    else if (k === "Home") t = S.D.start; else if (k === "End") t = S.D.end;
-    if (t === null) return;
-    e.preventDefault(); takeOver(); seek(t);
+  let x0 = null, y0 = 0, t0 = 0;
+  ui.chart.addEventListener("pointerdown", (e) => { if (e.target.closest(".rp-end")) return; x0 = e.clientX; y0 = e.clientY; t0 = performance.now(); });
+  ui.chart.addEventListener("pointercancel", () => { x0 = null; });
+  ui.chart.addEventListener("pointerup", (e) => {
+    if (x0 === null) return;
+    const dx = e.clientX - x0, dy = e.clientY - y0, r = ui.chart.getBoundingClientRect(); x0 = null;
+    autoStarted = true;
+    if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.4) { held = false; go(dx < 0 ? cur + 1 : cur - 1); return; }
+    if (Math.abs(dx) > 10 || Math.abs(dy) > 10 || performance.now() - t0 > 600) return;
+    const f = (e.clientX - r.left) / r.width;
+    if (f < 0.28) { held = false; go(cur - 1); } else if (f > 0.72) { held = false; go(cur + 1); } else { held = playing; setPlaying(!playing); }
   });
 }
 
-let visible = false;
-new ResizeObserver(() => { size(); snap = true; render(16, true); }).observe(ui.chart);
+new ResizeObserver(() => { size(); snap = true; render(16); }).observe(ui.chart);
 setupScenario(0); size();
-if (reduce) tNow = S.D.end;     // no autoplay: show the finished session, ready to play
-render(16, true);
+if (reduce) tNow = S.D.end;     // no autoplay: show the finished replay, ready to play
+render(16);
 new IntersectionObserver((es) => {
   for (const e of es) {
     visible = e.isIntersecting;
     if (visible && !autoStarted && !reduce) { autoStarted = true; setPlaying(true); }
-    else if (visible && autoPaused) { autoPaused = false; if (tNow < S.D.end) setPlaying(true); }   // never restart a finished replay on scroll
-    else if (!visible && playing) { autoPaused = true; setPlaying(false); }
+    else if (visible && autoPaused) { autoPaused = false; if (tNow < S.D.end) setPlaying(true); else go(cur + 1); }
+    else if (!visible && (playing || ui.next.classList.contains("go"))) { autoPaused = true; setPlaying(false); }
   }
 }, { threshold: 0.45 }).observe(ui.phone);
 document.addEventListener("visibilitychange", () => { if (document.hidden && playing) { autoPaused = true; setPlaying(false); } });
-root.seekTo = (ms, i) => { autoStarted = true; userDriven = true; if (playing) setPlaying(false); if (i !== undefined && i !== cur) setupScenario(i); seek(ms); };   // used by the page checks
+root.seekTo = (ms, i) => { autoStarted = true; held = true; if (playing) setPlaying(false); stopGo(); if (i !== undefined && i !== cur) setupScenario(i); seek(ms); };   // used by the page checks
 })();
