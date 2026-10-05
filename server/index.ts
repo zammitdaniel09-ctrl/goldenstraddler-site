@@ -632,7 +632,7 @@ async function handle(req: Request): Promise<Response> {
     if (p === "/") {
       const td = getN("trial_days");
       if (td > 0) o = o.replace(/(<p id="faqTrial">)[\s\S]*?(<\/p>)/, (_, a, b) => `${a}Yes: ${td} days on a demo account, free and without a card. Ask for a key in the pricing section and it arrives by email. The trial doesn't run on live accounts. When you buy, there's also a ${getN("refund_days")}-day money-back guarantee on the first payment.${b}`);
-      o = o.replace("<!--ABOUT-->", () => aboutHtml());
+      o = o.replace("<!--ABOUT-->", () => aboutHtml()).replace("<!--GSV-->", () => getS("google_verify") ? `<meta name="google-site-verification" content="${esc(getS("google_verify"))}">` : "");
       // the lifetime plan's tag, worked out from the prices so it's right before the page script runs
       const nMo = listPrice("monthly") > 0 ? Math.ceil(listPrice("lifetime") / listPrice("monthly")) : 0, WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
       o = o.replace(/(<span class="tag" id="pTag">)[^<]*(<\/span>)/, (_, a, b) => a + (nMo > 1 && nMo <= 12 ? `Costs less than ${WORDS[nMo]} months of monthly` : "Pay once") + b);
@@ -896,13 +896,14 @@ async function adminRoute(req: Request, url: URL, p: string, a: Admin): Promise<
       "seller_name", "seller_address", "seller_vat", "seller_reg", "record_public", "record_min_trades", "stripe_tax", "methods_card", "methods_crypto", "methods_bank",
       "refund_days", "move_days", "trial_days", "announcement", "about_name", "about_role", "about_text", "site_url", "ea_version", "promo_code", "record_verify_url",
       "chat_enabled", "chat_ai", "chat_model", "chat_daily_cap", "chat_greeting", "hub_public",
-      "journal_public", "journal_ai_credits", "journal_ai_model", "price_journal", "price_journal_year", "vat_note", "review_url", "guide_updated", "digest_public"];
+      "journal_public", "journal_ai_credits", "journal_ai_model", "price_journal", "price_journal_year", "vat_note", "review_url", "guide_updated", "digest_public", "google_verify"];
     if (post) {
       if (!owner) return bad("Only the owner can change settings.", 403);
       for (const k of editable) if (b[k] !== undefined) {
         let v = k === "about_text" ? String(b[k] ?? "").replace(/\r/g, "").slice(0, 1200).trim() : str(b[k], 600);
         if (k.startsWith("price_")) { const n = Math.round(Number(v) * 100); if (!(n >= 100)) return bad("Prices must be at least €1."); v = String(n); }
         if (k === "promo_code") v = v.toUpperCase().replace(/\s+/g, "");
+        if (k === "google_verify") v = ((/content="([^"]*)"/.exec(v) || [, v])[1] || "").trim().replace(/[^\w-]/g, "").slice(0, 100);   // the whole meta tag can be pasted
         setS(k, v);
       }
       audit(who, "settings changed", "", Object.keys(b).filter((k) => editable.includes(k)).join(", "));
