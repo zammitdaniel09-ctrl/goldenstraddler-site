@@ -9,7 +9,7 @@
 .side nav a em{font-style:normal;font:600 11px var(--mono);padding:2px 7px;border-radius:9px;background:var(--ice);color:var(--on-ice)}
 .side .who{margin-top:auto;padding:12px 8px 0;border-top:1px solid var(--edge);font-size:13px;color:var(--muted)}
 .side .who b{display:block;color:var(--white);font-weight:600;font-size:14px}
-.main{padding:28px 32px 64px;min-width:0}
+.main{padding:28px 32px 64px;min-width:0;width:100%;max-width:1680px;margin-inline:auto}
 .top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:22px}
 .top h1{font:800 26px var(--disp);letter-spacing:-.02em}
 .top .acts{display:flex;gap:8px;flex-wrap:wrap}

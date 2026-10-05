@@ -59,7 +59,7 @@ export function fulfil(orderId: string, opts: { periodEnd?: number; paymentRef?:
   db.transaction(() => {
     const c = customerFor(o.email);
     if (opts.stripeCustomer) run("UPDATE customers SET stripe_customer = ? WHERE id = ?", opts.stripeCustomer, c.id);
-    const t = now(), monthEnd = (from: number) => from + 30 * DAY;
+    const t = now(), monthEnd = (from: number) => from + (o.plan === "journal_year" ? 365 : 30) * DAY;
     if (o.kind === "renew" && o.licence_id) {
       lic = one<Licence>("SELECT * FROM licences WHERE id = ?", o.licence_id);
       if (lic) {
@@ -70,7 +70,7 @@ export function fulfil(orderId: string, opts: { periodEnd?: number; paymentRef?:
       }
     } else {
       const exp = o.plan !== "lifetime" ? (opts.periodEnd || monthEnd(t)) + GRACE_DAYS * DAY : null;
-      lic = issueLicence(c.id, o.plan, o.method, exp, { stripe_sub: opts.stripeSub || "", refundable_until: t + getN("refund_days") * DAY });
+      lic = issueLicence(c.id, o.plan === "journal_year" ? "journal" : o.plan, o.method, exp, { stripe_sub: opts.stripeSub || "", refundable_until: t + getN("refund_days") * DAY });
     }
     run("UPDATE orders SET status = 'paid', paid_at = ?, customer_id = ?, licence_id = ?, payment_ref = CASE WHEN ? != '' THEN ? ELSE payment_ref END WHERE id = ?",
       t, c.id, lic ? lic.id : o.licence_id, opts.paymentRef || "", opts.paymentRef || "", o.id);

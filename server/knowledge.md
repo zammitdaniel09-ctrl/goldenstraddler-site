@@ -45,7 +45,7 @@ Buttons: PAUSE/RESUME; ARM NOW (opens a manual window straight away, 35 seconds 
 - There is no fixed minimum balance. Choose a lot size where a full stop loss plus slippage is an amount you're comfortable losing many times over.
 - Prop firms: many funded-account programmes don't allow trading around news. Check the rules first.
 - Demo first is recommended. The licence locks to the first account it runs on, and the customer can move it to their live account straight away from the account page.
-- There is no free trial. Instead there is the money-back guarantee (the refund window is in the live facts): someone can buy, run it on a demo account, and ask for a full refund from their account page within that window if it isn't for them. When someone is undecided, mention this.
+- Free trial: whether there is one, and for how many days, is in the live facts. When there is, it runs on demo accounts only, starts from the pricing section of the home page with an email address, and the key arrives by email; one per email address. On top of that there's the money-back guarantee (the refund window is in the live facts): someone can buy, try it, and ask for a full refund from their account page within that window if it isn't for them. When someone is undecided, mention both.
 
 ## Brokers we use and partner with
 Any MT5 broker with gold works. On the home page (/#brokers) we list the three brokers we use and partner with. We are an introducing broker (IB) for all three and may earn a commission when someone opens an account through our links; always say so when you recommend one. Facts are from the brokers' own sites (September 2026) and can change.
@@ -81,8 +81,15 @@ At goldenstraddler.com/account the customer signs in with their email and a 6-di
 - Delivery: as soon as payment is confirmed the licence key appears on screen, in the account and by email. At checkout the buyer asks for immediate delivery and so loses the statutory 14-day withdrawal right for digital content; the money-back guarantee applies on top.
 - A discount code is entered at checkout. Links like /checkout?plan=lifetime&code=CODE fill it in automatically.
 
+## GoldenStraddler Journal (goldenstraddler.com/journal)
+- Only talk about the journal when the live facts mention it; if they don't, it isn't open to customers yet.
+- A trading journal that comes with every GoldenStraddler licence (lifetime, monthly and the demo trial). The EA's own trades appear in it by themselves as an account called GoldenStraddler EA: the EA already reports its trades to the customer's dashboard, so there's nothing to install.
+- The customer adds the account they trade by hand next to it: the read-only MT5 connector (a small EA that only reads history), an MT4 or MT5 HTML report, or a CSV from cTrader, prop firms and other platforms. The overview then puts the bot and their own trading side by side (net profit, trades, win rate, profit factor, profit per trade, drawdown and both equity curves). If the EA and the connector are on the same MT5 account, the EA's trades are counted once.
+- It has trade charts with a replay, results in R from the real stop, news matching, analytics, what-if scenarios, Monte Carlo, prop-firm account limits with email alerts, discipline rules, a daily journal, setups with checklists, read-only share pages and an AI coach that answers from the customer's own numbers (monthly AI credits are in the plan).
+- Without the EA it's the Journal plan, monthly or yearly; prices are in the live facts. Open it at /journal/app; sample data at /journal/app?demo=1.
+
 ## Refunds (money-back guarantee)
-- Within the refund period (see live facts, normally 7 days) of the first payment, no reason needed: sign in, Orders, Request refund. We confirm by email, usually within one working day.
+- Within the refund period (see live facts, normally 14 days) of the first payment, no reason needed: sign in, Orders, Request refund. We confirm by email, usually within one working day.
 - Lifetime: full amount. Monthly: the full first payment; later renewals aren't refundable, but can be cancelled any time.
 - The licence is switched off when the refund is processed.
 - Card/wallet refunds go back to the same card in 5 to 10 working days. Crypto refunds are paid in USDT to a wallet the customer gives, worth the euro amount paid less the network fee.

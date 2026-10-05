@@ -15,6 +15,8 @@
 <body class="jr">
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="gs" viewBox="0 0 64 64"><rect x="1" y="1" width="62" height="62" rx="16" fill="#0E1116" stroke="#2e3644" stroke-width="2"/><text x="25" y="44" font-family="Unbounded,Arial Black,sans-serif" font-weight="800" font-size="30" fill="#fff" text-anchor="middle">G</text><text x="42" y="49" font-family="Sedgwick Ave,Segoe Script,cursive" font-size="36" style="fill:var(--ice)" text-anchor="middle">S</text></symbol>
+  <symbol id="j-bolt" viewBox="0 0 24 24"><path d="M13.2 2.5L5 13.4h6l-1.2 8.1 8.2-10.9h-6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+  <symbol id="j-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 12h17M12 3.5c2.4 2.4 3.5 5.2 3.5 8.5s-1.1 6.1-3.5 8.5c-2.4-2.4-3.5-5.2-3.5-8.5s1.1-6.1 3.5-8.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
   <symbol id="j-home" viewBox="0 0 24 24"><path d="M3.5 11.2 12 4.5l8.5 6.7V19a1.5 1.5 0 0 1-1.5 1.5h-4.2v-5.6H9.2v5.6H5A1.5 1.5 0 0 1 3.5 19z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
   <symbol id="j-list" viewBox="0 0 24 24"><path d="M8.5 6.5h12M8.5 12h12M8.5 17.5h12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="4.5" cy="6.5" r="1.2" fill="currentColor"/><circle cx="4.5" cy="12" r="1.2" fill="currentColor"/><circle cx="4.5" cy="17.5" r="1.2" fill="currentColor"/></symbol>
   <symbol id="j-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 10h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
@@ -56,6 +58,10 @@
       <a href="#/coach" data-v="coach"><svg aria-hidden="true"><use href="#j-spark"/></svg>AI coach</a>
       <a href="#/accounts" data-v="accounts"><svg aria-hidden="true"><use href="#j-wallet"/></svg>Accounts and import</a>
       <a href="#/settings" data-v="settings"><svg aria-hidden="true"><use href="#j-cog"/></svg>Settings</a>
+    </nav>
+    <nav class="j-nav j-nav-site" aria-label="GoldenStraddler">
+      <a href="/account" id="eaLink" hidden><svg aria-hidden="true"><use href="#j-bolt"/></svg>Your EA dashboard</a>
+      <a href="/"><svg aria-hidden="true"><use href="#j-globe"/></svg>GoldenStraddler home</a>
     </nav>
     <div class="j-side-f">
       <div class="thm"><button class="thm-btn" id="thmBtn" type="button" aria-expanded="false" aria-controls="thmPop" aria-label="Colours"><i class="thm-sw"></i></button><div class="thm-pop up" id="thmPop" hidden data-thm-host></div></div>

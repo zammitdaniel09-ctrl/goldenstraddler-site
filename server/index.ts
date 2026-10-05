@@ -12,7 +12,7 @@ import { all, audit, backupTo, DB_PATH, now, one, run } from "./db";
 import { DAY, E, SEC_H, SECRET_KEYS, bad, body, emailOk, esc, euros, getN, getS, ipOf, json, limited, newId, setS, siteUrl, str, sha256, cookie, token } from "./util";
 import { adminLogin, adminOf, bootstrapOwner, checkLoginCode, endAllSessions, endSession, newLoginCode, newTotpSecret, otpauthUri, sessionOf, startSession, type Admin } from "./auth";
 import { customerFor, dashState, eaHello, effective, issueLicence, licenceForSync, maskAcc, publicLicence, restore, revoke, storeStatus, storeTrades, type Customer, type Licence, type Order } from "./licence";
-import { billingPortal, connectStripe, createOrder, listPrice, nowpaymentsWebhook, orderById, ordersFor, promo, quote, refundOrder, settleStripeSession, startPayment, stripe, stripeWebhook, type Plan } from "./pay";
+import { billingPortal, connectStripe, createOrder, listPrice, nowpaymentsWebhook, orderById, ordersFor, promo, quote, refundOrder, settleStripeSession, startPayment, stripe, stripeWebhook, yearlyJournal, type Plan } from "./pay";
 import { mailConfigured, mailExpiring, mailLicence, mailLoginCode, mailTrial, mailTrialEnding, notifyAdmins, outbox, sendMail } from "./mail";
 import { fulfil } from "./licence";
 import { chatAdmin, chatEnabled, chatRoute, initChat, testAnthropicKey } from "./chat";
@@ -86,8 +86,8 @@ function legalVars(s: string) {
   const v: Record<string, string> = {
     SELLER_NAME: getS("seller_name") || "[Seller name to be added]", SELLER_ADDRESS: getS("seller_address") || "[Registered address to be added]",
     SELLER_VAT: getS("seller_vat") || "-", SELLER_REG: getS("seller_reg") || "-", SUPPORT_EMAIL: getS("support_email"),
-    REFUND_DAYS: getS("refund_days"), MOVE_DAYS: getS("move_days"), PRICE_LIFETIME: euros(listPrice("lifetime")), PRICE_MONTHLY: euros(listPrice("monthly")), PRICE_JOURNAL: euros(listPrice("journal")), AI_CREDITS: String(getN("journal_ai_credits") || 100),
-    SITE: siteUrl().replace(/^https?:\/\//, ""), SITE_URL: siteUrl(), UPDATED: "1 October 2026",
+    REFUND_DAYS: getS("refund_days"), MOVE_DAYS: getS("move_days"), PRICE_LIFETIME: euros(listPrice("lifetime")), PRICE_MONTHLY: euros(listPrice("monthly")), PRICE_JOURNAL: euros(listPrice("journal")), PRICE_JOURNAL_YEAR: euros(listPrice("journal_year")), AI_CREDITS: String(getN("journal_ai_credits") || 100),
+    SITE: siteUrl().replace(/^https?:\/\//, ""), SITE_URL: siteUrl(), UPDATED: "5 October 2026",
   };
   return s.replace(/\{\{([A-Z_]+)\}\}/g, (_, k) => esc(v[k] ?? ""));
 }
@@ -194,9 +194,9 @@ function goldPublic() {
 }
 
 // ================================================================ helpers
-const plans = new Set(["lifetime", "monthly", "journal"]);
+const plans = new Set(["lifetime", "monthly", "journal", "journal_year"]);
 // the Journal plan can only be bought once the journal is public
-const planOk = (p: string) => p === "lifetime" || p === "monthly" || (p === "journal" && journalOpen());
+const planOk = (p: string) => p === "lifetime" || p === "monthly" || ((p === "journal" || p === "journal_year") && journalOpen());
 const meCustomer = (req: Request) => { const id = sessionOf(req, "customer"); return id ? one<Customer>("SELECT * FROM customers WHERE id = ?", id) : null; };
 const licOf = (c: Customer, id: string) => one<Licence>("SELECT * FROM licences WHERE id = ? AND customer_id = ?", id, c.id);
 const MOCK = E.MOCK_PAY === "1";
@@ -220,7 +220,7 @@ function chatFacts(tz: string) {
   } else L.push("- There is no public discount code right now.");
   const m = methodsOn(), meth = [m.card && "card, Apple Pay and Google Pay (Stripe)", m.crypto && "crypto (NOWPayments)", m.bank && "bank transfer"].filter(Boolean);
   L.push(`- Payment methods available now: ${meth.join(", ") || "none at the moment"}.`);
-  if (journalOpen()) L.push(`- GoldenStraddler Journal (goldenstraddler.com/journal) is included with every EA licence: the EA's trades appear in it by themselves, with analytics, prop-firm limits, news matching and an AI coach. Traders without the EA can buy the Journal plan alone for ${euros(listPrice("journal"))} a month; it works with any MT5 account through a read-only connector or a history file.`);
+  if (journalOpen()) L.push(`- GoldenStraddler Journal (goldenstraddler.com/journal) is included with every EA licence: the EA's trades appear in it by themselves, with analytics, prop-firm limits, news matching and an AI coach. Traders without the EA can buy the Journal plan alone for ${euros(listPrice("journal"))} a month or ${euros(listPrice("journal_year"))} a year; it works with any MT5 account through a read-only connector or a history file.`);
   if (getN("trial_days") > 0) L.push(`- Free trial: ${getN("trial_days")} days on a demo account only (it won't run on a live account). Start it from the pricing section of the home page with an email address; the key arrives by email. One trial per email address.`);
   else L.push("- There's no free trial right now.");
   L.push(`- Money-back guarantee: ${getN("refund_days")} days from the first payment. A licence can move to another MT5 account once every ${getN("move_days")} days.`);
@@ -329,7 +329,7 @@ async function handle(req: Request): Promise<Response> {
     await Promise.all([refreshNews(), refreshRecord()]);
     const minTrades = getN("record_min_trades"), rec = record.data;
     const showRec = getS("record_public") === "1" && rec && rec.trades >= minTrades;
-    return json(200, { ok: true, serverNow: now(), prices: { lifetime: listPrice("lifetime"), monthly: listPrice("monthly"), ...(journalOpen() || adminOf(req) ? { journal: listPrice("journal") } : {}) }, methods: methodsOn(),
+    return json(200, { ok: true, serverNow: now(), prices: { lifetime: listPrice("lifetime"), monthly: listPrice("monthly"), ...(journalOpen() || adminOf(req) ? { journal: listPrice("journal"), journal_year: listPrice("journal_year") } : {}) }, methods: methodsOn(),
       refundDays: getN("refund_days"), news: news.events.filter((e) => e.utc > now() / 1000 - 75).slice(0, 8), week: news.events, record: showRec ? rec : null,
       announcement: getS("announcement"), promo: promo(), trialDays: getN("trial_days") > 0 ? getN("trial_days") : 0, verifyUrl: /^https:\/\/[\w.-]+\//.test(getS("record_verify_url")) ? getS("record_verify_url") : "" });
   }
@@ -495,8 +495,8 @@ async function handle(req: Request): Promise<Response> {
       if (!l || (l.plan !== "monthly" && l.plan !== "journal") || l.stripe_sub) return bad("This licence renews automatically or can't be renewed here.");
       if (l.status === "revoked") return bad("This licence has been switched off. Contact support.");
       if (!(methodsOn() as any)[method] || method === "card") return bad("Choose crypto or bank transfer.");
-      const price = listPrice(l.plan);
-      const { order, claim } = createOrder({ email: c.email, plan: l.plan, method, code: "", list: price, amount: price, ip: ipOf(req), country: "", kind: "renew", licenceId: l.id });
+      const rp: Plan = l.plan === "journal" && yearlyJournal(l.id) ? "journal_year" : l.plan, price = listPrice(rp);
+      const { order, claim } = createOrder({ email: c.email, plan: rp, method, code: "", list: price, amount: price, ip: ipOf(req), country: "", kind: "renew", licenceId: l.id });
       const go = await startPayment(order);
       return json(200, { ok: true, url: go }, { "Set-Cookie": `gs_o=${claim}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${14 * 86400}` });
     }
@@ -607,7 +607,7 @@ async function handle(req: Request): Promise<Response> {
       o = o.replace("<!--ABOUT-->", () => aboutHtml());
       // once the journal is published, the home page says it comes with every licence
       if (journalOpen()) o = o.replace(/<!--JOURNAL_NAV-->/g, '<a href="/journal">Journal</a>').replace(/<!--JOURNAL_LI-->/g, "<li>GoldenStraddler Journal with the AI coach</li>")
-        .replace("<!--JOURNAL_FEAT-->", '<div class="wide"><dt>A trading journal, included</dt><dd><span class="lg">Every trade from the EA lands in GoldenStraddler Journal by itself, with analytics, prop-firm limits and an AI coach. <a href="/journal">See the journal</a>.</span><span class="sh">The EA\'s trades in a journal with an AI coach. <a href="/journal">See it</a>.</span></dd></div>');
+        .replace("<!--JOURNAL_FEAT-->", '<div class="wide"><dt>A trading journal, included</dt><dd><span class="lg">Every trade from the EA lands in GoldenStraddler Journal by itself. Add the account you trade by hand and see the bot and you side by side, with analytics and an AI coach. <a href="/journal">See the journal</a>.</span><span class="sh">The EA\'s trades and yours in one journal, with an AI coach. <a href="/journal">See it</a>.</span></dd></div>');
       o = o.replace(/<!--JOURNAL_(NAV|LI|FEAT)-->/g, "");
       o = jsonLd(o); if (getS("record_public") !== "1") o = o.replace(/<a href="#record">/g, '<a href="#record" hidden>'); }
     return o;
@@ -679,7 +679,7 @@ async function adminRoute(req: Request, url: URL, p: string, a: Admin): Promise<
       revenue: { today: sum(day), month: sum(month), all: sum(0), refunds },
       licences: { active: active.length, lifetime: active.filter((l) => l.plan === "lifetime").length, monthly: active.filter((l) => l.plan === "monthly").length, journal: active.filter((l) => l.plan === "journal").length,
         expired: lic.filter((l) => effective(l) === "expired").length, revoked: lic.filter((l) => l.status === "revoked").length, total: lic.length },
-      mrr: active.filter((l) => l.plan === "monthly").length * listPrice("monthly") + active.filter((l) => l.plan === "journal").length * listPrice("journal"),
+      mrr: active.filter((l) => l.plan === "monthly").length * listPrice("monthly") + active.filter((l) => l.plan === "journal").reduce((a, l) => a + (yearlyJournal(l.id) ? Math.round(listPrice("journal_year") / 12) : listPrice("journal")), 0),
       journal: journalAdmin(),
       online, customers: one<{ n: number }>("SELECT COUNT(*) n FROM customers")!.n, daily,
       pendingBank: all("SELECT id, email, plan, amount_cents, created_at FROM orders WHERE method = 'bank' AND status IN ('pending','processing') ORDER BY created_at DESC LIMIT 20"),
@@ -846,7 +846,7 @@ async function adminRoute(req: Request, url: URL, p: string, a: Admin): Promise<
       "seller_name", "seller_address", "seller_vat", "seller_reg", "record_public", "record_min_trades", "stripe_tax", "methods_card", "methods_crypto", "methods_bank",
       "refund_days", "move_days", "trial_days", "announcement", "about_name", "about_role", "about_text", "site_url", "ea_version", "promo_code", "record_verify_url",
       "chat_enabled", "chat_ai", "chat_model", "chat_daily_cap", "chat_greeting", "hub_public",
-      "journal_public", "journal_ai_credits", "journal_ai_model", "price_journal"];
+      "journal_public", "journal_ai_credits", "journal_ai_model", "price_journal", "price_journal_year"];
     if (post) {
       if (!owner) return bad("Only the owner can change settings.", 403);
       for (const k of editable) if (b[k] !== undefined) {
@@ -922,6 +922,13 @@ setInterval(hourly, 3_600_000);
 
 // ================================================================ start
 bootstrapOwner();
+// one-time setting changes the owner approved on 5 October 2026: €149 monthly, 14-day guarantee, 7-day demo trial,
+// the Journal published with a yearly plan. Runs once; later edits in Admin settings are kept.
+if (getS("mig_2026_10_05") !== "1") {
+  for (const [k, v] of [["price_monthly", "14900"], ["refund_days", "14"], ["trial_days", "7"], ["journal_public", "1"], ["price_journal_year", "39000"]]) setS(k, v);
+  setS("mig_2026_10_05", "1");
+  audit("system", "settings updated", "", "monthly 149, refunds 14 days, trial 7 days, journal published, journal yearly 390");
+}
 const server = Bun.serve({ port: PORT, hostname: "0.0.0.0", idleTimeout: 120,
   fetch: (req) => handle(req).catch(err) });
 console.log(`goldenstraddler.com on :${server.port} | db ${DB_PATH} | stripe ${getS("stripe_secret") ? "on" : "off"} | crypto ${getS("np_api_key") ? "on" : "off"} | email ${mailConfigured() ? "on" : "off"}${DEV ? " | DEV" : ""}`);

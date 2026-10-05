@@ -70,6 +70,8 @@ function load(d) {
   ST.charts = new Set(d.charts || []); ST.barCache = ST.barCache || new Map();
   ST.memo = null;
   $("#whoEmail").textContent = DEMO ? "Sample journal" : d.email;
+  // GoldenStraddler customers get a way back to their EA dashboard
+  $("#eaLink").hidden = !(DEMO || (d.accounts || []).some((a) => a.ea));
   const toReview = ST.trades.filter((t) => !t.reviewed).length, nr = $("#navReview");
   nr.hidden = !toReview; nr.textContent = toReview > 99 ? "99+" : toReview;
   buildFilters();
@@ -179,8 +181,12 @@ function empty(msg, action) { return h("div.j-empty", [h("p", msg), action || nu
 function noTrades(main) {
   const has = ST.trades.length;
   main.appendChild(card(null, h("div.j-onb", has ? [h("h2", "No trades match these filters"), h("p", "Widen the period or clear a filter to see them."), h("button.btn.pri", { type: "button", on: { click: () => { Object.assign(ST.f, { range: "all", symbols: [], side: "", outcome: "", tags: [], pb: "", weekday: "", news: "", q: "" }); persistF(); render(); } } }, "Show everything")]
-    : [h("h2", "Bring your trades in"), h("p", "Connect your MetaTrader 5 account so every closed trade arrives on its own, or import a report from MT4, MT5 or any platform that exports CSV."),
-      h("div.j-onb-a", [h("a.btn.pri", { href: "#/accounts" }, "Connect or import"), DEMO ? null : h("a.btn", { href: "/journal/app?demo=1" }, "Explore sample data")])])));
+    : ST.data.access && ST.data.access.plan === "included"
+      // GoldenStraddler customers: the EA fills its own account, so the first step is their own trading
+      ? [h("h2", "Your EA's trades will appear here"), h("p", "GoldenStraddler's trades come in by themselves once the EA has traded with your licence. Add the account you trade by hand as well, and the overview puts the bot and you side by side."),
+        h("div.j-onb-a", [h("a.btn.pri", { href: "#/accounts" }, "Add your own account"), h("a.btn", { href: "/journal/app?demo=1" }, "Explore sample data")])]
+      : [h("h2", "Bring your trades in"), h("p", "Connect your MetaTrader 5 account so every closed trade arrives on its own, or import a report from MT4, MT5 or any platform that exports CSV."),
+        h("div.j-onb-a", [h("a.btn.pri", { href: "#/accounts" }, "Connect or import"), DEMO ? null : h("a.btn", { href: "/journal/app?demo=1" }, "Explore sample data")])])));
 }
 const tagChip = (id) => { const t = tagOf(id); return t ? h("span.j-tag." + t.kind, t.name) : null; };
 function stars(n, onSet) {
@@ -227,7 +233,7 @@ VIEWS.overview = (main) => {
   const ts = filtered();
   if (!ts.length) return noTrades(main);
   const s = JS.summary(ts, { start: startBalance() }), eq = JS.equity(ts, 0);
-  main.appendChild(h("div.j-tiles", [
+  main.appendChild(h("div.j-tiles.ov", [
     tile("Net profit", money(s.net, { sign: true }), `${s.n} trades${s.returnPct != null ? `, ${pct(s.returnPct, 1, true)} on the starting balance` : ""}`, { hero: true, k: cls(s.net) }),
     tile("Win rate", pct(s.winRate, 0), `${s.wins} won, ${s.losses} lost`),
     tile("Profit factor", fx(s.pf), s.pf === null ? "" : s.pf >= 1 ? "won for every 1 lost" : "lost more than won"),
@@ -235,6 +241,7 @@ VIEWS.overview = (main) => {
     tile("Max drawdown", money(-s.maxDD), s.maxDDpct != null ? pct(-s.maxDDpct) + " from the peak" : "peak to trough"),
     tile("Avg win / loss", fx(s.payoff), `${money(s.avgWin)} vs ${money(-s.avgLoss)}`),
   ]));
+  const bot = botCard(ts); if (bot) main.appendChild(bot);
   const lim = limitsCard(); if (lim) main.appendChild(lim);
   const curve = h("div.j-chart"), under = h("div.j-chart.sm");
   main.appendChild(card("Equity", [curve, h("p.j-sub", "Drawdown from the running peak"), under], { right: h("span.fine", `${s.days} trading days, ${dt(s.from, { day: "numeric", month: "short", year: "numeric" })} to ${dt(s.to, { day: "numeric", month: "short", year: "numeric" })}`) }));
@@ -251,6 +258,37 @@ VIEWS.overview = (main) => {
     : h("div.j-disc", [h("p", "Set your own rules (daily loss limit, max trades, stop loss on every trade) and the journal checks every day against them."), h("a.btn.sm", { href: "#/discipline" }, "Set your rules")])));
   main.appendChild(card("Recent trades", tradeTable(ts.slice(-8).reverse(), { compact: true }), { right: h("a.btn.xs", { href: "#/trades" }, "All trades") }));
 };
+// GoldenStraddler next to the trader: the EA's account(s) against everything else in the period
+function botCard(ts) {
+  if (ST.f.acc) return null;
+  const eaIds = new Set(ST.data.accounts.filter((a) => a.ea && !a.archived).map((a) => a.id));
+  if (!eaIds.size) return null;
+  const bot = ts.filter((t) => eaIds.has(t.a));
+  if (!bot.length) return null;
+  // the EA's trades also show up in a connector or report on the same MT5 account: count those once, as the EA's
+  const key = (t) => [t.d, t.v, t.op, t.cp].join("|"), botKeys = new Set(bot.map(key));
+  const mine = ts.filter((t) => !eaIds.has(t.a)), me = mine.filter((t) => !botKeys.has(key(t))), dup = mine.length - me.length;
+  if (!me.length) {
+    return card("GoldenStraddler and your own trading", h("div.j-vsempty", [
+      h("p", "The EA's trades come in by themselves. Add the account you trade by hand and the journal puts the two side by side: what the bot makes on the releases against what you make the rest of the time."),
+      h("a.btn.sm.pri", { href: "#/accounts" }, "Add your own account")]));
+  }
+  const sb = JS.summary(bot, {}), sm = JS.summary(me, {});
+  const col = (name, sub, s, k) => h("div.j-vsc." + k, [h("h3", [h("i"), name]), h("p.fine", sub),
+    h("dl", [["Net", money(s.net, { sign: true }), cls(s.net)], ["Trades", String(s.n), ""], ["Win rate", pct(s.winRate, 0), ""], ["Profit factor", fx(s.pf), ""], ["Per trade", money(s.expectancy, { sign: true }), cls(s.expectancy)], ["Max drawdown", money(-s.maxDD), ""]]
+      .map(([l, v, c]) => h("div", [h("dt", l), h("dd" + (c ? "." + c : ""), v)])))]);
+  const curve = h("div.j-chart");
+  const eqB = JS.equity(bot, 0).pts.map((p) => [p.t, p.eq]), eqM = JS.equity(me, 0).pts.map((p) => [p.t, p.eq]);
+  const both = sb.net + sm.net, lead = sb.net > sm.net ? "The EA made more than your own trades in this period" : sb.net < sm.net ? "Your own trades made more than the EA in this period" : "The EA and your own trades finished level";
+  const box = card("GoldenStraddler and your own trading", [
+    h("p.j-vslead", `${lead}. Together: ${money(both, { sign: true })} over ${sb.n + sm.n} trades.`),
+    h("div.j-vs", [col("GoldenStraddler EA", "Red-folder USD releases on gold, placed by the bot", sb, "bot"), col("Your own trades", "Everything you placed yourself", sm, "me")]),
+    curve, h("p.fine", "Cumulative net profit of each. Filters and the period above apply to both. The EA trades a few seconds a week, so compare per trade as well as the totals."
+      + (dup ? ` ${dup} trade${dup === 1 ? "" : "s"} in your own accounts match the EA's exactly and ${dup === 1 ? "is" : "are"} counted once, as the EA's.` : ""))]);
+  JC.line(curve, [{ name: "GoldenStraddler EA", pts: eqB, color: "gold" }, { name: "Your own trades", pts: eqM, color: "ice" }], { h: 200, fmt: (v) => money(v, { compact: true }), label: "Cumulative net profit: GoldenStraddler EA and your own trades", endLabel: false, tfmt: (t) => dt(t, { day: "numeric", month: "short" }) });
+  return box;
+}
+
 // prop-firm style limits, checked on each account's closed trades from its first trade
 function limitRows(a) {
   const ts = ST.trades.filter((t) => t.a === a.id), L = JS.limits(ts, a.limits, a.balance_start || 0, tz());
@@ -1165,12 +1203,19 @@ function demoData() {
   for (const t of trades) {
     if (t.pb !== "dp3") continue;
     const e = usd.find((x) => x.t >= t.ot - 3 * D && x.t <= t.ot + 4 * D) || usd[Math.floor(r() * usd.length)];
-    const len = (40 + r() * 600) * 1000; t.ot = e.t + Math.round(r() * 8000); t.ct = t.ot + len; t.a = "da1";
+    const len = (40 + r() * 600) * 1000; t.ot = e.t + Math.round(r() * 8000); t.ct = t.ot + len; t.a = "da3";
+    // the bot: 0.1 lots, a 100-point stop, a trailing stop that lets the release move run, no mood tags or notes
+    const win = r() < 0.4, R = win ? 0.5 + r() * r() * 7 : -(0.15 + r() * 0.85), risk = 1, side = t.d;
+    t.v = 0.1; t.sl = t.op - side * risk; t.tp = 0; t.cp = t.op + side * R * risk;
+    t.gross = (t.cp - t.op) * side * 100 * t.v; t.comm = -0.7; t.swap = 0; t.net = t.gross + t.comm;
+    t.mfe = t.op + side * Math.max(R, 0.1) * risk * (1 + r() * 0.3); t.mae = t.op - side * (win ? r() * 0.4 : Math.min(1, -R)) * risk;
+    t.tags = ["dg9"]; t.note = ""; t.rt = null; t.checks = [0, 1, 2]; t.reviewed = true;
   }
   const days = []; const seen = new Set(trades.map((x) => new Date(x.ct).toISOString().slice(0, 10)));
   for (const d of seen) if (r() < 0.4) days.push({ day: d, notes: true, mood: 1 + Math.floor(r() * 5), grade: 1 + Math.floor(r() * 5), shots: 0 });
   return { ok: true, email: "", access: { ok: true }, prefs: { tz: "Europe/London", dayStart: 0, currency: "USD", be: 0, rules: { maxDailyLoss: 400, maxTrades: 4, maxRisk: 300, requireStop: true, stopAfterLosses: 2, hours: "07:00-21:00", revengeMin: 15 }, goals: {} },
-    ai: { used: 0, cap: 0, left: 0 }, accounts: [{ id: "da1", name: "Sample ECN account", broker: "Sample broker", platform: "mt5", currency: "USD", demo: true, source: "connector", balance_start: 25000, last_sync: Date.now() - 600000, archived: false, limits: { firm: "Sample 2-step challenge", dailyLoss: 5, dailyLossPct: true, maxDD: 10, maxDDPct: true, target: 8, targetPct: true, minDays: 4, consistency: 40 } }, { id: "da2", name: "Sample index account", broker: "Sample broker", platform: "mt5", currency: "USD", demo: true, source: "import", balance_start: 10000, last_sync: Date.now() - 86400000, archived: false, limits: {} }],
+    ai: { used: 0, cap: 0, left: 0 }, accounts: [{ id: "da1", name: "Sample ECN account", broker: "Sample broker", platform: "mt5", currency: "USD", demo: true, source: "connector", balance_start: 25000, last_sync: Date.now() - 600000, archived: false, limits: { firm: "Sample 2-step challenge", dailyLoss: 5, dailyLossPct: true, maxDD: 10, maxDDPct: true, target: 8, targetPct: true, minDays: 4, consistency: 40 } }, { id: "da2", name: "Sample index account", broker: "Sample broker", platform: "mt5", currency: "USD", demo: true, source: "import", balance_start: 10000, last_sync: Date.now() - 86400000, archived: false, limits: {} },
+      { id: "da3", name: "GoldenStraddler EA", broker: "Sample broker", platform: "mt5", currency: "USD", demo: true, source: "ea", ea: true, balance_start: 5000, last_sync: Date.now() - 300000, archived: false, limits: {} }],
     tags, playbooks: pbs, trades, days, events };
 }
 

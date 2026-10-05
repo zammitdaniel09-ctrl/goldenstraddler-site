@@ -5,12 +5,15 @@ import { DAY, getN, getS, hmacHex, newOrderId, safeEq, setS, sha256, siteUrl, st
 import { fulfil, revoke, type Licence, type Order } from "./licence";
 import { mailBankInstructions, mailRefunded, notifyAdmins } from "./mail";
 
-export type Plan = "lifetime" | "monthly" | "journal";
+export type Plan = "lifetime" | "monthly" | "journal" | "journal_year";
 export type Code = { code: string; kind: "percent" | "amount"; value: number; plans: string; monthly_duration: "once" | "forever"; max_uses: number | null;
   uses: number; expires_at: number | null; active: number; note: string; stripe_coupon: string; created_by: string; created_at: number };
 
-export const listPrice = (plan: Plan) => getN(plan === "lifetime" ? "price_lifetime" : plan === "journal" ? "price_journal" : "price_monthly");
-export const planName = (plan: string) => (plan === "lifetime" ? "GoldenStraddler Lifetime licence" : plan === "journal" ? "GoldenStraddler Journal subscription" : "GoldenStraddler Monthly subscription");
+export const listPrice = (plan: Plan) => getN(plan === "lifetime" ? "price_lifetime" : plan === "journal" ? "price_journal" : plan === "journal_year" ? "price_journal_year" : "price_monthly");
+export const planName = (plan: string) => (plan === "lifetime" ? "GoldenStraddler Lifetime licence" : plan === "journal" ? "GoldenStraddler Journal subscription"
+  : plan === "journal_year" ? "GoldenStraddler Journal, yearly" : "GoldenStraddler Monthly subscription");
+// a Journal licence bought on the yearly plan renews yearly: the plan of its last paid order says which
+export const yearlyJournal = (licenceId: string) => one<{ plan: string }>("SELECT plan FROM orders WHERE licence_id = ? AND status = 'paid' ORDER BY paid_at DESC LIMIT 1", licenceId)?.plan === "journal_year";
 export function quote(plan: Plan, rawCode = "") {
   const list = listPrice(plan), code = str(rawCode, 40).toUpperCase().replace(/\s+/g, "");
   const base = { plan, list, amount: list, discount: 0, code: "", codeNote: "", error: "" };
@@ -21,7 +24,8 @@ export function quote(plan: Plan, rawCode = "") {
   if (err) return { ...base, error: err };
   const off = c!.kind === "percent" ? Math.round(list * Math.min(100, c!.value) / 100) : Math.min(list - 100, c!.value);
   const amount = Math.max(100, list - off);
-  const codeNote = plan !== "lifetime" ? (c!.monthly_duration === "forever" ? "every month" : "first month") : "";
+  const per = plan === "journal_year" ? "year" : "month";
+  const codeNote = plan !== "lifetime" ? (c!.monthly_duration === "forever" ? "every " + per : "first " + per) : "";
   return { ...base, amount, discount: list - amount, code, codeNote };
 }
 
@@ -98,7 +102,7 @@ export async function stripeCheckout(o: Order) {
     p.invoice_creation = { enabled: true, invoice_data: { metadata: { order: o.id } } };
   } else {
     p.mode = "subscription";
-    p.line_items = [{ quantity: 1, price_data: { currency: "eur", unit_amount: o.list_cents, recurring: { interval: "month" }, product_data: { name } } }];
+    p.line_items = [{ quantity: 1, price_data: { currency: "eur", unit_amount: o.list_cents, recurring: { interval: o.plan === "journal_year" ? "year" : "month" }, product_data: { name } } }];
     p.subscription_data = { metadata: { order: o.id }, description: name };
     if (o.code) { const c = one<Code>("SELECT * FROM codes WHERE code = ?", o.code); if (c) p.discounts = [{ coupon: await stripeCoupon(c) }]; }
   }
@@ -155,7 +159,7 @@ export async function stripeWebhook(req: Request) {
         const l = one<Licence>("SELECT * FROM licences WHERE stripe_sub = ?", obj.subscription);
         if (!l) break;
         const cust = one<{ email: string }>("SELECT email FROM customers WHERE id = ?", l.customer_id);
-        const { order } = createOrder({ email: cust?.email || obj.customer_email || "", plan: l.plan === "journal" ? "journal" : "monthly", method: "card", code: "", list: obj.subtotal || obj.amount_paid, amount: obj.amount_paid, ip: "", country: "", kind: "renew", licenceId: l.id });
+        const { order } = createOrder({ email: cust?.email || obj.customer_email || "", plan: l.plan === "journal" ? (yearlyJournal(l.id) ? "journal_year" : "journal") : "monthly", method: "card", code: "", list: obj.subtotal || obj.amount_paid, amount: obj.amount_paid, ip: "", country: "", kind: "renew", licenceId: l.id });
         run("UPDATE orders SET provider_ref = ? WHERE id = ?", obj.id, order.id);
         const end = (obj.lines?.data?.[0]?.period?.end || 0) * 1000 || (await periodEndOf(obj.subscription));
         fulfil(order.id, { paymentRef: obj.payment_intent || obj.charge || "", periodEnd: end });
@@ -222,7 +226,7 @@ async function np(path: string, payload: any) {
 export async function cryptoInvoice(o: Order) {
   const site = siteUrl();
   const j = await np("invoice", { price_amount: o.amount_cents / 100, price_currency: "eur", order_id: o.id,
-    order_description: o.plan === "lifetime" ? "GoldenStraddler Lifetime licence" : o.plan === "journal" ? "GoldenStraddler Journal (30 days)" : "GoldenStraddler Monthly (30 days)",
+    order_description: o.plan === "lifetime" ? "GoldenStraddler Lifetime licence" : o.plan === "journal" ? "GoldenStraddler Journal (30 days)" : o.plan === "journal_year" ? "GoldenStraddler Journal (1 year)" : "GoldenStraddler Monthly (30 days)",
     ipn_callback_url: site + "/webhooks/nowpayments", success_url: `${site}/order/${o.id}`, cancel_url: `${site}/checkout?plan=${o.plan}&cancelled=1` });
   run("UPDATE orders SET provider_ref = ? WHERE id = ?", String(j.id), o.id);
   return j.invoice_url as string;

@@ -595,7 +595,7 @@ VIEWS.settings = async () => {
     const land = el("a", "btn sm", "Open the journal page"); land.href = "/journal"; land.target = "_blank"; land.rel = "noopener";
     const row = el("div", "row"); row.append(open, demo, land);
     out.push(form("Journal", d.settings.journal_public === "1" ? "Published: the journal page is linked and the Journal plan can be bought. GoldenStraddler customers get it included." : "Hidden: only you (signed in to admin) can open it. Customers don't see it and the Journal plan can't be bought yet.",
-      inp("journal_public", "Publish the journal", { select: yn }), inp("price_journal", "Journal plan (EUR a month)", { type: "number", step: "0.01", money: 1 }),
+      inp("journal_public", "Publish the journal", { select: yn }), inp("price_journal", "Journal plan (EUR a month)", { type: "number", step: "0.01", money: 1 }), inp("price_journal_year", "Journal plan (EUR a year)", { type: "number", step: "0.01", money: 1 }),
       inp("journal_ai_credits", "AI coach credits per customer each month (a question or trade review is 1, a review is 4)", { type: "number" }), inp("journal_ai_model", "AI coach model", { select: modelOpts2 })));
     out.push(card("Open the journal", el("p", "fine", "To use it yourself, sign in to your customer account in this browser as well (any email with a licence), then open it."), row));
     if (owner) {

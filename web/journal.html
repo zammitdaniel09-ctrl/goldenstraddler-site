@@ -34,7 +34,7 @@
 
 <header class="top" id="top"><div class="wrap">
   <a class="mark" href="/journal"><svg aria-hidden="true"><use href="#gs"/></svg><span>Journal</span></a>
-  <nav aria-label="Main"><a href="#trades">Trades</a><a href="#analytics">Analytics</a><a href="#coach">AI coach</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a><a href="/">The EA</a></nav>
+  <nav aria-label="Main"><a href="#bot">With the EA</a><a href="#trades">Trades</a><a href="#analytics">Analytics</a><a href="#coach">AI coach</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a><a href="/">The EA</a></nav>
   <div class="r"><div class="thm"><button class="thm-btn" id="thmBtn" type="button" aria-expanded="false" aria-controls="thmPop" aria-label="Colours"><i class="thm-sw"></i></button>
     <div class="thm-pop" id="thmPop" hidden data-thm-host></div></div>
     <a class="signin" href="/journal/app">Sign in</a><a class="btn pri sm" href="/journal/app?demo=1">Try the demo</a></div>
@@ -43,24 +43,38 @@
 <main id="main">
 <section class="jl-hero"><div class="wrap">
   <div class="jl-hcopy">
-    <h1>Find the leaks in your trading.</h1>
-    <p class="sub">GoldenStraddler Journal pulls in every MetaTrader&nbsp;5 trade with its stop loss and how far it went for and against you. Then it shows where your edge comes from, where it leaks and what it costs, with an AI coach that answers from your own numbers.</p>
+    <h1>The bot's trades and yours, in one journal.</h1>
+    <p class="sub">Every trade GoldenStraddler places lands here by itself. Add the account you trade by hand and see both side by side: what each one makes, where your own trading leaks and what it costs, with an AI coach that answers from your numbers.</p>
     <div class="cta"><a class="btn pri" href="/journal/app?demo=1">Explore it with sample data</a><a class="btn" href="#pricing">See the price</a></div>
-    <p class="meta">{{PRICE_JOURNAL}} a month, cancel any time. Included with every GoldenStraddler licence.</p>
+    <p class="meta">Included with every GoldenStraddler licence. On its own, {{PRICE_JOURNAL}} a month or {{PRICE_JOURNAL_YEAR}} a year.</p>
   </div>
   <figure class="jl-shot jl-hshot">
-    <img src="/img/journal/overview.webp" alt="The journal overview: net profit, win rate, profit factor, account limits for a prop challenge and the equity curve" width="1600" height="1000">
+    <img src="/img/journal/overview.webp" alt="The journal overview: net profit, win rate, profit factor, then the GoldenStraddler EA and the trader's own trades side by side with both equity curves" width="1600" height="1000">
     <figcaption>Sample data</figcaption>
   </figure>
   <ul class="jl-src" aria-label="Where your trades come from">
-    <li><svg aria-hidden="true"><use href="#i-link"/></svg><span><b>MT5 connector</b>Every closed trade arrives on its own, with the stop loss it opened with</span></li>
+    <li><svg aria-hidden="true"><use href="#i-bolt"/></svg><span><b>Your GoldenStraddler EA</b>Its trades appear by themselves, nothing to set up</span></li>
+    <li><svg aria-hidden="true"><use href="#i-link"/></svg><span><b>MT5 connector</b>Your own trades arrive as they close, with the stop loss they opened with</span></li>
     <li><svg aria-hidden="true"><use href="#i-file"/></svg><span><b>MT4 and MT5 reports</b>Import your history from the HTML report in one go</span></li>
     <li><svg aria-hidden="true"><use href="#i-grid"/></svg><span><b>Any CSV</b>From cTrader, prop firms or other platforms</span></li>
-    <li><svg aria-hidden="true"><use href="#i-bolt"/></svg><span><b>Your GoldenStraddler EA</b>Its trades appear by themselves, nothing to set up</span></li>
   </ul>
 </div></section>
 
-<section class="sec rule jl-row" id="trades"><div class="wrap">
+<section class="sec rule jl-row" id="bot"><div class="wrap">
+  <div class="jl-txt">
+    <h2>The EA and you, side by side</h2>
+    <p class="lede">GoldenStraddler trades the red-folder USD releases on gold. The rest of the week is yours. The journal keeps score of both.</p>
+    <ul class="jl-pts">
+      <li><b>The EA's trades come in by themselves.</b> The EA already reports to your GoldenStraddler dashboard, so its trades appear in the journal as their own account, with nothing to install.</li>
+      <li><b>Add the account you trade by hand.</b> The read-only MT5 connector, an MT4 or MT5 report or a CSV brings your own trades in next to the bot's.</li>
+      <li><b>Compare like for like.</b> Net profit, win rate, profit factor, profit per trade and drawdown for each, with both equity curves on one chart. If the EA runs on the same account, its trades are counted once.</li>
+      <li><b>One filter for everything.</b> Look at the EA alone, your trading alone, or the whole picture across every account.</li>
+    </ul>
+  </div>
+  <figure class="jl-shot"><img src="/img/journal/bot.webp" alt="GoldenStraddler EA and your own trades side by side: net profit, trades, win rate, profit factor, profit per trade and maximum drawdown for each, and both equity curves on one chart" width="1600" height="909" loading="lazy"><figcaption>Sample data</figcaption></figure>
+</div></section>
+
+<section class="sec rule jl-row flip" id="trades"><div class="wrap">
   <div class="jl-txt">
     <h2>Every trade, opened up</h2>
     <p class="lede">Click any trade and see what really happened, not just whether it won.</p>
@@ -95,7 +109,7 @@
   </ul>
 </div></section>
 
-<section class="sec rule jl-row flip" id="coach"><div class="wrap">
+<section class="sec rule jl-row" id="coach"><div class="wrap">
   <div class="jl-txt">
     <h2>A coach that only quotes your numbers</h2>
     <p class="lede">Ask what's working, where you leak, or how you trade after two losses. It looks your trades up before it answers.</p>
@@ -110,7 +124,7 @@
   <figure class="jl-shot"><img src="/img/journal/coach.webp" alt="The AI coach answering what the biggest leak is, with figures from the trader's journal" width="1600" height="840" loading="lazy"><figcaption>An example answer on sample data</figcaption></figure>
 </div></section>
 
-<section class="sec rule jl-row" id="rules"><div class="wrap">
+<section class="sec rule jl-row flip" id="rules"><div class="wrap">
   <div class="jl-txt">
     <h2>Built for prop challenges and your own rules</h2>
     <p class="lede">Set the limits of a funded-account challenge, or your own, and watch how close you are.</p>
@@ -141,22 +155,22 @@
 </div></section>
 
 <section class="sec rule glow" id="pricing"><div class="wrap">
-  <h2>One plan, everything in it</h2>
-  <p class="lede">No tiers and no features held back. The AI coach is included.</p>
+  <h2>Included with the EA, or on its own</h2>
+  <p class="lede">No tiers and no features held back. The AI coach is in every plan.</p>
   <div class="jl-plans">
     <article class="plan main on">
-      <h3>Journal</h3>
-      <div class="price"><b>{{PRICE_JOURNAL}}</b><span>a month</span></div>
-      <p class="for">Cancel any time from your account.</p>
-      <ul><li>Unlimited trades, up to 30 accounts</li><li>MT5 connector, MT4/MT5 reports and CSV import</li><li>Every analytics view, what-if and Monte Carlo</li><li>The AI coach, {{AI_CREDITS}} credits a month</li><li>Account limits and discipline rules</li><li>{{REFUND_DAYS}}-day money-back guarantee</li></ul>
-      <a class="btn pri" href="/checkout?plan=journal">Start the Journal plan</a>
-    </article>
-    <article class="plan">
       <h3>With GoldenStraddler</h3>
       <div class="price"><b>Included</b></div>
-      <p class="for">Every GoldenStraddler licence, lifetime or monthly, comes with the journal.</p>
-      <ul><li>The news straddle EA for gold on MT5</li><li>The full journal and AI coach</li><li>The EA's trades in your journal by themselves</li><li>Your live EA dashboard</li></ul>
-      <a class="btn" href="/#pricing">See the EA plans</a>
+      <p class="for">Every GoldenStraddler licence, lifetime or monthly, comes with the full journal.</p>
+      <ul><li>The news straddle EA for gold on MT5</li><li>The EA's trades in your journal by themselves</li><li>Your own accounts next to the bot's</li><li>The AI coach, {{AI_CREDITS}} credits a month</li><li>Your live EA dashboard</li><li>{{REFUND_DAYS}}-day money-back guarantee</li></ul>
+      <a class="btn pri" href="/#pricing">See the EA plans</a>
+    </article>
+    <article class="plan">
+      <h3>Journal on its own</h3>
+      <div class="price"><b>{{PRICE_JOURNAL}}</b><span>a month</span></div>
+      <p class="for">Or {{PRICE_JOURNAL_YEAR}} a year. Cancel any time from your account.</p>
+      <ul><li>Unlimited trades, up to 30 accounts</li><li>MT5 connector, MT4/MT5 reports and CSV import</li><li>Every analytics view, what-if and Monte Carlo</li><li>The AI coach, {{AI_CREDITS}} credits a month</li><li>Account limits and discipline rules</li><li>{{REFUND_DAYS}}-day money-back guarantee</li></ul>
+      <div class="jl-two"><a class="btn" href="/checkout?plan=journal">Monthly</a><a class="btn" href="/checkout?plan=journal_year">Yearly</a></div>
     </article>
   </div>
 </div></section>
@@ -170,12 +184,13 @@
   <div class="faq">
     <details><summary>Which platforms does it work with?</summary><div class="a"><p>MetaTrader 5 syncs automatically through the connector. MetaTrader 4 and MetaTrader 5 history reports import in one go, and any platform that exports closed trades as CSV works too, including cTrader and most prop firms.</p></div></details>
     <details><summary>How does the MT5 connector work?</summary><div class="a"><p>It's a small Expert Advisor you attach to any chart. It sends your closed trades with the stop loss each one opened with and how far price went for and against it, then each new trade as it closes. It only reads your history: it never places, changes or closes a trade, and it never sees your password.</p></div></details>
+    <details><summary>How do the EA's trades get into the journal?</summary><div class="a"><p>GoldenStraddler already reports its trades to your dashboard on this site. The journal picks them up from there into an account called GoldenStraddler EA, so there's nothing to install. Add the account you trade by hand next to it with the MT5 connector, a report or a CSV, and the overview puts the two side by side.</p></div></details>
     <details><summary>Do I need the GoldenStraddler EA?</summary><div class="a"><p>No. The journal works for any trading, manual or automated, on any symbol. If you do run GoldenStraddler, its trades appear in your journal by themselves and the journal is included with your licence.</p></div></details>
     <details><summary>What does the AI coach cost?</summary><div class="a"><p>Nothing extra. The plan includes {{AI_CREDITS}} AI credits a month. A question or a trade review uses one credit and a written weekly or monthly review uses four. Credits reset each month.</p></div></details>
     <details><summary>Is my data private?</summary><div class="a"><p>Yes. Your journal is private to your account, and the AI coach only sees your own trades when you ask it something. You can export everything as a CSV at any time.</p></div></details>
     <details><summary>Does it work for prop firm challenges?</summary><div class="a"><p>Yes. Set your challenge's daily loss limit, maximum drawdown, profit target, minimum trading days and consistency rule on the account, and the journal shows how close you are. It counts closed trades, while your firm also counts open positions, so treat it as a guide.</p></div></details>
     <details><summary>Can I try it first?</summary><div class="a"><p>Explore the whole journal with sample data, no sign-up needed. The Journal plan also has a {{REFUND_DAYS}}-day money-back guarantee.</p></div></details>
-    <details><summary>How do I cancel?</summary><div class="a"><p>From your account page, any time. Your journal stays readable until the end of the month you paid for.</p></div></details>
+    <details><summary>How do I cancel?</summary><div class="a"><p>From your account page, any time. Your journal stays open until the end of the month or year you paid for.</p></div></details>
   </div>
 </div></section>
 

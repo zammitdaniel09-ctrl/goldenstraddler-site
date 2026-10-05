@@ -9,12 +9,12 @@ let PUB = null, QUOTE = null, applied = "";
 const plan = () => form.querySelector("input[name=plan]:checked").value;
 const method = () => { const m = form.querySelector("input[name=method]:checked"); return m ? m.value : ""; };
 
-const JOURNAL = q.get("plan") === "journal";
+const JOURNAL = q.get("plan") === "journal" || q.get("plan") === "journal_year";
 if (q.get("plan") === "monthly") form.querySelector("input[value=monthly]").checked = true;
 // the journal is bought on its own: only its plan shows
 if (JOURNAL) {
-  for (const l of $("plans").querySelectorAll("label")) l.hidden = l.querySelector("input").value !== "journal";
-  form.querySelector("input[value=journal]").checked = true;
+  for (const l of $("plans").querySelectorAll("label")) l.hidden = !l.querySelector("input").value.startsWith("journal");
+  form.querySelector(`input[value=${q.get("plan")}]`).checked = true;
   document.querySelector("main h1").textContent = "Get GoldenStraddler Journal";
   document.querySelector("[data-lic]").textContent = "Where should we send your access?";
   $("oneAcc").textContent = "Includes the AI coach. Cancel any time from your account.";
@@ -23,28 +23,30 @@ if (q.has("cancelled")) $("cancelled").hidden = false;
 if (q.get("code")) $("code").value = q.get("code").toUpperCase();
 try { const e = sessionStorage.getItem("gs_email"); if (e && !$("email").value) $("email").value = e; } catch {}
 
+// the yearly Journal plan counts in years, everything else in months
+const per = (p) => (p === "journal_year" ? "year" : "month");
 function render() {
-  const p = plan(), list = PUB ? PUB.prices[p] : null, Q = QUOTE && QUOTE.plan === p ? QUOTE : null;
-  $("sPlan").textContent = p === "lifetime" ? "Lifetime licence" : p === "journal" ? "Journal plan" : "Monthly licence";
-  if (list != null) $("sList").textContent = eur(list) + (p !== "lifetime" ? " a month" : "");
+  const p = plan(), list = PUB ? PUB.prices[p] : null, Q = QUOTE && QUOTE.plan === p ? QUOTE : null, u = per(p);
+  $("sPlan").textContent = p === "lifetime" ? "Lifetime licence" : p === "journal" ? "Journal plan, monthly" : p === "journal_year" ? "Journal plan, yearly" : "Monthly licence";
+  if (list != null) $("sList").textContent = eur(list) + (p !== "lifetime" ? " a " + u : "");
   const amount = Q ? Q.amount : list;
   if (Q && Q.discount) {
-    $("sOffRow").hidden = false; $("sOffLab").textContent = `Code ${Q.code}` + (p !== "lifetime" ? (Q.codeNote === "every month" ? ", every month" : ", first month") : "");
+    $("sOffRow").hidden = false; $("sOffLab").textContent = `Code ${Q.code}` + (p !== "lifetime" ? ", " + Q.codeNote : "");
     $("sOff").textContent = MINUS + eur(Q.discount);
   } else $("sOffRow").hidden = true;
   if (amount != null) $("sTotal").textContent = eur(amount);
   const m = method();
   let then = "";
   if (p !== "lifetime" && list != null) {
-    const next = Q && Q.discount && Q.codeNote === "every month" ? amount : list;
-    then = m === "card" ? `Then ${eur(next)} a month, charged automatically until you cancel.` : `Then ${eur(next)} a month. You pay each month from your account page.`;
+    const next = Q && Q.discount && Q.codeNote === "every " + u ? amount : list;
+    then = m === "card" ? `Then ${eur(next)} a ${u}, charged automatically until you cancel.` : `Then ${eur(next)} a ${u}. You pay each ${u} from your account page.`;
   } else if (p === "lifetime") then = "One payment. Nothing else to pay, ever.";
   $("sThen").textContent = then;
   $("payBtn").textContent = !m ? "Continue to payment" : m === "card" ? `Pay ${amount != null ? eur(amount) : ""}` : m === "bank" ? "Get bank details" : `Pay ${amount != null ? eur(amount) : ""} in crypto`;
   $("safeProc").textContent = m === "crypto" ? "Crypto payments are handled by NOWPayments. You pay from your own wallet." :
     m === "bank" ? "You'll get our bank details and a reference on the next page. Your licence activates when the transfer arrives." :
     "Card and wallet payments are handled by Stripe. We never see your card details.";
-  $("methodNote").textContent = p !== "lifetime" && m && m !== "card" ? "With bank transfer or crypto, the plan doesn't renew by itself. Pay each month from your account page; you get a reminder email first." : "";
+  $("methodNote").textContent = p !== "lifetime" && m && m !== "card" ? `With bank transfer or crypto, the plan doesn't renew by itself. Pay each ${u} from your account page; you get a reminder email first.` : "";
 }
 
 async function applyCode(silent) {
@@ -56,7 +58,7 @@ async function applyCode(silent) {
     if (!r.ok || j.ok === false) throw new Error(j.error || "Couldn't check that code.");
     if (j.error) { QUOTE = null; applied = ""; msg.className = "codemsg err"; msg.textContent = j.error; render(); return false; }
     QUOTE = j; applied = code;
-    msg.className = "codemsg ok"; msg.textContent = `Code applied: ${MINUS}${eur(j.discount)}` + (j.plan !== "lifetime" ? (j.codeNote === "every month" ? " every month" : " on the first month") : "");
+    msg.className = "codemsg ok"; msg.textContent = `Code applied: ${MINUS}${eur(j.discount)}` + (j.plan !== "lifetime" ? (j.codeNote.startsWith("every") ? " " + j.codeNote : " on the " + j.codeNote) : "");
     render(); return true;
   } catch (x) { if (!silent) { msg.className = "codemsg err"; msg.textContent = x.message; } return false; }
 }
@@ -90,7 +92,15 @@ form.addEventListener("submit", async (e) => {
   try {
     const r = await fetch("/api/public", { cache: "no-store" }); PUB = await r.json();
     $("lpLife").textContent = eur(PUB.prices.lifetime); $("lpMon").textContent = eur(PUB.prices.monthly);
-    if (PUB.prices.journal) $("lpJournal").textContent = eur(PUB.prices.journal);
+    if (PUB.prices.journal) {
+      $("lpJournal").textContent = eur(PUB.prices.journal);
+      if (PUB.prices.journal_year) {
+        $("lpJournalYear").textContent = eur(PUB.prices.journal_year);
+        // only say "months free" when the yearly price really is that many monthly payments less
+        const free = Math.floor((PUB.prices.journal * 12 - PUB.prices.journal_year) / PUB.prices.journal);
+        if (free >= 1) $("jYearNote").textContent = `A year, ${free === 1 ? "one month" : free === 2 ? "two months" : free + " months"} free`;
+      }
+    }
     else if (JOURNAL) { $("closed").hidden = false; $("closed").textContent = "The Journal plan isn't open yet."; form.hidden = true; }
     let any = false, first = null;
     for (const lab of $("methods").querySelectorAll("label")) {

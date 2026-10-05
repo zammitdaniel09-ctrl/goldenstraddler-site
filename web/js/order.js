@@ -19,8 +19,8 @@ function acts(...btns) { const a = el("div", "acts"); btns.forEach((b) => a.appe
 function link(text, href, pri) { const a = el("a", "btn" + (pri ? " pri" : ""), text); a.href = href; return a; }
 
 function render(j) {
-  const o = j.order, J = o.plan === "journal";
-  const amount = eur(o.amount, { cents: o.amount % 100 }), what = (o.plan === "lifetime" ? "Lifetime licence" : J ? "Journal plan" : "Monthly licence") + (o.kind === "renew" ? " renewal" : "");
+  const o = j.order, J = o.plan === "journal" || o.plan === "journal_year";
+  const amount = eur(o.amount, { cents: o.amount % 100 }), what = (o.plan === "lifetime" ? "Lifetime licence" : o.plan === "journal_year" ? "Journal plan, yearly" : J ? "Journal plan" : "Monthly licence") + (o.kind === "renew" ? " renewal" : "");
   if (o.status === "paid") {
     head(chip("", "Paid"), o.kind === "renew" ? "Renewed. Thank you." : "You're in.",
       o.kind === "renew" ? (J ? "Your Journal plan has been extended. Everything in your journal stays as it is." : "Your licence has been extended. Nothing else to do: the EA picks it up on its own.") :

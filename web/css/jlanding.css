@@ -70,3 +70,5 @@
   .jl .cta{display:grid;grid-template-columns:minmax(0,1fr)}
   .jl-card{padding:14px}
 }
+.jl-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.jl-two .btn{justify-content:center}
