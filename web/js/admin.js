@@ -565,7 +565,8 @@ VIEWS.settings = async () => {
     inp("promo_code", "Code shown in the bar at the top of the home page (blank = no bar). Give it an end date under Codes and the bar shows that date", { full: 1 }),
     inp("announcement", "Banner on the sales page (blank = none)", { full: 1 }), inp("ea_version", "Current EA version"), inp("site_url", "Site address"),
     inp("vat_note", "Tax line shown under the prices and at checkout, e.g. \"Prices include VAT where it applies\" (blank = none; agree it with your accountant)", { full: 1 }),
-    inp("guide_updated", "Date the setup guide was last updated (shown on the account page)", { ph: "2026-10-03" })));
+    inp("guide_updated", "Date the setup guide was last updated (shown on the account page)", { ph: "2026-10-03" }),
+    inp("google_verify", "Google Search Console: paste the HTML tag Google gives you (blank = none)", { full: 1, ph: "<meta name=\"google-site-verification\" content=\"...\">" })));
   out.push(form("Reviews and the weekly email", "The review email goes once, about 30 days after a first payment that wasn't refunded, to the review page you enter here. The weekly email needs email sending (Resend): visitors sign up on the home page, confirm by email, and get the coming week's red-folder US releases every Sunday at 17:00 UTC. Switching either on adds its entry to the privacy policy.",
     inp("review_url", "Review page link, e.g. your Trustpilot page (blank = no review emails)", { full: 1, ph: "https://www.trustpilot.com/review/goldenstraddler.com" }),
     inp("digest_public", "Offer the free weekly email on the home page", { select: yn })));
