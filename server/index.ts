@@ -633,6 +633,9 @@ async function handle(req: Request): Promise<Response> {
       const td = getN("trial_days");
       if (td > 0) o = o.replace(/(<p id="faqTrial">)[\s\S]*?(<\/p>)/, (_, a, b) => `${a}Yes: ${td} days on a demo account, free and without a card. Ask for a key in the pricing section and it arrives by email. The trial doesn't run on live accounts. When you buy, there's also a ${getN("refund_days")}-day money-back guarantee on the first payment.${b}`);
       o = o.replace("<!--ABOUT-->", () => aboutHtml());
+      // the lifetime plan's tag, worked out from the prices so it's right before the page script runs
+      const nMo = listPrice("monthly") > 0 ? Math.ceil(listPrice("lifetime") / listPrice("monthly")) : 0, WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
+      o = o.replace(/(<span class="tag" id="pTag">)[^<]*(<\/span>)/, (_, a, b) => a + (nMo > 1 && nMo <= 12 ? `Costs less than ${WORDS[nMo]} months of monthly` : "Pay once") + b);
       // once the journal is published, the home page says it comes with every licence
       if (journalOpen()) o = o.replace(/<!--JOURNAL_NAV-->/g, '<a href="/journal">Journal</a>').replace(/<!--JOURNAL_LI-->/g, "<li>GoldenStraddler Journal with the AI coach</li>")
         .replace("<!--JOURNAL_FEAT-->", '<div class="wide"><dt>A trading journal, included</dt><dd><span class="lg">Every trade from the EA lands in GoldenStraddler Journal by itself. Add the account you trade by hand and see the bot and you side by side, with analytics and an AI coach. <a href="/journal">See the journal</a>.</span><span class="sh">The EA\'s trades and yours in one journal, with an AI coach. <a href="/journal">See it</a>.</span></dd></div>');

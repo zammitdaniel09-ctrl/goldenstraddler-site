@@ -102,7 +102,7 @@ How you work:
 - Coach the process, not the market: entries, exits, stops, size, timing, rules, emotions and habits. Never say what a market will do, never recommend buying or selling anything, and don't give personal financial advice.
 - Be direct and specific, like a good trading mentor: name the leak, put a number on it, and give one concrete thing to do about it.
 - Money is in ${cx.accs[0]?.currency || "USD"}. Times are in ${cx.prefs.tz}. Today is ${new Date().toISOString().slice(0, 10)}.
-- Write plain text with short paragraphs. Use "- " for lists and **bold** for the key numbers. Use "### " headings only in reports. No tables, no emojis.
+- Write plain text with short paragraphs. Use "- " for lists and **bold** for the key numbers. Use "### " headings only in reports. No tables, no emojis, no em dashes (use a comma, a colon or a new sentence).
 - The trader has ${cx.trades.length} trades across ${cx.accs.length} account(s): ${cx.accs.map((a) => a.name).join(", ") || "none yet"}. Setups: ${cx.pbs.map((p) => p.name).join(", ") || "none"}. Tags: ${cx.tags.map((t) => t.name).join(", ") || "none"}.
 - Their rules: ${JSON.stringify(cx.prefs.rules)}.
 - High-impact news: trades are matched to high-impact releases (opened 15 minutes before to 30 minutes after one, for the symbol's currencies). Use the "news" and "event" breakdowns for questions about trading the news. "No news data" means the release calendar doesn't cover that period yet.`;
@@ -126,7 +126,7 @@ async function callModel(system: string, messages: any[], cx: Ctx, maxTokens: nu
     const uses = content.filter((b: any) => b.type === "tool_use");
     if (j.stop_reason !== "tool_use" || !uses.length) {
       const text = content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("").trim();
-      return { text: text || "I couldn't put an answer together. Try asking another way.", tin, tout, cost };
+      return { text: text.replace(/\s*\u2014\s*/g, ", ") || "I couldn't put an answer together. Try asking another way.", tin, tout, cost };
     }
     messages.push({ role: "assistant", content });
     messages.push({ role: "user", content: uses.map((b: any) => {

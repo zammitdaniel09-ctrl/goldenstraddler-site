@@ -41,8 +41,8 @@
 @media (max-width:520px){.ev li{grid-template-columns:1fr auto}.ev time{grid-column:1/-1}}
 .folder{display:inline-block;width:11px;height:8px;border-radius:1px 2px 2px;background:var(--loss);margin-right:9px;vertical-align:1px;position:relative}
 .folder::before{content:"";position:absolute;left:0;top:-2px;width:5px;height:3px;border-radius:1px 1px 0 0;background:var(--loss)}
-.seg{display:inline-flex;background:var(--carbon);border:1px solid var(--edge);border-radius:999px;padding:3px;gap:2px}
-.seg button{border:0;background:none;border-radius:999px;padding:6px 13px;font-size:13px;font-weight:600;color:var(--txt2);cursor:pointer}
+.seg{display:inline-flex;background:var(--carbon);border:1px solid var(--edge);border-radius:10px;padding:3px;gap:2px}
+.seg button{border:0;background:none;border-radius:7px;padding:6px 13px;font-size:13px;font-weight:600;color:var(--txt2);cursor:pointer}
 .seg button:hover{color:var(--white)}
 .seg button[aria-pressed=true]{background:rgba(var(--ice-rgb),.14);color:var(--ice)}
 .filters{display:flex;gap:10px;flex-wrap:wrap}

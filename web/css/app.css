@@ -43,7 +43,7 @@ table.t tbody tr.click:hover td{background:#0b0e13}
 .empty-row{color:var(--muted);text-align:center;padding:28px 10px!important}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--edge2);margin-right:8px;vertical-align:1px}
 .dot.on{background:var(--ice);box-shadow:0 0 10px rgba(var(--ice-rgb),.8)}
-.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;background:rgba(var(--fg-rgb),.07);color:var(--txt2);white-space:nowrap}
+.pill{display:inline-block;padding:2px 9px;border-radius:6px;font-size:12px;font-weight:600;background:rgba(var(--fg-rgb),.07);color:var(--txt2);white-space:nowrap}
 .pill.ok,.pill.paid,.pill.active{background:rgba(var(--ice-rgb),.12);color:var(--ice)}
 .pill.pending,.pill.processing,.pill.expiring{background:rgba(var(--gold-rgb),.13);color:var(--gold)}
 .pill.revoked,.pill.refunded,.pill.disputed,.pill.failed,.pill.expired,.pill.locked{background:rgba(var(--loss-rgb),.13);color:var(--loss)}

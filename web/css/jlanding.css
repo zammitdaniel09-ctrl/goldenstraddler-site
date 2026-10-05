@@ -14,7 +14,7 @@
 .jl-hshot{margin-right:-120px}
 .jl-shot{position:relative;margin:0;border-radius:18px;overflow:hidden;border:1px solid var(--edge2);background:var(--carbon);box-shadow:0 50px 120px -60px rgba(var(--ice-rgb),.45)}
 .jl-shot img{display:block;width:100%;height:auto}
-.jl-shot figcaption{position:absolute;right:12px;bottom:10px;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:999px;background:rgba(0,0,0,.6);color:#fff}
+.jl-shot figcaption{position:absolute;right:12px;bottom:10px;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:6px;background:rgba(0,0,0,.6);color:#fff}
 .jl-shot.tall{max-width:440px;justify-self:end;width:100%}
 .jl-src{grid-column:1/-1;list-style:none;margin:28px 0 0;padding:22px 0 0;border-top:1px solid var(--edge);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:22px}
 .jl-src li{display:flex;gap:12px;align-items:flex-start;font-size:14px;color:var(--txt2)}
@@ -42,7 +42,7 @@
 .jl-card:not(.wide) .jl-shot{max-height:300px}
 .jl-card:not(.wide) .jl-shot img{object-fit:cover;object-position:top left;max-height:300px}
 .jl-also{list-style:none;margin:30px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
-.jl-also li{padding:7px 14px;border-radius:999px;border:1px solid var(--edge2);font-size:14px;color:var(--txt2)}
+.jl-also li{padding:7px 14px;border-radius:8px;border:1px solid var(--edge2);font-size:14px;color:var(--txt2)}
 
 /* the rest */
 .jl-feats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px 36px;margin-top:44px}

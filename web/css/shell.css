@@ -17,24 +17,17 @@
 .top.shell .menu-btn[aria-expanded=true] .m1{transform:translateY(4px) rotate(45deg)}
 .top.shell .menu-btn[aria-expanded=true] .m2{transform:translateY(-4px) rotate(-45deg)}
 
-/* reading progress: a hairline under the header that fills as you go down the page */
-.top-prog{position:absolute;left:0;right:0;bottom:-1px;height:2px;pointer-events:none;transform:scaleX(0);transform-origin:0 50%;opacity:0;
-  background:linear-gradient(90deg,rgba(var(--ice-rgb),.1),rgba(var(--ice-rgb),.85))}
-@supports (animation-timeline:scroll()){
-  .top-prog{opacity:1;animation:gsProg linear both;animation-timeline:scroll(root block)}
-}
-@keyframes gsProg{to{transform:scaleX(1)}}
 
 /* ---------------------------------------------------------------- the switcher */
-.top.shell .sw{position:relative;display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:0;margin:0;padding:4px;border-radius:999px;
+.top.shell .sw{position:relative;display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:0;margin:0;padding:4px;border-radius:12px;
   background:rgba(var(--fg-rgb),.035);border:1px solid var(--edge);isolation:isolate}
-.top.shell .sw a{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;padding:7px 18px;border-radius:999px;
+.top.shell .sw a{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;padding:7px 18px;border-radius:8px;
   font:600 14.5px var(--body);letter-spacing:-.005em;color:var(--txt2);text-decoration:none;white-space:nowrap;transition:color .3s var(--ease-out),background-color .2s}
 .top.shell .sw a:hover{color:var(--white);background:rgba(var(--fg-rgb),.045)}
 .top.shell .sw a[aria-current],.top.shell .sw a.sw-go{color:var(--white);background:none}
 .top.shell .sw a:active{transform:scale(.97)}
 .top.shell .sw .sh{display:none}
-.sw-lens{position:absolute;z-index:0;top:4px;bottom:4px;left:4px;width:calc((100% - 8px)/var(--n));border-radius:999px;pointer-events:none;
+.sw-lens{position:absolute;z-index:0;top:4px;bottom:4px;left:4px;width:calc((100% - 8px)/var(--n));border-radius:8px;pointer-events:none;
   transform:translateX(calc(var(--i)*100%));transition:transform .56s var(--ease-push);view-transition-name:gs-lens;
   background:linear-gradient(180deg,rgba(var(--ice-rgb),.2),rgba(var(--ice-rgb),.09));
   box-shadow:inset 0 0 0 1px rgba(var(--ice-rgb),.42),inset 0 1px 0 rgba(255,255,255,.08),0 6px 14px -8px rgba(0,0,0,.55)}
@@ -90,13 +83,6 @@
 @keyframes gsRise{from{transform:translateY(110%) rotate(3deg)}}
 @keyframes gsLift{from{opacity:0;transform:translateY(16px)}}
 
-/* the product pictures settle into place as they come up the screen */
-@supports (animation-timeline:view()){
-  @media (prefers-reduced-motion:no-preference){
-    .jl-row .jl-shot,.jl-card .jl-shot{animation:gsSettle linear both;animation-timeline:view();animation-range:entry 0% entry 85%}
-  }
-}
-@keyframes gsSettle{from{transform:translateY(36px) scale(.96);filter:brightness(.75)}}
 
 /* ---------------------------------------------------------------- moving between the three parts */
 @view-transition{navigation:auto}
@@ -134,7 +120,6 @@ html[data-vt] .top.shell{background:rgba(var(--bg-rgb),.97)}
   .sw-lens,.sheet,.top.shell .menu-btn path{transition-duration:.01s}
   .sheet.on nav a,.gs-rise .rise .w>span,.gs-rise .rise~*,.gs-rise .hero .hcard,.gs-rise .jl-hero .jl-hshot,.gs-rise .jl-src,.gs-rise .mk-hr,
   .gs-from-fwd main,.gs-from-back main,.gs-from-fwd .foot,.gs-from-back .foot{animation:none}
-  .top-prog{display:none}
   html[data-vt]::view-transition-old(root),html[data-vt]::view-transition-new(root){animation:none}
   ::view-transition-group(*){animation-duration:.15s}
 }

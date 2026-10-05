@@ -2,7 +2,7 @@
 (() => {
 "use strict";
 const $ = (id) => document.getElementById(id);
-const MINUS = "−", DASH = "—";
+const MINUS = "−", DASH = "–";
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
 const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const svgEl = (tag, a) => { const e = document.createElementNS("http://www.w3.org/2000/svg", tag); for (const k in a) e.setAttribute(k, a[k]); return e; };

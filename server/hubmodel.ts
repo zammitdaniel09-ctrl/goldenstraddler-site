@@ -440,7 +440,9 @@ export function factorStats(c: Ctx) {
 export const PERIODS = [["d1", "1D", "Last session"], ["w1", "1W", "1 week"], ["m1", "1M", "1 month"], ["m3", "3M", "3 months"], ["ytd", "YTD", "This year"], ["y1", "1Y", "1 year"]] as const;
 export type Period = (typeof PERIODS)[number][0];
 export type Stats = {
-  last: number | null; lastD: string;
+  last: number | null; lastD: string; from: string;               // from: the first daily close we hold
+  ref: Record<Period, { d: string; c: number } | null>;            // the close each period's change is measured from
+
   ret: Record<Period, number | null>; path: Record<Period, number[]>;
   hi52: number | null; lo52: number | null; at52: number | null; offHi: number | null; offLo: number | null;
   adr: number | null; move: number | null; wkAvg: number | null; wkNow: number | null; realRange: boolean;
@@ -451,7 +453,7 @@ const thin = (xs: number[], n = 40) => { if (xs.length <= n) return xs; const ou
 const r4 = (x: number | null) => (x == null || !Number.isFinite(x) ? null : Math.round(x * 1e5) / 1e5);
 export function marketStats(dc: Candle[], wc: Candle[], nowMs = Date.now()): Stats {
   const n = dc.length, empty = { d1: null, w1: null, m1: null, m3: null, ytd: null, y1: null } as Record<Period, number | null>;
-  const st: Stats = { last: null, lastD: "", ret: { ...empty }, path: { d1: [], w1: [], m1: [], m3: [], ytd: [], y1: [] }, hi52: null, lo52: null, at52: null, offHi: null, offLo: null,
+  const st: Stats = { last: null, lastD: "", from: n ? dc[0].t : "", ref: { d1: null, w1: null, m1: null, m3: null, ytd: null, y1: null }, ret: { ...empty }, path: { d1: [], w1: [], m1: [], m3: [], ytd: [], y1: [] }, hi52: null, lo52: null, at52: null, offHi: null, offLo: null,
     adr: null, move: null, wkAvg: null, wkNow: null, realRange: false, rsi: null, ma50: null, ma200: null, season: [], seasonFrom: "" };
   if (n < 2) return st;
   const last = dc[n - 1], lastMs = Date.parse(last.t + "T00:00:00Z"), cl = dc.map((x) => x.c);
@@ -464,7 +466,7 @@ export function marketStats(dc: Candle[], wc: Candle[], nowMs = Date.now()): Sta
   if (nowMs - lastMs > 4 * DAYMS) refs.d1 = -1;
   for (const [p] of PERIODS) {
     const k = refs[p]; if (k < 0 || !(dc[k].c > 0)) continue;
-    st.ret[p] = r4(last.c / dc[k].c - 1);
+    st.ret[p] = r4(last.c / dc[k].c - 1); st.ref[p] = { d: dc[k].t, c: dc[k].c };
     st.path[p] = thin(cl.slice(k), p === "d1" ? 2 : 40).map((v) => +v.toPrecision(7));
   }
   // the last year's range

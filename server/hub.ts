@@ -94,11 +94,17 @@ export async function hubRefreshNow(force = false) { await refreshAll(undefined,
 
 // ================================================================ rendering
 const nf = (v: number, dp = 0) => v.toLocaleString("en-US", { minimumFractionDigits: dp, maximumFractionDigits: dp });
-const pct = (x: number, dp = 1) => (x > 0 ? "+" : x < 0 ? "−" : "") + nf(Math.abs(x * 100), dp) + "%";
-const sgn = (x: number, dp = 2) => (x > 0 ? "+" : x < 0 ? "−" : "") + nf(Math.abs(x), dp);
+// a value that rounds to zero carries no sign: "0.0%", never "−0.0%"
+const signOf = (x: number, shown: string) => (/[1-9]/.test(shown) ? (x > 0 ? "+" : x < 0 ? "−" : "") : "");
+const pct = (x: number, dp = 1) => { const t = nf(Math.abs(x * 100), dp); return signOf(x, t) + t + "%"; };
+const sgn = (x: number, dp = 2) => { const t = nf(Math.abs(x), dp); return signOf(x, t) + t; };
+const updn = (x: number | null | undefined, dp = 1) => (x == null || !/[1-9]/.test(nf(Math.abs(x * 100), dp)) ? "" : x > 0 ? "up" : "dn");
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const dayMon = (d: string) => { const t = new Date(d + "T12:00:00Z"); return `${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]}`; };
 const cls = (dir: number) => (dir > 0 ? "up" : dir < 0 ? "dn" : "flat");
 const confDots = (c: string) => `<span class="conf" data-c="${c}" title="${c} confidence"><i></i><i></i><i></i></span>`;
-function dayTime(utc: number) { return new Date(utc * 1000).toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "UTC" }).replace(",", "") + " UTC"; }
+function dayTime(utc: number) { const t = new Date(utc * 1000), p2 = (n: number) => String(n).padStart(2, "0");
+  return `${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][t.getUTCDay()]} ${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]} ${p2(t.getUTCHours())}:${p2(t.getUTCMinutes())} UTC`; }
 const ASSET = new Map(ASSETS.map((a) => [a.id, a]));
 const clsName = (c: string) => CLASSES.find((x) => x.id === c)?.name || c;
 const art = (id: string, k = "") => `<svg class="art${k ? " " + k : ""}" aria-hidden="true"><use href="#art-${id}"/></svg>`;
@@ -203,7 +209,7 @@ function briefHtml(b: Brief) {
   return `<article class="bf" id="${b.id}" data-cls="${b.cls}">
   <header class="bf-h">
     ${art(b.id)}
-    <div class="bf-id"><p class="bf-t num">${esc(b.title)}</p><h3 class="bf-n"><a href="${url}">${esc(b.name)}</a> <span class="bf-sym num">${esc(b.sym)}</span></h3></div>
+    <div class="bf-id"><h3 class="bf-n"><a href="${url}">${esc(b.name)}</a> <span class="bf-sym num">${esc(b.sym)}</span></h3></div>
     ${quoteHtml(b)}
   </header>
   <div class="bf-sig">
@@ -235,13 +241,13 @@ function boardHtml(bs: Brief[]) {
     return `<tr data-cls="${b.cls}" data-name="${esc(b.name)}" data-score="${b.call.score}" data-week="${b.chg ?? -9}" data-href="#${b.id}">
       <th scope="row"><a href="#${b.id}" class="mkt-n">${art(b.id, "sm")}<span><b>${esc(b.name)}</b><span class="num">${esc(b.sym)}</span></span></a></th>
       <td class="num px-c" data-live="${b.id}"><b class="px">${esc(q.txt)}</b><span class="ch ${q.ch == null ? "" : q.ch >= 0 ? "up" : "dn"}">${q.ch == null ? "" : pct(q.ch, 2)}</span></td>
-      <td class="sp-c">${minic(wk, { h: 34 })}</td>
-      <td class="num ${b.chg == null ? "" : b.chg >= 0 ? "up" : "dn"}">${b.chg == null ? "–" : pct(b.chg)}</td>
+      <td class="sp-c">${wk.filter((x) => [x.o, x.h, x.l, x.c].every(Number.isFinite)).length >= 3 ? minic(wk, { h: 34 }) : b.stats.from ? `<span class="sp-none">History from ${esc(dayMon(b.stats.from))}</span>` : ""}</td>
+      <td class="num ${updn(b.chg)}">${b.chg == null ? "–" : pct(b.chg)}</td>
       <td>${pillHtml(b)}${b.call.dir ? confDots(b.call.conf) : ""}</td>
       <td class="sc-c"><span class="sc-w">${meter(b.call.score)}<span class="num">${sgn(b.call.score)}</span></span></td></tr>`;
   }).join("");
   const sb = (k: string, t: string) => `<button type="button" class="sort" data-sort="${k}">${t}</button>`;
-  return `<div class="tblw"><table class="board" id="board"><thead><tr><th scope="col">${sb("name", "Market")}</th><th scope="col">Price</th><th scope="col" class="sp-c">26 weeks</th><th scope="col">${sb("week", "Week")}</th><th scope="col">Call</th><th scope="col">${sb("score", "Score")}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  return `<div class="tblw"><table class="board" id="board"><thead><tr><th scope="col">${sb("name", "Market")}</th><th scope="col">Price</th><th scope="col" class="sp-c">26 weeks</th><th scope="col">${sb("week", bs[0] && bs[0].asOf ? `Week to ${esc(dayMon(bs[0].asOf))}` : "Week")}</th><th scope="col">Call</th><th scope="col">${sb("score", "Score")}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 function matrixHtml(bs: Brief[]) {
   const head = COLS.map((c) => `<th scope="col"><span>${esc(c.name)}</span></th>`).join("");
@@ -383,29 +389,50 @@ function clockHtml() {
 </div></div></section>`;
 }
 
-// ---------------------------------------------------------------- how markets moved: a heatmap over six periods
-const SCALE: Record<Period, number> = { d1: 0.006, w1: 0.015, m1: 0.03, m3: 0.06, ytd: 0.1, y1: 0.15 };
-function hmSpark(path: Record<Period, number[]>) {
-  return `<svg class="hm-sp" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true">${PERIODS.map(([p]) => {
-    const xs = path[p]; if (xs.length < 3) return "";
-    const lo = Math.min(...xs), hi = Math.max(...xs), r = hi - lo || 1;
-    return `<path data-p="${p}" d="${xs.map((v, k) => `${k ? "L" : "M"}${((k / (xs.length - 1)) * 100).toFixed(1)} ${(2 + (1 - (v - lo) / r) * 20).toFixed(1)}`).join("")}"/>`;
-  }).join("")}</svg>`;
+// ---------------------------------------------------------------- how markets moved: every market ranked by its change over a period
+const PERIOD_DAYS: Record<Period, number> = { d1: 1, w1: 7, m1: 30, m3: 91, ytd: 0, y1: 365 };
+const longDate = (d: string) => new Date(d + "T12:00:00Z").toLocaleString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+const listOf = (xs: string[]) => (xs.length < 2 ? xs.join("") : xs.slice(0, -1).join(", ") + " and " + xs[xs.length - 1]);
+// the first day a period's change can be shown for a market whose history starts on `from`
+function firstShown(from: string, p: Period) {
+  const t = new Date(from + "T12:00:00Z"), y0 = t.getUTCFullYear();
+  if (p === "ytd") return `January ${y0 + 1}`;
+  t.setUTCDate(t.getUTCDate() + PERIOD_DAYS[p]);
+  const d = t.toISOString().slice(0, 10), full = longDate(d);
+  return t.getUTCFullYear() === y0 ? full.replace(/ \d{4}$/, "") : full;
 }
+const PERIOD_WORDS: Record<Period, string> = { d1: "daily change", w1: "1-week change", m1: "1-month change", m3: "3-month change", ytd: "change this year", y1: "1-year change" };
 function heatHtml(bs: Brief[]) {
-  const ks = {} as Record<Period, number>;
-  for (const [p] of PERIODS) { const xs = bs.map((b) => Math.abs(b.stats.ret[p] ?? 0)).sort((a, b) => a - b); ks[p] = Math.max(SCALE[p], xs[Math.floor(xs.length * 0.85)] || 0); }
-  const k = (r: number | null, p: Period) => (r == null ? 0 : Math.sign(r) * Math.min(1, Math.sqrt(Math.abs(r) / ks[p])));
-  const tile = (b: Brief) => `<a class="hm-tl" href="/markets/${b.id}" title="${esc(b.name)}, latest close ${esc(b.stats.lastD ? short(b.stats.lastD) : "not in yet")}" style="${PERIODS.map(([p]) => `--${p}:${k(b.stats.ret[p], p).toFixed(2)}`).join(";")}">
-      <span class="hm-n"><b>${esc(b.name)}</b><span class="num">${esc(b.sym)}</span></span>
-      ${PERIODS.map(([p, , long]) => `<span class="hm-v num" data-p="${p}" title="${esc(long)}">${b.stats.ret[p] == null ? "–" : pct(b.stats.ret[p]!, Math.abs(b.stats.ret[p]!) >= 0.1 ? 0 : 1)}</span>`).join("")}${hmSpark(b.stats.path)}</a>`;
-  const best = (p: Period) => { const xs = bs.filter((b) => b.stats.ret[p] != null).sort((a, b) => b.stats.ret[p]! - a.stats.ret[p]!); return xs.length ? [xs[0], xs[xs.length - 1]] : null; };
-  const lead = PERIODS.map(([p, , long]) => { const x = best(p); return x ? `<p class="hm-lead fine" data-p="${p}">${esc(long)}: ${esc(x[0].name)} led at ${pct(x[0].stats.ret[p]!)}, ${esc(x[1].name)} lagged at ${pct(x[1].stats.ret[p]!)}.</p>` : ""; }).join("");
-  const t = (p: Period, lab: string) => `<button role="tab" type="button" data-hm="${p}" aria-selected="${p === "w1"}">${lab}</button>`;
-  return `<section class="mk-heat" id="moves" aria-labelledby="hm-h"><div class="wrap">
-  <div class="sec-h"><h2 id="hm-h">How markets moved</h2><div class="tabs hm-t" role="tablist" aria-label="Period">${PERIODS.map(([p, lab]) => t(p, lab)).join("")}</div></div>
-  <div class="hm" data-p="w1">${CLASSES.map((c) => { const xs = bs.filter((b) => b.cls === c.id); return xs.length ? `<div class="hm-g" data-cls="${c.id}"><h3>${esc(c.name)}</h3><div class="hm-row">${xs.map(tile).join("")}</div></div>` : ""; }).join("")}</div>
-  <div class="hm-f">${lead}<p class="fine">Change to each market's latest close, on daily closes (live prices for today where we have them). Oil and gas closes come from the EIA a few days late, so their last session is left out. Deeper colour means a bigger move.</p></div>
+  const assetOf = (b: Brief) => ASSETS.find((a) => a.id === b.id)!;
+  const top = {} as Record<Period, number>;
+  for (const [p] of PERIODS) top[p] = Math.max(1e-9, ...bs.map((b) => Math.abs(b.stats.ret[p] ?? 0)));
+  // too new to have this period yet, as opposed to a close that's simply late
+  const young = (b: Brief, p: Period) => b.stats.ret[p] == null && !!b.stats.from && (p === "ytd" ? b.stats.from.slice(0, 4) === (b.stats.lastD || b.stats.from).slice(0, 4) : Date.parse(b.stats.from) > Date.parse(b.stats.lastD || b.stats.from) - PERIOD_DAYS[p] * 86_400_000);
+  const ranked = (p: Period) => [...bs].sort((x, y) => (y.stats.ret[p] ?? -Infinity) - (x.stats.ret[p] ?? -Infinity));
+  const row = (b: Brief) => {
+    const a = assetOf(b), st = b.stats;
+    const vars = PERIODS.map(([p]) => `--${p}:${st.ret[p] == null ? 0 : (st.ret[p]! / top[p]).toFixed(3)}`).join(";");
+    const per = PERIODS.map(([p]) => {
+      const r = st.ret[p], ref = st.ref?.[p];
+      if (r == null) return `<span class="pv mv-none" data-p="${p}">${young(b, p) ? `History from ${esc(dayMon(st.from))}` : st.lastD ? `Latest close ${esc(dayMon(st.lastD))}` : "No closes yet"}</span>`;
+      const tip = ref && st.last != null ? `From ${fmtPx(a, ref.c)} on ${dayMon(ref.d)} to ${fmtPx(a, st.last)} on ${dayMon(st.lastD)}` : "";
+      return `<span class="pv mv-v num" data-p="${p}"${tip ? ` data-tip="${esc(tip)}"` : ""}>${pct(r)}</span>`;
+    }).join("");
+    return `<li class="mv-r" data-id="${b.id}" ${PERIODS.map(([p]) => `data-${p}="${b.stats.ret[p] ?? ""}"`).join(" ")} style="${vars}">
+      <a href="/markets/${b.id}">${art(b.id, "sm")}<span class="mv-n"><b>${esc(b.name)}</b><span class="num">${esc(b.sym)}</span></span><span class="mv-bar" aria-hidden="true"><i class="up"></i><i class="dn"></i></span>${per}</a></li>`;
+  };
+  // the note under the chart: which markets are still building their history, and when each period appears
+  const notes = PERIODS.map(([p]) => {
+    const groups = new Map<string, string[]>();
+    for (const b of bs) if (young(b, p)) groups.set(b.stats.from, [...(groups.get(b.stats.from) || []), assetOf(b).short]);
+    const txt = [...groups].map(([from, names]) => `We record ${esc(listOf(names))} prices ourselves, starting ${esc(longDate(from))}, so ${names.length > 1 ? "their" : "its"} ${PERIOD_WORDS[p]} shows from ${esc(firstShown(from, p))}.`).join(" ");
+    return txt ? `<p class="pv fine" data-p="${p}">${txt}</p>` : "";
+  }).join("");
+  const t = (p: Period, lab: string, long: string) => `<button role="tab" type="button" data-hm="${p}" aria-selected="${p === "w1"}" title="${esc(long)}">${lab}</button>`;
+  return `<section class="mk-heat" id="moves" aria-labelledby="hm-h" data-p="w1"><div class="wrap">
+  <div class="sec-h"><h2 id="hm-h">How markets moved</h2><div class="seg hm-t" role="tablist" aria-label="Period">${PERIODS.map(([p, lab, long]) => t(p, lab, long)).join("")}</div></div>
+  <ol class="mv" aria-label="Markets ranked by their change over the period" style="--rows:${Math.ceil(bs.length / 2)}">${ranked("w1").map(row).join("")}</ol>
+  <div class="mv-f">${notes}<p class="fine">Each market's change to its latest close, on daily closes, with today's live price where we have one. Oil and gas closes come from the EIA a few days late, so their last session is left out.</p></div>
 </div></section>`;
 }
 
@@ -534,7 +561,6 @@ function eaBandHtml() {
   const e = nextUsd();
   return `<section class="mk-ea" aria-labelledby="ea-h"><div class="wrap"><div class="ea-c">
   <div class="ea-t">
-    <p class="ea-k">From the makers of this desk</p>
     <h2 id="ea-h">Let GoldenStraddler trade the USD releases</h2>
     <p>Our Expert Advisor for MetaTrader&nbsp;5 trades gold around every red-folder USD release on this calendar. Five seconds before the number it places a buy stop and a sell stop, the number picks the side, the other order is deleted, and a trailing stop follows the move.</p>
     ${e ? `<p class="ea-n"><span><span class="dot"></span>Next one it trades: <b>${esc(e.title)}</b>, <time data-utc="${e.utc}" datetime="${new Date(e.utc * 1000).toISOString()}">${esc(dayTime(e.utc))}</time></span><span class="cd num" data-cd="${e.utc}"></span></p>` : ""}
@@ -550,7 +576,7 @@ function eaBandHtml() {
 </div></div></section>`;
 }
 function eaSide(b: Brief) {
-  if (b.id === "gold") return `<div class="card2 ea-s"><p class="ea-k">GoldenStraddler</p><h4>Trade gold's news spikes automatically</h4>
+  if (b.id === "gold") return `<div class="card2 ea-s"><h4>Trade gold's news spikes automatically</h4>
     <p class="fine">Our MT5 Expert Advisor brackets gold five seconds before every red-folder USD release and trails whichever side the number picks.</p>
     <ul><li>Both orders in at T−5 s</li><li>Trailing stop from +50 points</li><li>Nothing left pending after T+30 s</li></ul>
     <a class="btn pri sm" href="/#pricing">Get GoldenStraddler</a><a class="ea-more" href="/#how">How it trades</a></div>`;
@@ -567,9 +593,8 @@ export function renderHub(path: string): { title: string; desc: string; html: st
     const html = `${tickerHtml(bs)}
 <section class="mk-head"><div class="wrap mk-hg">
   <div class="mk-hl">
-    <p class="mk-wk num">Week ending ${esc(short(state.asOf))}</p>
     <h1>Markets this week</h1>
-    <p class="lede">Calls for ${bs.length} markets from a scoring model that runs on public data: the dollar, yields, trend, fear and how the big funds are positioned. Every point is a number you can check, and every call is graded.</p>
+    <p class="lede">Calls for ${bs.length} markets for the week to ${esc(dayMon(state.asOf))}, from a scoring model that runs on public data: the dollar, yields, trend, fear and how the big funds are positioned. Every point is a number you can check, and every call is graded.</p>
     <div class="mk-stats">
       <div><b class="num"><span class="up">${bull}</span> / <span class="dn">${bear}</span></b><span>bullish and bearish calls this week, ${bs.length - bull - bear} with no clear lean</span></div>
       ${s.fx != null ? `<div><b class="num">${nf(s.fx * 100)}%</b><span>forex calls right since 2023, on data the model never saw (up weeks ${nf((s.fxUp || 0) * 100)}%)</span></div>` : ""}
@@ -610,10 +635,10 @@ function oneHtml(b: Brief, bs: Brief[]) {
   <header class="one-h">
     ${art(b.id, "xl")}
     <div class="one-id">
-      <p class="bf-t num">${esc(b.title)}</p>
       <h1>${esc(b.name)} <span class="bf-sym num">${esc(b.sym)}</span></h1>
       <div class="bf-call ${cls(b.call.dir)}"><b>${esc(b.call.label)}</b>${b.call.dir ? `${confDots(b.call.conf)}<span class="cf">${esc(b.call.conf)} confidence</span>` : ""}</div>
       <p class="one-v">${esc(b.verdict)}</p>
+      <p class="one-wk fine">Brief for the week to ${esc(dayMon(b.asOf))}.</p>
     </div>
     <div class="one-q">${quoteHtml(b, true)}${intr.length > 3 ? `<div class="one-i">${minic(intr, { h: 40 })}<span class="fine">Last 24 hours, hourly candles</span></div>` : ""}</div>
     <div class="one-g">${gauge(b.call.score)}<p class="num">Score ${sgn(b.call.score)}</p></div>

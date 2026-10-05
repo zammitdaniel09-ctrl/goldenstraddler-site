@@ -169,7 +169,7 @@ $$("svg.pc-svg").forEach((svg) => {
 
 // ---------------------------------------------------------------- live prices, once every 20 seconds while the page is visible
 const nodes = $$("[data-live]");
-const pct = (x) => (x > 0 ? "+" : x < 0 ? "−" : "") + Math.abs(x * 100).toFixed(2) + "%";
+const pct = (x) => { const t = Math.abs(x * 100).toFixed(2); return (/[1-9]/.test(t) ? (x > 0 ? "+" : x < 0 ? "−" : "") : "") + t + "%"; };   // a rounded zero has no sign
 let last = {};
 async function poll() {
   if (document.hidden) return;
@@ -287,8 +287,22 @@ if (ck) {
 }
 
 // ---------------------------------------------------------------- how markets moved: the period
-const hmBox = document.querySelector(".hm"), hmTabs = $$(".hm-t [data-hm]");
-if (hmBox) tabset(hmTabs, (b) => { hmTabs.forEach((x) => x.setAttribute("aria-selected", String(x === b))); hmBox.dataset.p = b.dataset.hm; });
+// how markets moved: picking a period re-ranks the list; rows glide to their new places and the bars grow or shrink
+const mvSec = document.querySelector(".mk-heat"), mvList = document.querySelector(".mv"), mvTabs = $$(".hm-t [data-hm]");
+if (mvSec && mvList) tabset(mvTabs, (b) => {
+  const p = b.dataset.hm; if (mvSec.dataset.p === p) return;
+  mvTabs.forEach((x) => x.setAttribute("aria-selected", String(x === b)));
+  const rows = $$(".mv-r", mvList), before = new Map(rows.map((r) => [r, r.getBoundingClientRect()]));
+  const val = (r) => (r.dataset[p] === "" ? -Infinity : Number(r.dataset[p]));
+  const order = rows.map((r, i) => [r, i]).sort((x, y) => val(y[0]) - val(x[0]) || x[1] - y[1]).map((x) => x[0]);
+  mvSec.dataset.p = p;
+  order.forEach((r) => mvList.appendChild(r));
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  for (const r of order) {
+    const a = before.get(r), z = r.getBoundingClientRect(), dx = a.left - z.left, dy = a.top - z.top;
+    if (dx || dy) r.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }], { duration: 520, easing: "cubic-bezier(.16,1,.3,1)" });
+  }
+});
 
 // ---------------------------------------------------------------- releases: next up or the full week, grouped by the visitor's own days
 const nvs = $$("[data-nv]");

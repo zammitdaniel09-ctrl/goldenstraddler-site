@@ -32,7 +32,7 @@ export function shell(section: Section) {
     <div class="thm-pop" id="thmPop" hidden data-thm-host></div></div>
     <a class="signin" href="${c.signin}">Sign in</a><a class="btn pri sm top-cta" href="${c.top[0]}">${c.top[1]}</a>
     <button class="menu-btn" id="menuBtn" type="button" aria-expanded="false" aria-controls="sheet" aria-label="Open menu"><svg aria-hidden="true" viewBox="0 0 24 24"><path class="m1" d="M4 8h16"/><path class="m2" d="M4 16h16"/></svg></button></div>
-</div><i class="top-prog" aria-hidden="true"></i></header>
+</div></header>
 <div class="sheet" id="sheet" hidden>
   <nav aria-label="On this page">${LOCAL[section].map(([h, t]) => `<a href="${h}">${t}</a>`).join("")}</nav>
   <nav class="sheet-x" aria-label="Elsewhere">${other}<a href="${c.signin}">Sign in</a></nav>

@@ -1,7 +1,7 @@
 // Small shared helpers for the account and admin pages.
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined && text !== null) e.textContent = text; return e; };
-const MINUS = "−", DASH = "—";
+const MINUS = "−", DASH = "–";
 const pad2 = (n) => String(n).padStart(2, "0");
 const eur = (cents, opts = {}) => {
   const v = (cents || 0) / 100;

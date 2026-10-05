@@ -4,7 +4,7 @@
 .gsc svg{display:block}
 
 /* launcher */
-.gsc-launch{position:relative;display:flex;align-items:center;gap:9px;height:52px;padding:0 20px 0 16px;border-radius:999px;border:1px solid rgba(var(--ice-rgb),.55);cursor:pointer;
+.gsc-launch{position:relative;display:flex;align-items:center;gap:9px;height:52px;padding:0 20px 0 16px;border-radius:14px;border:1px solid rgba(var(--ice-rgb),.55);cursor:pointer;
   background:linear-gradient(180deg,rgba(var(--ice-rgb),.3),rgba(var(--ice-rgb),.12)),var(--term2);color:var(--white);font:600 15px var(--body);box-shadow:0 14px 34px -10px rgba(0,0,0,.8),0 0 0 6px rgba(var(--ice-rgb),.07);
   opacity:0;transform:translateY(12px);transition:opacity .4s,transform .4s,bottom .3s,box-shadow .2s}
 .gsc.ready .gsc-launch{opacity:1;transform:none}
@@ -68,7 +68,7 @@
 @keyframes gscDot{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}
 
 .gsc-sugg{display:flex;flex-wrap:wrap;gap:6px;padding:4px 14px 10px}
-.gsc-sugg button{border:1px solid rgba(var(--ice-rgb),.4);background:rgba(var(--ice-rgb),.06);color:var(--frost);border-radius:999px;padding:7px 12px;font:500 13px var(--body);cursor:pointer;text-align:left}
+.gsc-sugg button{border:1px solid rgba(var(--ice-rgb),.4);background:rgba(var(--ice-rgb),.06);color:var(--frost);border-radius:8px;padding:7px 12px;font:500 13px var(--body);cursor:pointer;text-align:left}
 .gsc-sugg button:hover{background:rgba(var(--ice-rgb),.14)}
 
 .gsc-form{display:flex;align-items:flex-end;gap:8px;margin:0 12px 8px;padding:6px 6px 6px 14px;border:1px solid var(--edge2);border-radius:18px;background:var(--void);transition:border-color .15s}
@@ -100,7 +100,7 @@
 .gsc-check,.gsc-rate{align-self:stretch;display:flex;flex-direction:column;align-items:center;gap:10px;padding:14px;border-radius:16px;border:1px solid rgba(var(--ice-rgb),.35);background:rgba(var(--ice-rgb),.05);animation:gscIn .25s ease-out;text-align:center}
 .gsc-check p,.gsc-rate p{margin:0;font-weight:600;font-size:14px}
 .gsc-check div{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
-.gsc-check button{border-radius:999px;padding:8px 14px;font:600 13px var(--body);cursor:pointer;border:1px solid var(--edge2);background:none;color:var(--txt2)}
+.gsc-check button{border-radius:8px;padding:8px 14px;font:600 13px var(--body);cursor:pointer;border:1px solid var(--edge2);background:none;color:var(--txt2)}
 .gsc-check .yes{background:var(--ice);border-color:var(--ice);color:var(--on-ice)}
 .gsc-stars{display:flex;gap:4px}
 .gsc-stars button{width:40px;height:40px;border:0;background:none;padding:4px;color:var(--edge2);cursor:pointer;transition:color .12s,transform .12s}

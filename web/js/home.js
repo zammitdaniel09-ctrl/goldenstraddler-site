@@ -14,7 +14,7 @@ const toastEl = $("toast");
 let toastT = 0;
 function toast(msg) { toastEl.textContent = msg; toastEl.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => toastEl.classList.remove("on"), 2600); }
 const usd = (v) => v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const sg = (v, d = 0) => (v > 0 ? "+" : v < 0 ? MINUS : "") + Math.abs(v).toLocaleString("en-GB", { minimumFractionDigits: d, maximumFractionDigits: d });
+const sg = (v, d = 0) => { const t = Math.abs(v).toLocaleString("en-GB", { minimumFractionDigits: d, maximumFractionDigits: d }); return (/[1-9]/.test(t) ? (v > 0 ? "+" : v < 0 ? MINUS : "") : "") + t; };
 // count a number up the first time it scrolls into view
 const seen = new IntersectionObserver((es) => { for (const e of es) if (e.isIntersecting) { seen.unobserve(e.target); e.target._go && e.target._go(); } }, { threshold: 0.4 });
 function countUp(el, to, fmt, ms = 1100) {
@@ -402,7 +402,7 @@ function record(r) {
   $("recLede").textContent = `Streamed straight from our own ${r.demo ? "demo" : "live"} MT5 account since ${sinceT}, every closed trade counted. It's one account on one broker, so your fills will differ.`;
   const stat = (k, v, fmt) => { const d = document.createElement("div"); d.className = "stat"; const s = document.createElement("span"); s.className = "lab"; s.textContent = k; const b = document.createElement("b"); d.append(s, b); if (typeof v === "number") countUp(b, v, fmt); else b.textContent = v; return d; };
   $("recStats").replaceChildren(stat("Closed trades", r.trades, (v) => Math.round(v).toLocaleString("en-GB")), stat("Net points", r.points, (v) => sg(Math.round(v))), stat("Won", r.winRate * 100, (v) => Math.round(v) + "%"),
-    r.pf == null ? stat("Profit factor", "—") : stat("Profit factor", r.pf, (v) => v.toFixed(2)), stat("Average per trade", r.avg, (v) => sg(Math.round(v)) + " pts"), stat("Deepest drawdown", r.maxDD, (v) => MINUS + Math.round(v) + " pts"));
+    r.pf == null ? stat("Profit factor", "–") : stat("Profit factor", r.pf, (v) => v.toFixed(2)), stat("Average per trade", r.avg, (v) => sg(Math.round(v)) + " pts"), stat("Deepest drawdown", r.maxDD, (v) => MINUS + Math.round(v) + " pts"));
   const c = r.curve || [], s = $("recCurve");
   if (c.length > 1) {
     const lo = Math.min(0, ...c), hi = Math.max(0, ...c), span = hi - lo || 1, y = (v) => 210 - (v - lo) / span * 200, x = (i) => i / (c.length - 1) * 600;
