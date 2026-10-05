@@ -231,6 +231,8 @@ function chatFacts(tz: string) {
   if (getN("trial_days") > 0) L.push(`- Free trial: ${getN("trial_days")} days on a demo account only (it won't run on a live account). Start it from the pricing section of the home page with an email address; the key arrives by email. One trial per email address.`);
   else L.push("- There's no free trial right now.");
   L.push(`- Money-back guarantee: ${getN("refund_days")} days from the first payment. A licence can move to another MT5 account once every ${getN("move_days")} days.`);
+  if (getS("vat_note")) L.push(`- About tax on the prices: ${getS("vat_note")}`);
+  if (getS("digest_public") === "1" && mailConfigured()) L.push("- There's a free weekly email with the coming week's red-folder USD releases, sent on Sunday evenings. Sign up in the \"This week\" card near the top of the home page; it needs a click on a confirmation email first.");
   const up = news.events.filter((e) => e.utc > now() / 1000 - 60).slice(0, 10);
   if (up.length) {
     const g = new Map<number, typeof up>(); for (const e of up) g.set(e.utc, [...(g.get(e.utc) || []), e]);
