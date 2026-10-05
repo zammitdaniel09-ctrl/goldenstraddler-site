@@ -32,7 +32,8 @@ function scenario(i) {
   let t = 0, b = 0;
   for (let k = 0; k < D.ticks.length; k += 3) { t += D.ticks[k]; b += D.ticks[k + 1]; T.push(t); B.push(b); A.push(b + D.ticks[k + 2]); }
   const sc = { D, T, B, A, N: T.length, notes: D.notes.map(([t2, x]) => [t2, glue(x)]),
-    net: Math.round(D.trades.reduce((s, tr) => s + tr.pl, 0) * 100) / 100, won: D.trades.filter((tr) => tr.pl > 0).length };
+    net: Math.round(D.trades.reduce((s, tr) => s + tr.pl, 0) * 100) / 100, closed: D.trades.filter((tr) => !tr.open) };
+  sc.won = sc.closed.filter((tr) => tr.pl > 0).length;
   cache.set(i, sc);
   return sc;
 }
@@ -74,7 +75,8 @@ function setupScenario(i) {
   ui.endH.textContent = D.endText || "Window closed at 14:30:30";
   ui.endLab.textContent = `Result on ${LOTS} lots` + (D.kind === "recorded" ? ", as recorded" : D.kind === "sim" ? ", simulated" : ", simulated on real prices");
   ui.endNet.textContent = money(S.net); ui.endNet.className = "e-net num " + (S.net >= 0 ? "up" : "dn");
-  ui.endN.textContent = `${D.trades.length} trades, ${S.won} won and ${D.trades.length - S.won} lost.`;
+  const still = D.trades.length - S.closed.length;
+  ui.endN.textContent = `${S.closed.length} trades, ${S.won} won and ${S.closed.length - S.won} lost` + (still ? ", and one still open when the recording ends, counted at the last price." : ".");
   ui.nextT.textContent = "Next: " + nx.title;
   tNow = D.start; noteI = -2; lastShown = -1; snap = true; capAt = 0; rate = D.speed || 1; hideNote(true); stopGo();
 }
@@ -107,7 +109,7 @@ function draw(dt) {
     if (!c || c.k !== k) { c = { k, o: b, h: b, l: b, c: b }; cs.push(c); }
     if (b > c.h) c.h = b; if (b < c.l) c.l = b; c.c = b;
   }
-  const openT = D.trades.filter((tr) => tr.at <= t && t < tr.out), doneT = D.trades.filter((tr) => tr.out <= t), liveO = D.orders.filter((o) => o.from <= t && t < o.to);
+  const openT = D.trades.filter((tr) => tr.at <= t && (tr.open || t < tr.out)), doneT = D.trades.filter((tr) => !tr.open && tr.out <= t), liveO = D.orders.filter((o) => o.from <= t && t < o.to);
   let yl = Infinity, yh = -Infinity;
   const inc = (v) => { if (v < yl) yl = v; if (v > yh) yh = v; };
   for (const c of cs) { inc(c.l); inc(c.h); }
@@ -234,7 +236,7 @@ function chrome(st) {
   ui.sellP.innerHTML = split(bid); ui.buyP.innerHTML = split(ask);
   ui.sell.dataset.d = dir; ui.buy.dataset.d = dir;
   // a trade that closed since the last frame gets a notification (only while playing)
-  if (playing && doneT.length > lastShown && lastShown >= 0) notify(doneT[doneT.length - 1]);
+  if (playing && doneT.length > lastShown && lastShown >= 0) notify(doneT[doneT.length - 1]);   // a trade still open at the end never gets one
   lastShown = doneT.length;
   // caption: the newest note, on screen for a few seconds of real time however fast the replay runs
   const notes = S.notes;
@@ -260,7 +262,7 @@ function setPlaying(on) {
   if (on && tNow >= S.D.end) { tNow = S.D.start; snap = true; noteI = -2; lastShown = -1; }
   playing = on; ui.play.dataset.s = on ? "play" : "pause"; ui.play.setAttribute("aria-label", on ? "Pause" : "Play");
   cancelAnimationFrame(raf);
-  if (on) { lastFrame = performance.now(); if (lastShown < 0) lastShown = S.D.trades.filter((tr) => tr.out <= tNow).length; raf = requestAnimationFrame(loop); }
+  if (on) { lastFrame = performance.now(); if (lastShown < 0) lastShown = S.D.trades.filter((tr) => !tr.open && tr.out <= tNow).length; raf = requestAnimationFrame(loop); }
   render(16);
 }
 function loop(now) {
